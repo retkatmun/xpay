@@ -14,12 +14,12 @@
  */
 export const USERNAME_RULE = /^[a-z][a-z0-9_]{2,15}$/
 
-/** Handles are shown as `suleiman.fundX` and stored as the bare label. */
-export const HANDLE_SUFFIX = ".fundX"
+/** Handles are shown as `suleiman.xpay` and stored as the bare label. */
+export const HANDLE_SUFFIX = ".xpay"
 
 /** Names nobody gets to claim. Owned here so it can change without a frontend deploy. */
 const RESERVED = new Set([
-  "fundx",
+  "xpay",
   "admin",
   "support",
   "help",
@@ -29,6 +29,8 @@ const RESERVED = new Set([
   "team",
   "official",
   "system",
+  "treasury",
+  "wallet",
 ])
 
 export function isReserved(label: string): boolean {
@@ -40,7 +42,7 @@ export function formatHandle(username: string): string {
 }
 
 /**
- * Accept a handle the forgiving way — "suleiman.fundX", "suleiman.FUNDX", "suleiman" or
+ * Accept a handle the forgiving way — "suleiman.xpay", "suleiman.XPAY", "suleiman" or
  * "@suleiman" — and return the canonical bare label, or null. Lenient on input, canonical on
  * storage and display.
  */
@@ -49,7 +51,7 @@ export function parseHandle(input: string): string | null {
     .trim()
     .toLowerCase()
     .replace(/^@/, "")
-    .replace(/\.fundx$/, "")
+    .replace(/\.xpay$/, "")
   return USERNAME_RULE.test(label) ? label : null
 }
 
@@ -59,9 +61,8 @@ export function looksLikePhone(input: string): boolean {
 }
 
 /**
- * Normalise to E.164. Nigerian numbers arrive in every shape people type them, and the USSD
- * gateway supplies its own — all of them must land on one canonical string, because that
- * string is the account's identity.
+ * Normalise to E.164. Nigerian numbers arrive in every shape people type them.
+ * All of them must land on one canonical string, because that string is the account identity.
  */
 export function normalizePhone(input: string): string | null {
   const digits = input.replace(/[^\d+]/g, "")
@@ -89,8 +90,8 @@ export function prettyPhone(e164: string): string {
 /**
  * Sequences and repeats are the PINs that get guessed first.
  *
- * The frontend checks this too, but that check is client-side and therefore advisory. USSD
- * never runs it at all, so this is where it actually holds.
+ * The frontend checks this too, but that check is client-side and therefore advisory.
+ * This is where it actually holds.
  */
 export function isWeakPin(pin: string): boolean {
   if (!/^\d{4}$/.test(pin)) return true

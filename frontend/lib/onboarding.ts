@@ -4,18 +4,23 @@
  * Held in sessionStorage rather than React state so a refresh mid-signup doesn't
  * drop someone back to the start. Cleared as soon as the account is created.
  *
- * The PIN passes through here in the mock. In the real flow it is posted straight
- * to the backend, hashed with Argon2, and never persisted on the device.
+ * The PIN is held here only for the single navigation step from /pin → /username.
+ * It is posted straight to the backend, hashed with Argon2id server-side, and
+ * never stored in plaintext beyond this transient sessionStorage slot.
+ * clearDraft() is called immediately after createAccount() succeeds.
  */
 
-const KEY = "fundx.onboarding";
+const KEY = "xpay.onboarding";
 
 export type Draft = {
   phone?: string;
   verified?: boolean;
+  signupToken?: string;
   pin?: string;
   displayName?: string;
   username?: string;
+  /** Dev-only: OTP code returned from the backend in non-production environments. */
+  devCode?: string;
 };
 
 export function getDraft(): Draft {

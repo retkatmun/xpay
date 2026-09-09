@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { HANDLE_SUFFIX } from "@/lib/api";
 
 /**
- * Handle entry: you type the label, and `.fundX` sits immediately after it.
+ * Handle entry: you type the label, and `.xpay` sits immediately after it.
  *
  * The input auto-sizes by stacking it on an invisible copy of its own text in a
  * 1×1 grid — the copy sets the column width, so the suffix tracks the text

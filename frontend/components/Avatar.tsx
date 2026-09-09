@@ -30,7 +30,7 @@ export function Avatar({
 }: {
   name: string;
   size?: number;
-  /** Money that arrived from outside FundX has no person behind it. */
+  /** Money that arrived from outside XPay has no person behind it. */
   external?: boolean;
 }) {
   const tint = external ? { bg: "#EFF4F0", fg: "#1B5E3F" } : tintFor(name);

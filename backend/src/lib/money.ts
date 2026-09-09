@@ -1,20 +1,15 @@
 /**
  * Money.
  *
- * Every amount is a bigint in base units. MockUSDT is 6-decimal, matching real USDT, so
- * $1.00 is 1_000_000n. Amounts are parsed from strings at the edge and formatted back to
- * strings at the edge; they are never JavaScript numbers in between, and never floats.
+ * Every amount is a bigint in base units. USDC is 6-decimal, so $1.00 is 1_000_000n.
+ * Amounts are parsed from strings at the edge and formatted back to strings at the edge;
+ * they are never JavaScript numbers in between, and never floats.
  *
- * The reference implementation passed the raw USSD string straight to `transfer()` with no
- * scaling, so typing "5" moved 0.000005 USDT. That is the failure this file exists to make
- * impossible.
+ * FX rates come from the live FX provider — never hardcoded here.
  */
 
 export const DECIMALS = 6
 const UNIT = 10n ** BigInt(DECIMALS)
-
-/** Naira per dollar. A fixed quote until a pricing feed exists. */
-export const NGN_RATE = 1560
 
 /** Parse a human amount ("12.50") into base units. Null for anything not clean and positive. */
 export function parseAmount(input: string): bigint | null {
@@ -56,12 +51,12 @@ export function formatUSD(value: bigint, dp = 2): string {
   return `${value < 0n ? "-" : ""}$${formatAmount(value < 0n ? -value : value, dp)}`
 }
 
-/** Naira equivalent, computed in bigint so the conversion is exact. */
-export function toNGN(value: bigint, rate: number = NGN_RATE): bigint {
+/** Naira equivalent. Rate must be provided — never use a hardcoded default. */
+export function toNGN(value: bigint, rate: number): bigint {
   return (value * BigInt(rate)) / UNIT
 }
 
-export function formatNGN(value: bigint, rate: number = NGN_RATE): string {
+export function formatNGN(value: bigint, rate: number): string {
   const naira = toNGN(value, rate)
   return `${naira < 0n ? "-" : ""}₦${group((naira < 0n ? -naira : naira).toString())}`
 }

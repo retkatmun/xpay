@@ -5,10 +5,10 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 /**
  * @title MockUSDT
- * @notice A stand-in for USDT on Quai, used by FundX during development.
+ * @notice A legacy test token — NOT used by XPay. XPay uses official USDC on Base Sepolia.
  *
  * There is no USDT on Orchard — Quai's docs carry no token address for any asset on the
- * testnet, and the QUAI faucet dispenses no ERC-20s. So FundX deploys and mints its own.
+ * This file is kept for reference only.
  * Pointing the product at real USDT later is a config change, not a code change, which is
  * why this matches USDT's shape exactly: six decimals, not eighteen.
  *
@@ -17,7 +17,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
  * supply is meaningless by design.
  *
  * It also means this contract must never be deployed to a network where its balances are
- * taken seriously. It is a testnet fixture. Real USDT has a controlled supply; when FundX
+ * taken seriously
  * points at a real token, this contract is left behind entirely rather than promoted.
  *
  * Two other departures from a stock ERC-20:
@@ -32,8 +32,8 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 contract MockUSDT is ERC20 {
     /// @notice Recipient is outside this contract's shard, or on the Qi ledger.
     error OutOfZone(address to);
-
-    constructor() ERC20("FundX Mock USD", "mUSDT") {}
+ n  
+    constructor() ERC20("XPay Test USD", "tUSD") {}
 
     /// @dev USDT is a 6-decimal token. Match it, so swapping in the real one changes nothing.
     function decimals() public pure override returns (uint8) {

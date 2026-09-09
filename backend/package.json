@@ -1,6 +1,7 @@
 {
-  "name": "fundx-backend",
+  "name": "xpay-backend",
   "version": "1.0.0",
+  "description": "XPay API — Send dollars. Receive naira. No P2P.",
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json",
@@ -12,27 +13,27 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:studio": "drizzle-kit studio",
-    "test:api": "node test/api.e2e.mjs",
-    "test:ussd": "node test/ussd.e2e.mjs",
-    "test:e2e": "node test/api.e2e.mjs && node test/ussd.e2e.mjs"
+    "test:api": "node test/api.e2e.mjs"
   },
   "keywords": [],
   "author": "",
   "license": "MIT",
-  "description": "One API, two front doors: the FundX web app and USSD",
   "dependencies": {
-    "africastalking": "^0.7.9",
     "argon2": "^0.45.1",
     "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
     "express": "^5.2.1",
+    "express-rate-limit": "^7.5.1",
+    "node-fetch": "^3.3.2",
     "pg": "^8.23.0",
-    "quais": "^1.0.0-alpha.56",
+    "viem": "^2.31.3",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",
+    "@types/cors": "^2.8.17",
     "@types/express": "^5.0.6",
     "@types/node": "^26.2.0",
     "@types/pg": "^8.23.1",

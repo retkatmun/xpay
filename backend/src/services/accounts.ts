@@ -1,7 +1,7 @@
 import argon2 from "argon2"
 import { eq } from "drizzle-orm"
 import { db } from "../db/index.js"
-import { users, type UserRow } from "../db/schema.js"
+import { users, walletAccounts, type UserRow, type WalletAccountRow } from "../db/schema.js"
 import { newId } from "../lib/ids.js"
 import {
   USERNAME_RULE,
@@ -12,7 +12,8 @@ import {
   parseHandle,
 } from "../lib/identity.js"
 import { fail, ok, type Result } from "../lib/errors.js"
-import { claimAddress } from "./pool.js"
+import { config } from "../config.js"
+import { deriveUserWalletAddress } from "../lib/walletDerive.js"
 
 /** Accounts: who exists, who a recipient is, and what handles are free. */
 
@@ -31,6 +32,14 @@ export async function findById(id: string): Promise<UserRow | null> {
   return row ?? null
 }
 
+export async function findWallet(userId: string): Promise<WalletAccountRow | null> {
+  const [row] = await db
+    .select()
+    .from(walletAccounts)
+    .where(eq(walletAccounts.userId, userId))
+  return row ?? null
+}
+
 export type Availability = {
   available: boolean
   reason?: "taken" | "reserved" | "invalid"
@@ -40,8 +49,7 @@ export type Availability = {
  * Is a handle free?
  *
  * Precedence is load-bearing — the frontend renders a different message for each reason,
- * and "invalid" must win over "taken" so a malformed handle is never reported as someone
- * else's.
+ * and "invalid" must win over "taken" so a malformed handle is never reported as someone else's.
  */
 export async function checkUsername(input: string): Promise<Availability> {
   const label = input.trim().toLowerCase()
@@ -55,11 +63,7 @@ export async function checkUsername(input: string): Promise<Availability> {
 
 /**
  * Build a handle from someone's name.
- *
- * Mirrors the reference implementation's `generateSafiriUsername`: strip the name down to
- * letters and numbers, and if it is already taken, append a short random suffix. Generating
- * rather than asking is what keeps USSD registration to two questions instead of three —
- * every extra screen costs the user money and loses some of them.
+ * Strip the name down to letters and numbers; if already taken, append a short random suffix.
  */
 export async function generateHandle(displayName: string): Promise<string> {
   const base = displayName
@@ -93,8 +97,8 @@ export type NewAccount = {
 /**
  * Create an account.
  *
- * The caller must already have proven the phone number — a verified OTP on web, the telco's
- * MSISDN on USSD. This function does not re-check that.
+ * The caller must already have proven the phone number — a verified OTP on web.
+ * This function does not re-check that.
  */
 export async function createAccount(input: NewAccount): Promise<Result<UserRow>> {
   const phone = normalizePhone(input.phone)
@@ -105,32 +109,44 @@ export async function createAccount(input: NewAccount): Promise<Result<UserRow>>
   const availability = await checkUsername(username)
   if (!availability.available) return fail(availability.reason ?? "invalid")
 
-  if (await findByPhone(phone)) return fail("taken")
+  // Distinct reason code so the frontend can differentiate "username taken"
+  // from "this phone number already has an account" and redirect to login.
+  if (await findByPhone(phone)) return fail("phone_registered")
 
-  // Enforced here because the frontend's check is client-side and USSD has no client at all.
+  // Enforced here because the frontend's check is client-side.
   if (isWeakPin(input.pin)) return fail("invalid")
 
-  const { index, address } = await claimAddress()
-
-  // argon2id: memory-hard, so a leaked hash resists the offline attack a 4-digit PIN would
-  // otherwise fall to instantly.
+  // argon2id: memory-hard, so a leaked hash resists the offline attack a 4-digit PIN
+  // would otherwise fall to instantly.
   const pinHash = await argon2.hash(input.pin, { type: argon2.argon2id })
 
-  const [row] = await db
+  const userId = newId("u")
+
+  const [user] = await db
     .insert(users)
     .values({
-      id: newId("u"),
+      id: userId,
       phone,
       username,
       displayName: input.displayName.trim() || username,
-      derivationIndex: index,
-      address,
       pinHash,
     })
     .returning()
 
-  if (!row) return fail("invalid")
-  return ok(row)
+  if (!user) return fail("invalid")
+
+  // Provision a deterministic deposit wallet address for this user.
+  // Derived from the treasury key + userId so it can always be re-derived.
+  const walletAddress = deriveUserWalletAddress(userId, config.BASE_CHAIN_ID)
+  await db.insert(walletAccounts).values({
+    id: newId("wa"),
+    userId: user.id,
+    chainId: config.BASE_CHAIN_ID,
+    walletAddress: walletAddress.toLowerCase(),
+    status: "active",
+  })
+
+  return ok(user)
 }
 
 export type Resolved = { user: UserRow }
@@ -140,7 +156,6 @@ export type Resolved = { user: UserRow }
  *
  * Phone is tested first. A digits-only string can never be a handle — handles must start
  * with a letter — so checking the handle pattern first would swallow phone numbers whole.
- * That is a real bug the frontend shipped with until it was measured.
  */
 export async function resolveRecipient(
   query: string,

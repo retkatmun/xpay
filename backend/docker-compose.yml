@@ -1,30 +1,19 @@
-# Postgres for FundX.
-#
-# Port 5433 so it never collides with a system Postgres on 5432, and an explicit project
-# name so it never adopts containers from another directory that happens to be called
-# "backend" — Compose derives the project from the directory otherwise.
-name: fundx
-
 services:
-  db:
-    image: postgres:18
-    container_name: fundx-db
-    restart: unless-stopped
+  postgres:
+    image: postgres:16-alpine
     environment:
-      POSTGRES_USER: fundx
-      POSTGRES_PASSWORD: fundx
-      POSTGRES_DB: fundx
+      POSTGRES_USER: xpay
+      POSTGRES_PASSWORD: xpay
+      POSTGRES_DB: xpay
     ports:
       - "5433:5432"
     volumes:
-      # Postgres 18 images expect the mount at /var/lib/postgresql, not .../data —
-      # mounting the subdirectory makes the container refuse to start.
-      - fundx-pgdata:/var/lib/postgresql
+      - xpay_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U fundx -d fundx"]
+      test: ["CMD-SHELL", "pg_isready -U xpay"]
       interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 5
 
 volumes:
-  fundx-pgdata:
+  xpay_postgres_data:

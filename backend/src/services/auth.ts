@@ -8,13 +8,13 @@ import { newId, newOtp, newToken } from "../lib/ids.js"
 import { isWeakPin } from "../lib/identity.js"
 import { fail, ok, type Result } from "../lib/errors.js"
 import { findById } from "./accounts.js"
+import { smsProvider } from "../providers/sms/index.js"
 
 /**
  * Authentication.
  *
- * Two doors with different trust. On USSD the MSISDN comes from the telco and the caller
- * cannot type it. On web a phone number is an unverified string until an OTP proves it, and
- * proof is recorded server-side — the frontend keeps `verified: true` in sessionStorage,
+ * Phone numbers are unverified strings until an OTP proves ownership. Proof is
+ * recorded server-side — the frontend keeps `verified: true` in sessionStorage,
  * where the user controls it, so the server cannot take that as evidence of anything.
  */
 
@@ -26,7 +26,7 @@ const hashToken = (token: string): string =>
 
 // ------------------------------------------------------------------------------- OTP
 
-export async function requestOtp(phone: string): Promise<{ code: string }> {
+export async function requestOtp(phone: string): Promise<{ code?: string; smsError?: string }> {
   const code = newOtp()
 
   await db.insert(otpCodes).values({
@@ -37,7 +37,31 @@ export async function requestOtp(phone: string): Promise<{ code: string }> {
     expiresAt: minutes(config.OTP_TTL_MINUTES),
   })
 
-  return { code }
+  const sms = smsProvider()
+  if (sms) {
+    // Real SMS delivery — NEVER include the code in the response.
+    try {
+      await sms.sendSms(phone, `Your XPay verification code is: ${code}. Valid for ${config.OTP_TTL_MINUTES} minutes. Do not share it.`)
+    } catch (err) {
+      console.error("[sms] send failed:", err instanceof Error ? err.message : err)
+      // SMS failed — do not fall back to devCode silently.
+      // Return an smsError so the API layer can surface it.
+      return { smsError: err instanceof Error ? err.message : "SMS delivery failed" }
+    }
+    // SMS sent successfully. Never return the code.
+    return {}
+  }
+
+  // No Termii key configured.
+  // DEV_SHOW_OTP=true (only allowed in non-production) → return code for debugging.
+  // Otherwise → return a config error, never the code.
+  if (config.DEV_SHOW_OTP) {
+    return { code }
+  }
+
+  // Termii not configured and DEV_SHOW_OTP not enabled.
+  // Return an error so the developer knows the service is misconfigured.
+  return { smsError: "SMS provider not configured. Set TERMII_API_KEY in backend/.env" }
 }
 
 /**
@@ -143,12 +167,7 @@ export async function verifyPin(user: UserRow, pin: string): Promise<PinCheck> {
   return { ok: true }
 }
 
-/** Remaining attempts before lockout, for a USSD prompt that can actually warn someone. */
-export function attemptsLeft(user: UserRow): number {
-  return Math.max(0, config.PIN_MAX_ATTEMPTS - user.pinAttempts)
-}
 
-// --------------------------------------------------------------------------- sessions
 
 export async function createSession(userId: string): Promise<string> {
   const token = newToken()

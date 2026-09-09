@@ -1,55 +1,64 @@
-"use client";
+"use client"
 
-import Link from "next/link";
-import { formatUSD } from "@/lib/money";
-import { clockTime, relativeTime } from "@/lib/time";
-import type { Transfer } from "@/lib/types";
-import { Avatar } from "./Avatar";
+import Link from "next/link"
+import { formatUSD } from "@/lib/money"
+import { clockTime, relativeTime } from "@/lib/time"
+import type { Transaction } from "@/lib/types"
+import { Avatar } from "./Avatar"
 
 export function TransferRow({
   transfer,
-  /**
-   * "relative" for standalone lists ("2h", "Yesterday"); "clock" where a day
-   * heading already carries the date, so the row doesn't repeat it back.
-   */
   stamp = "relative",
 }: {
-  transfer: Transfer;
-  stamp?: "relative" | "clock";
+  transfer: Transaction
+  stamp?: "relative" | "clock"
 }) {
-  const incoming = transfer.direction === "in";
-  const amount = BigInt(transfer.amount);
+  const incoming = transfer.direction === "in"
+  const amount = BigInt(transfer.amount)
 
-  // Credits are green; debits are ink. Spending money is not an error state,
-  // and colouring every payment red would make ordinary use feel like a warning.
-  const tone = incoming ? "text-green" : "text-ink";
-  const sign = incoming ? "+" : "−";
+  const tone = incoming ? "text-blue-600" : "text-gray-900"
+  const sign = incoming ? "+" : "−"
 
   const when =
-    stamp === "clock" ? clockTime(transfer.createdAt) : relativeTime(transfer.createdAt);
-  const meta = [when, transfer.memo].filter(Boolean).join(" · ");
+    stamp === "clock" ? clockTime(transfer.createdAt) : relativeTime(transfer.createdAt)
+  const meta = [when, transfer.memo].filter(Boolean).join(" · ")
+
+  const name = transfer.recipientDisplayName
 
   return (
     <Link
       href={`/activity/${transfer.id}`}
-      className="-mx-2 flex items-center gap-3 rounded-sm px-2 py-3.5 transition-colors duration-150 hover:bg-surface"
+      className="-mx-2 flex items-center gap-3 rounded px-2 py-3.5 transition-colors duration-150 hover:bg-gray-50"
     >
-      <Avatar
-        name={transfer.counterparty.displayName}
-        external={transfer.counterparty.external}
-      />
+      {transfer.recipientType === "bank_account" ? (
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50">
+          <svg
+            className="h-5 w-5 text-blue-600"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1.5}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M3 6l9-3 9 3v12l-9 3-9-3V6z"
+            />
+          </svg>
+        </div>
+      ) : (
+        <Avatar name={name} />
+      )}
 
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[0.95rem] text-ink">
-          {transfer.counterparty.displayName}
-        </span>
-        <span className="mt-0.5 block truncate text-[0.8rem] text-muted">{meta}</span>
+        <span className="block truncate text-sm text-gray-900">{name}</span>
+        <span className="mt-0.5 block truncate text-xs text-gray-500">{meta}</span>
       </span>
 
-      <span className={`shrink-0 figure text-[0.95rem] ${tone}`}>
+      <span className={`shrink-0 tabular-nums text-sm font-medium ${tone}`}>
         {sign}
         {formatUSD(amount)}
       </span>
     </Link>
-  );
+  )
 }

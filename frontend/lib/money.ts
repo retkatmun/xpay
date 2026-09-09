@@ -1,29 +1,24 @@
 /**
- * Money handling for FundX.
+ * Money handling for XPay.
  *
  * Every amount in this app is a bigint in *base units* — the smallest indivisible
- * piece of the token. mockUSDT is 6-decimal (matching real USDT), so $1.00 is
- * 1_000_000n. Amounts are parsed from strings at the input boundary and formatted
+ * piece of the token. USDC is 6-decimal, so $1.00 is 1_000_000n.
+ * Amounts are parsed from strings at the input boundary and formatted
  * back to strings at the display boundary; they are never JavaScript numbers in
  * between.
  *
- * This is not fussiness. `0.1 + 0.2 === 0.30000000000000004` is not a rounding
- * detail in a payments product — it is a balance that disagrees with the chain.
+ * FX rates come from the backend quote API — never hardcoded here.
  */
 
 export const DECIMALS = 6;
 const UNIT = 10n ** BigInt(DECIMALS);
-
-/** Naira per dollar. Mocked here; comes from the pricing service later. */
-export const NGN_RATE = 1560;
 
 /** Display precision for USD. Users enter and read cents, not micro-dollars. */
 const USD_DP = 2;
 
 /**
  * Parse user input into base units. Returns null for anything not a clean
- * non-negative amount, so callers can treat null as "not payable yet" rather than
- * guessing at a partial entry like "12." mid-typing.
+ * non-negative amount.
  */
 export function parseAmount(input: string): bigint | null {
   const cleaned = input.trim().replace(/,/g, "");
@@ -44,7 +39,7 @@ function group(digits: string): string {
 }
 
 /**
- * Format base units as a plain decimal string: 40500000n -> "40.50".
+ * Format base units as a plain decimal string: 40500000n → "40.50".
  * Truncates rather than rounds — never show a user more money than they have.
  */
 export function formatAmount(value: bigint, dp: number = USD_DP): string {
@@ -69,28 +64,27 @@ export function formatUSD(value: bigint, dp: number = USD_DP): string {
 
 /**
  * Naira equivalent, computed in bigint so the conversion is exact.
- * Shown to the whole naira — kobo is not meaningful at these amounts.
+ * Rate must be provided — never use a hardcoded default.
  */
-export function toNGN(value: bigint, rate: number = NGN_RATE): bigint {
+export function toNGN(value: bigint, rate: number): bigint {
   return (value * BigInt(rate)) / UNIT;
 }
 
-/** "₦62,400" */
-export function formatNGN(value: bigint, rate: number = NGN_RATE): string {
+/** "₦62,400" — rate must be provided from the backend quote */
+export function formatNGN(value: bigint, rate: number): string {
   const naira = toNGN(value, rate);
   const negative = naira < 0n;
   const body = group((negative ? -naira : naira).toString());
   return `${negative ? "-" : ""}₦${body}`;
 }
 
-/** "₦1,560/$" — the rate itself, always shown beside a converted figure. */
-export function formatRate(rate: number = NGN_RATE): string {
+/** "₦1,560/$" — rate must be provided from the backend quote */
+export function formatRate(rate: number): string {
   return `₦${group(String(rate))}/$`;
 }
 
 /**
- * Constrain raw keystrokes in an amount field: digits, one dot, at most two
- * decimal places. Returns the corrected string so the input stays controlled.
+ * Constrain raw keystrokes in an amount field.
  */
 export function sanitizeAmountInput(raw: string): string {
   let next = raw.replace(/[^\d.]/g, "");

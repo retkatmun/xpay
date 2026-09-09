@@ -1,92 +1,99 @@
-# FundX — web app
+# XPay — Web App
 
-Send and receive money with a phone number or a `name.fundX` handle.
+**Send dollars. Receive naira. No P2P.**
 
-This is the web client. It is **not a dApp**: there is no wallet to connect, no
-`window.pelagus`, no signing in the browser. FundX is custodial, so the backend holds
-keys and signs; this app is an ordinary web client against that API.
+Next.js 16 + TypeScript + Tailwind CSS.
 
-## Running it
+The frontend is a thin API client. No business logic, no local state, no mock data.
+All operations go through the XPay backend API.
+
+---
+
+## Quick start
 
 ```bash
+cp .env.example .env.local
+# Set NEXT_PUBLIC_API_URL=http://localhost:4000
+
 npm install
-npm run dev        # http://localhost:3000
+npm run dev   # http://localhost:3000
 ```
 
-Everything runs on mock data — there is no backend yet. State lives in `localStorage`
-under `fundx.state.v1`, so a refresh keeps you signed in. To start over, clear that key
-or use **Sign out** on the Receive screen.
+Make sure the backend is running first. See `backend/README.md`.
 
-A fresh account is seeded with a $40.00 balance and a short history, including one
-external deposit, so the screens can be read in use rather than empty.
+---
 
-## Layout
+## Pages
+
+| Route | Description |
+|-------|-------------|
+| `/` | Landing page |
+| `/phone` | Enter phone number (step 1 of signup) |
+| `/verify` | Enter OTP code (step 2) |
+| `/pin` | Set 4-digit PIN (step 3) |
+| `/username` | Pick handle + display name (step 4) |
+| `/home` | Dashboard — balance + recent transactions |
+| `/send` | Send money (XPay user or Nigerian bank account) |
+| `/receive` | Show your handle/address for receiving |
+| `/activity` | Full transaction history |
+| `/activity/[id]` | Transaction detail |
+
+---
+
+## Architecture
 
 ```
-app/
-  page.tsx              welcome
-  phone/ verify/ pin/ username/    onboarding
-  home/                 balance, send/receive, recent
-  send/                 recipient → amount → PIN → receipt (one route, four steps)
-  receive/              your handle, number, and deposit address
-  activity/             history, grouped by day
-  activity/[id]/        receipt
-
-components/             hand-built; no component library
-lib/
-  api/                  mock client — swap for fetch when the backend lands
-  money.ts              bigint base units, string boundaries
-  types.ts              wire types shared with the backend
-  session.tsx           session context
+/app           Next.js App Router pages
+/components    Reusable UI primitives
+/lib/api       HTTP client (calls backend API — no localStorage, no mocks)
+/lib/types     Shared TypeScript types (mirrors backend response shapes)
+/lib/money     USDC/NGN formatting (bigint-safe)
+/lib/session   Auth context (server-side session via cookie)
+/lib/onboarding Signup draft state (sessionStorage — cleared on completion)
 ```
 
-## Two rules worth keeping
+---
 
-**Money is bigint, never a float.** Amounts are base units (6-decimal, matching USDT)
-and cross the API as strings, because JSON has no bigint. Parse with `BigInt()`, never
-`Number()`. `0.1 + 0.2` is not a rounding detail in a payments product — it is a balance
-that disagrees with the chain.
+## Environment variables
 
-**A hex address appears in exactly one place**: the Receive screen, folded behind
-"Receiving from outside FundX". Everywhere else a recipient is a person, with a name and
-a handle. That is the product.
+```env
+NEXT_PUBLIC_API_URL=http://localhost:4000
+```
 
-**Handles are stored bare, rendered suffixed.** The database (and later the registry
-contract) holds `suleiman`; the UI shows `suleiman.fundX` via `formatHandle()`. Input is
-lenient — `suleiman.fundX`, `suleiman`, `@suleiman` all resolve — and display is
-canonical. Handles must start with a letter so they can never collide with a phone
-number, since both are valid ways to address a payment.
+In production, set this to your backend's HTTPS URL.
 
-## Design tokens
+---
 
-Defined in `app/globals.css`. Tailwind's default palette is cleared (`--color-*: initial`)
-so nothing generic can leak in.
+## Send flow
 
-| Token | | Use |
-|---|---|---|
-| `paper` | `#faf8f5` | page background |
-| `surface` | `#fffdfb` | cards, fields |
-| `ink` | `#14110e` | primary text, debits |
-| `muted` | `#6b635b` | secondary text |
-| `faint` | `#7a7168` | tertiary text — still clears 4.5:1 |
-| `hairline` | `#e5dfd7` | decorative rules only |
-| `line` | `#9a8e83` | interactive borders — clears 3:1 |
-| `green` | `#1b5e3f` | actions, credits, confirmation |
-| `alert` | `#a03a2b` | failures only |
+```
+Choose recipient type
+  ↓
+XPay user lookup (username / phone)
+  OR
+Bank select → account number → Paystack verification → confirm account name
+  ↓
+Enter USDC amount
+  ↓
+Review quote (live rate, fee, NGN payout)
+  ↓
+4-digit PIN
+  ↓
+Backend: blockchain transfer + Paystack payout
+  ↓
+Transaction receipt
+```
 
-Type is **Instrument Serif** for display and **Public Sans** for UI. Every monetary
-figure carries the `figure` utility (`font-variant-numeric: tabular-nums`) so columns of
-money don't wobble.
+The frontend never touches private keys or calculates FX rates.
+All transaction validation happens on the backend.
 
-Credits are green; **debits are ink, not red**. Spending money is not an error state.
+---
 
-## Checks
+## Scripts
 
 ```bash
-npx tsc --noEmit
-npm run build
-npm run lint
+npm run dev     # Development server
+npm run build   # Production build
+npm run start   # Serve production build
+npm run lint    # ESLint
 ```
-
-Contrast is verified against WCAG AA: all text ≥ 4.5:1 on its background, interactive
-borders ≥ 3:1. Re-check if you touch the palette.

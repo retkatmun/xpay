@@ -1,51 +1,82 @@
 /**
- * The chain, as the rest of the backend sees it.
- *
- * Services depend on this interface and never on `quais`, so the same domain logic runs
- * against a real Quai node or against an in-database simulation. That matters right now for
- * a practical reason: every Quai faucet hostname is dead, so there is no gas to deploy
- * MockUSDT with, and `MockChain` is the only adapter that can actually run.
+ * ChainAdapter: the blockchain, as the rest of the backend sees it.
+ * Production: BaseSepoliaChain
+ * Tests only: MockChain
  */
 
 export type TransferOutcome = {
   txHash: string
-  /** True if a receipt arrived inside the confirmation budget. */
   confirmed: boolean
+  chainId: number
+  blockNumber?: number
+}
+
+/**
+ * A USDC Transfer event detected by the deposit scanner.
+ * The `to` address belongs to a known XPay user wallet.
+ */
+export type DepositEvent = {
+  txHash: string
+  fromAddress: string
+  toAddress: string
+  amount: bigint
+  blockNumber: bigint
+  chainId: number
 }
 
 export interface ChainAdapter {
-  readonly kind: "mock" | "quai"
+  readonly kind: "mock" | "base_sepolia"
+  readonly chainId: number
 
-  /** Token balance in base units (6 decimals). */
+  /** USDC balance in base units (6 decimals). 1_000_000 = $1.00 */
   balanceOf(address: string): Promise<bigint>
 
-  /**
-   * Move tokens between two FundX-controlled addresses.
-   *
-   * `fromIndex` is the sender's BIP-44 index — the adapter derives the key itself so no
-   * caller ever holds one.
-   */
+  /** Transfer USDC. Treasury wallet signs. */
   transfer(params: {
-    fromIndex: number
     fromAddress: string
     toAddress: string
     amount: bigint
-    /** How long to wait for a receipt before returning unconfirmed. */
     confirmBudgetMs: number
   }): Promise<TransferOutcome>
 
-  /** Issue tokens. MockUSDT's mint is open, so this needs no privileged key. */
+  /**
+   * Independently verify a txHash represents a valid USDC transfer
+   * of at least expectedAmount to expectedTo.
+   * Never trust the frontend's claimed hash/amount.
+   */
+  verifyTransfer(params: {
+    txHash: string
+    expectedTo: string
+    expectedAmount: bigint
+    requiredConfirmations?: number
+  }): Promise<{
+    valid: boolean
+    confirmed: boolean
+    confirmations: number
+    blockNumber?: number
+  }>
+
+  /** mint() only works on mock — real USDC has a controlled supply. */
   mint(toAddress: string, amount: bigint): Promise<TransferOutcome>
 
-  /**
-   * Make sure an address can pay for its own gas.
-   *
-   * Quai has no gas sponsorship of any kind — `paymaster`, `4337`, `relayer` and
-   * `meta-transaction` are zero hits across the entire documentation. A custodial treasury
-   * dripping QUAI is the only way to deliver "the user never needs a gas token".
-   */
-  ensureGas(address: string): Promise<void>
-
-  /** Whether this address can hold tokens at all — right shard, Quai ledger. */
   canReceive(address: string): boolean
+
+  /**
+   * Scan a block range for USDC Transfer events whose `to` address is in
+   * the provided set of watched addresses.
+   *
+   * Returns one DepositEvent per matched log. The caller is responsible for
+   * advancing the cursor after successfully processing the batch.
+   */
+  scanDeposits(params: {
+    fromBlock: bigint
+    toBlock: bigint
+    watchedAddresses: Set<string>
+  }): Promise<DepositEvent[]>
+
+  /**
+   * Return the current finalised (or latest) block number on this chain.
+   * Used to initialise the scan cursor on first start.
+   */
+  currentBlock(): Promise<bigint>
 }

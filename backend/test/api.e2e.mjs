@@ -21,7 +21,7 @@ function jar() {
       const set = res.headers.getSetCookie?.() ?? []
       for (const c of set) {
         const [pair] = c.split(";")
-        if (pair.startsWith("fundx_session=")) cookie = pair
+        if (pair.startsWith("xpay_session=")) cookie = pair
       }
       const text = await res.text()
       let json = null
@@ -56,7 +56,7 @@ check("otp verify returns a signup token", typeof alice.verified.body?.signupTok
 check("signup returns 201", alice.created.status === 201, JSON.stringify(alice.created.body))
 check("address is Cyprus-1 Quai", (BigInt(alice.created.body?.user?.address ?? "0x1") >> 151n) === 0n,
   alice.created.body?.user?.address)
-check("handle stored bare (no .fundX)", !String(alice.created.body?.user?.username).includes(".fund"))
+check("handle stored bare (no .xpay)", !String(alice.created.body?.user?.username).includes(".fund"))
 
 const bob = await signup(bobPhone, `bob${stamp}`.slice(0, 15), "7391")
 check("second signup succeeds", bob.created.status === 201, JSON.stringify(bob.created.body))
@@ -87,7 +87,7 @@ check("balance is $40.00 in base units", bal.body?.usd === "40000000", bal.body?
 check("ngnRate present", typeof bal.body?.ngnRate === "number")
 
 console.log("\n== resolve ==")
-const byHandle = await alice.j.req("GET", `/resolve?q=${bob.created.body.user.username}.fundX`)
+const byHandle = await alice.j.req("GET", `/resolve?q=${bob.created.body.user.username}.xpay`)
 check("resolves a suffixed handle", byHandle.body?.found === true)
 const byPhone = await alice.j.req("GET", `/resolve?q=${encodeURIComponent(bobPhone)}`)
 check("resolves a phone number", byPhone.body?.found === true, JSON.stringify(byPhone.body))
@@ -96,7 +96,7 @@ const byLocal = await alice.j.req("GET", `/resolve?q=${bareLocal}`)
 check("resolves a local-format phone (0803…)", byLocal.body?.found === true, JSON.stringify(byLocal.body))
 const self = await alice.j.req("GET", `/resolve?q=${alice.created.body.user.username}`)
 check("refuses to resolve yourself", self.body?.found === false)
-const missing = await alice.j.req("GET", "/resolve?q=nobody.fundX")
+const missing = await alice.j.req("GET", "/resolve?q=nobody.xpay")
 check("unknown handle -> not_found", missing.body?.reason === "not_found")
 check("resolve never leaks an address", !JSON.stringify(byHandle.body).includes("0x"))
 
@@ -112,7 +112,7 @@ const tooMuch = await alice.j.req("POST", "/transfers", {
 check("over balance -> insufficient", tooMuch.body?.reason === "insufficient", JSON.stringify(tooMuch.body))
 
 const sent = await alice.j.req("POST", "/transfers", {
-  recipient: `${bob.created.body.user.username}.fundX`,
+  recipient: `${bob.created.body.user.username}.xpay`,
   amount: "12500000", memo: "Fabric deposit", pin: "4826", idempotencyKey: `test-${stamp}`,
 })
 check("send succeeds", sent.body?.ok === true, JSON.stringify(sent.body))

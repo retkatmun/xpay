@@ -1,17 +1,12 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CodeInput } from "@/components/CodeInput";
-import { Screen, Title } from "@/components/Screen";
 import { getDraft, patchDraft } from "@/lib/onboarding";
 
-/** Sequences and repeats are the PINs that get guessed. */
-function isWeak(pin: string): boolean {
-  if (/^(\d)\1{3}$/.test(pin)) return true;
-  const ascending = "0123456789";
-  const descending = "9876543210";
-  return ascending.includes(pin) || descending.includes(pin);
+function isWeak(p: string) {
+  if (/^(\d)\1{3}$/.test(p)) return true;
+  return "0123456789".includes(p) || "9876543210".includes(p);
 }
 
 export default function PinStep() {
@@ -22,93 +17,58 @@ export default function PinStep() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const draft = getDraft();
-    if (!draft.phone) router.replace("/phone");
-    else if (!draft.verified) router.replace("/verify");
+    const d = getDraft();
+    if (!d.phone) router.replace("/phone");
+    else if (!d.verified) router.replace("/verify");
   }, [router]);
 
-  /** Four digits is the whole input, so the step advances on the last keystroke. */
   function handleEntry(next: string) {
     setError(null);
-
-    if (next.length < 4) {
-      setEntry(next);
-      return;
-    }
-
+    if (next.length < 4) { setEntry(next); return; }
     if (stage === "choose") {
-      if (isWeak(next)) {
-        setEntry("");
-        setError("Pick something harder to guess.");
-        return;
-      }
-      setPin(next);
-      setEntry("");
-      setStage("confirm");
-      return;
+      if (isWeak(next)) { setEntry(""); setError("Pick something harder to guess."); return; }
+      setPin(next); setEntry(""); setStage("confirm"); return;
     }
-
     if (next !== pin) {
-      setPin("");
-      setEntry("");
-      setStage("choose");
-      setError("Those didn't match. Start again.");
-      return;
+      setPin(""); setEntry(""); setStage("choose");
+      setError("Those didn't match. Start again."); return;
     }
-
     setEntry(next);
     patchDraft({ pin });
     router.push("/username");
   }
 
-  const choosing = stage === "choose";
-
   return (
-    <Screen
-      back
-      onBack={() => {
-        if (choosing) router.back();
-        else {
-          setStage("choose");
-          setPin("");
-          setEntry("");
-          setError(null);
-        }
-      }}
-    >
-      <div className="flex flex-1 flex-col pt-4 pb-10">
-        <Title
-          sub={
-            choosing
-              ? "You'll enter this to approve every payment. Four digits."
-              : "Once more, so we know it's right."
-          }
-        >
-          {choosing ? "Choose a PIN" : "Enter it again"}
-        </Title>
+    <div className="flex min-h-dvh flex-col items-center justify-center bg-white px-5 py-12">
+      <div className="w-full max-w-sm">
+        <div className="mb-8 text-center">
+          <span className="font-[var(--font-instrument-serif)] text-3xl text-blue-600">XPay</span>
+        </div>
 
-        <div className="mt-10">
-          {/* Remounting on stage change clears the field and refocuses cleanly. */}
-          <CodeInput
-            key={stage}
-            label={choosing ? "Choose a four digit PIN" : "Confirm your PIN"}
-            length={4}
-            value={entry}
-            onChange={handleEntry}
-            secret
-            autoFocus
-            error={Boolean(error)}
-          />
+        {stage === "choose" ? (
+          <>
+            <h1 className="font-[var(--font-instrument-serif)] text-[1.75rem] tracking-[-0.02em] text-gray-900">
+              Choose a PIN
+            </h1>
+            <p className="mt-2 text-sm text-gray-500">You&rsquo;ll enter this to approve every payment.</p>
+          </>
+        ) : (
+          <>
+            <h1 className="font-[var(--font-instrument-serif)] text-[1.75rem] tracking-[-0.02em] text-gray-900">
+              Confirm your PIN
+            </h1>
+            <p className="mt-2 text-sm text-gray-500">Enter it once more to make sure it&rsquo;s right.</p>
+          </>
+        )}
 
-          {error ? (
-            <p className="mt-3 text-[0.85rem] text-alert">{error}</p>
-          ) : (
-            <p className="mt-3 text-[0.85rem] text-faint">
-              Don&rsquo;t use your birth year, and don&rsquo;t share it with anyone.
-            </p>
-          )}
+        <div className="mt-8">
+          <CodeInput key={stage} label={stage === "choose" ? "Choose PIN" : "Confirm PIN"}
+            length={4} value={entry} onChange={handleEntry} secret autoFocus error={!!error} />
+          {error
+            ? <p className="mt-2 text-sm text-red-600">{error}</p>
+            : <p className="mt-2 text-xs text-gray-400">Don&rsquo;t use your birth year. Never share it.</p>}
         </div>
       </div>
-    </Screen>
+    </div>
   );
 }

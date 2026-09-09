@@ -1,8 +1,8 @@
 /**
  * Domain failures the UI already knows how to render.
  *
- * The frontend switches on these exact strings (`app/send/page.tsx`,
- * `app/username/page.tsx`), so they are part of the API contract, not internal detail.
+ * The frontend switches on these exact strings, so they are part of the API
+ * contract, not internal detail.
  */
 export type FailureReason =
   | "wrong_pin"
@@ -14,6 +14,12 @@ export type FailureReason =
   | "locked"
   | "unauthorized"
   | "chain_error"
+  | "quote_expired"
+  | "bank_not_found"
+  | "invalid_account"
+  | "provider_error"
+  | "rate_limited"
+  | "phone_registered"
 
 export class DomainError extends Error {
   constructor(

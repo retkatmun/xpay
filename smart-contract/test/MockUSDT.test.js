@@ -57,7 +57,7 @@ describe("MockUSDT", () => {
 
     it("names itself as a stand-in, not as USDT", async () => {
       expect(await token.symbol()).to.equal("mUSDT")
-      expect(await token.name()).to.equal("FundX Mock USD")
+      expect(await token.name()).to.equal("XPay Test USD")
     })
   })
 

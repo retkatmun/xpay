@@ -1,26 +1,40 @@
 "use client";
-
 import type { ButtonHTMLAttributes } from "react";
 import { Spinner } from "./icons";
 
-type Variant = "primary" | "secondary" | "ghost";
+type Variant = "primary" | "secondary" | "ghost" | "danger";
+type Size    = "sm" | "md" | "lg";
 
 type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: Variant;
+  size?: Size;
   full?: boolean;
   loading?: boolean;
 };
 
+const base =
+  "inline-flex items-center justify-center gap-2 font-medium tracking-[-0.01em] transition-all duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:pointer-events-none";
+
 const variants: Record<Variant, string> = {
   primary:
-    "bg-green text-white hover:bg-green-deep disabled:bg-hairline disabled:text-faint",
+    "bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 disabled:bg-gray-100 disabled:text-gray-400",
   secondary:
-    "bg-surface text-ink border border-line hover:border-muted disabled:text-faint disabled:border-hairline",
-  ghost: "bg-transparent text-muted hover:text-ink disabled:text-faint",
+    "bg-white text-gray-800 border border-gray-200 hover:bg-gray-50 hover:border-gray-300 active:bg-gray-100 disabled:text-gray-400 disabled:border-gray-100",
+  ghost:
+    "bg-transparent text-gray-500 hover:text-gray-900 hover:bg-gray-50 active:bg-gray-100 disabled:text-gray-300",
+  danger:
+    "bg-red-600 text-white hover:bg-red-700 active:bg-red-800 disabled:bg-gray-100 disabled:text-gray-400",
+};
+
+const sizes: Record<Size, string> = {
+  sm: "h-9 px-4 text-sm rounded-lg",
+  md: "h-11 px-5 text-[0.95rem] rounded-xl",
+  lg: "h-13 px-6 text-base rounded-xl",
 };
 
 export function Button({
   variant = "primary",
+  size    = "md",
   full,
   loading,
   disabled,
@@ -33,15 +47,14 @@ export function Button({
       {...rest}
       disabled={disabled || loading}
       className={[
-        "inline-flex h-13 items-center justify-center gap-2 rounded-md px-6",
-        "text-[0.95rem] font-medium tracking-[-0.01em]",
-        "transition-colors duration-150 ease-out",
-        full ? "w-full" : "",
+        base,
         variants[variant],
+        sizes[size],
+        full ? "w-full" : "",
         className,
       ].join(" ")}
     >
-      {loading ? <Spinner /> : null}
+      {loading && <Spinner className="shrink-0" />}
       {children}
     </button>
   );

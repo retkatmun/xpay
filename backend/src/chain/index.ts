@@ -1,22 +1,36 @@
-import { config } from "../config.js"
+import { isTest, config } from "../config.js"
 import type { ChainAdapter } from "./adapter.js"
-import { MockChain } from "./mock.js"
 
 let instance: ChainAdapter | null = null
 
-/** The adapter this process runs with, chosen once by CHAIN_ADAPTER. */
+/**
+ * Returns the chain adapter for this process.
+ *
+ * Production:              BaseSepoliaChain (requires BASE_RPC_URL, BASE_PRIVATE_KEY)
+ * Tests (NODE_ENV=test):   MockChain
+ * Development (USE_MOCK_CHAIN=true): MockChain — allows dev/fund and transfers
+ *                          without a funded treasury wallet or RPC connection.
+ */
 export async function chain(): Promise<ChainAdapter> {
   if (instance) return instance
 
-  if (config.CHAIN_ADAPTER === "quai") {
-    // Loaded lazily so a mock-mode process never needs a mnemonic or an RPC connection.
-    const { QuaiChain } = await import("./quai.js")
-    instance = new QuaiChain()
-  } else {
+  if (isTest || config.USE_MOCK_CHAIN) {
+    const { MockChain } = await import("./mock.js")
     instance = new MockChain()
+  } else {
+    const { BaseSepoliaChain } = await import("./baseSepolia.js")
+    const adapter = new BaseSepoliaChain()
+    // Validate the RPC actually serves Base Sepolia before accepting traffic
+    await adapter.validateNetwork()
+    instance = adapter
   }
 
   return instance
+}
+
+/** Reset the singleton — used in tests only. */
+export function resetChain(): void {
+  instance = null
 }
 
 export type { ChainAdapter, TransferOutcome } from "./adapter.js"
