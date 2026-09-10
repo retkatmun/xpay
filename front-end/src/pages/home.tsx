@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useSession } from "@/lib/session";
-import { useAddFunds } from "@privy-io/react-auth";
+import { useFundWallet } from "@privy-io/react-auth";
 import { Avatar } from "@/components/Avatar";
-import { Screen } from "@/components/Screen";
 import { CopyButton } from "@/components/CopyButton";
 import { formatUSD } from "@/lib/money";
 import { dayLabel } from "@/lib/time";
@@ -61,7 +60,7 @@ function TxRow({ tx, last }: { tx: Transaction; last: boolean }) {
 export default function Home() {
   const navigate = useNavigate();
   const { authUser, profile, loading, walletAddress, isAdmin } = useSession();
-  const { addFunds } = useAddFunds();
+  const { fundWallet } = useFundWallet();
   const [balance, setBalance] = useState<Balance | null>(null);
   const [transactions, setTransactions] = useState<Transaction[] | null>(null);
   const [fundLoading, setFundLoading] = useState(false);
@@ -96,38 +95,21 @@ export default function Home() {
     for (const [label, items] of map) groups.push({ label, items });
   }
 
-  // Fund wallet via Privy (MoonPay / Stripe onramp)
+  // Fund wallet via Privy (MoonPay onramp)
   const handleFund = async () => {
     const addr = walletAddress || profile.wallet_address;
-    if (!addr) {
-      navigate("/receive");
-      return;
-    }
+    if (!addr) { navigate("/receive"); return; }
     setFundLoading(true);
     setFundSuccess(false);
     try {
-      const result = await addFunds({
-        destination: {
-          address: addr,
-          chain: "eip155:8453", // Base
-          asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // USDC on Base
-        },
-        fiat: {
-          source: { assets: ["usd", "eur", "gbp"], defaultAsset: "usd" },
-          environment: "production",
-          defaultAmount: "50",
-        },
-      });
-      if (result.method === "fiat" && result.status === "confirmed") {
-        setFundSuccess(true);
-        // Refresh balance after funding
-        setTimeout(() => {
-          void getBalance().then(setBalance).catch(() => null);
-          setFundSuccess(false);
-        }, 3000);
-      }
+      await fundWallet(addr, { chain: { id: 8453 }, amount: "50" });
+      setFundSuccess(true);
+      setTimeout(() => {
+        void getBalance().then(setBalance).catch(() => null);
+        setFundSuccess(false);
+      }, 3000);
     } catch {
-      // User cancelled or provider error — silent
+      // user cancelled
     } finally {
       setFundLoading(false);
     }

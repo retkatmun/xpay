@@ -7,7 +7,7 @@ import {
   useState,
 } from "react";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
-import { fetchProfileById, supabaseSignOut, updateUserRole } from "@/lib/supabase";
+import { fetchProfileById, supabaseSignOut } from "@/lib/supabase";
 
 export type XPayProfile = {
   id: string;
@@ -41,7 +41,6 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const { wallets } = useWallets();
 
   const [profile, setProfile] = useState<XPayProfile | null>(null);
-  const [profileLoading, setProfileLoading] = useState(false);
   const [profileLoaded, setProfileLoaded] = useState(false);
 
   const authUser = useMemo(() => {
@@ -81,25 +80,19 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       setProfileLoaded(true);
       return;
     }
-    setProfileLoading(true);
 
     // Timeout after 8s so we never hang forever on a slow Supabase response
-    const timer = setTimeout(() => {
-      setProfileLoaded(true);
-      setProfileLoading(false);
-    }, 8000);
+    const timer = setTimeout(() => setProfileLoaded(true), 8000);
 
     fetchProfileById(privyUser.id)
       .then((p) => {
         setProfile(p as XPayProfile | null);
         setProfileLoaded(true);
-        setProfileLoading(false);
       })
       .catch((error) => {
         console.error('Error loading profile:', error);
         setProfile(null);
         setProfileLoaded(true);
-        setProfileLoading(false);
       })
       .finally(() => clearTimeout(timer));
   }, [ready, authenticated, privyUser?.id]);

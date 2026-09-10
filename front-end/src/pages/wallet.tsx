@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAddFunds } from "@privy-io/react-auth";
+import { useFundWallet } from "@privy-io/react-auth";
 import { Screen } from "@/components/Screen";
 import { CopyButton } from "@/components/CopyButton";
 import { Avatar } from "@/components/Avatar";
@@ -12,7 +12,7 @@ import type { SavedBeneficiary } from "@/lib/supabase";
 export default function Wallet() {
   const navigate = useNavigate();
   const { authUser, profile, loading, walletAddress, signOut, isAdmin } = useSession();
-  const { addFunds } = useAddFunds();
+  const { fundWallet } = useFundWallet();
   const [fundLoading, setFundLoading] = useState(false);
   const [beneficiaries, setBeneficiaries] = useState<SavedBeneficiary[]>([]);
   const [loadingBeneficiaries, setLoadingBeneficiaries] = useState(true);
@@ -51,18 +51,7 @@ export default function Wallet() {
     if (!addr) { navigate("/receive"); return; }
     setFundLoading(true);
     try {
-      await addFunds({
-        destination: {
-          address: addr,
-          chain: "eip155:8453",
-          asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-        },
-        fiat: {
-          source: { assets: ["usd", "eur", "gbp"], defaultAsset: "usd" },
-          environment: "production",
-          defaultAmount: "50",
-        },
-      });
+      await fundWallet(addr, { chain: { id: 8453 }, amount: "50" });
     } catch { /* user cancelled */ }
     finally { setFundLoading(false); }
   };

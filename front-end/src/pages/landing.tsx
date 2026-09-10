@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useSession } from "@/lib/session";
 import xpayLogo from "@/assets/xpay_logo.png";
-import { getBankLogo, getNetworkLogo, getTokenLogo } from "@/assets/logos";
+import { getBankLogo, getTokenLogo } from "@/assets/logos";
 
 // ─── Animated counter ─────────────────────────────────────────────────────────
 function Counter({ to, suffix = "" }: { to: number; suffix?: string }) {
@@ -235,7 +235,6 @@ function HeroCard() {
 // ─── Main Landing ──────────────────────────────────────────────────────────────
 export default function Landing() {
   const { authUser, profile, loading } = useSession();
-  const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
 
   // Remove automatic redirect - allow logged-in users to see the landing page

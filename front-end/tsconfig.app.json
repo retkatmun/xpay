@@ -23,5 +23,6 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["src/pages/home-broken.tsx", "src/pages/login-broken.tsx"]
 }
