@@ -95,7 +95,9 @@ export default function Home() {
     for (const [label, items] of map) groups.push({ label, items });
   }
 
-  // Fund wallet via Privy (MoonPay onramp)
+  // Fund wallet via MoonPay card onramp (Privy useFundWallet)
+  // Note: Stripe requires @privy-io/react-auth v3+ which needs Solana peer deps
+  // To enable Stripe: upgrade privy and install @solana/kit, @solana-program/* peer deps
   const handleFund = async () => {
     const addr = walletAddress || profile.wallet_address;
     if (!addr) { navigate("/receive"); return; }

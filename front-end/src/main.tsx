@@ -24,10 +24,8 @@ createRoot(document.getElementById('root')!).render(
             },
             loginMethods: ['email', 'google'],
             embeddedWallets: {
-              // Wallets created on demand (avoids slow auth on login)
               createOnLogin: 'off',
             },
-            // Enable MoonPay + Stripe card onramps
             fundingMethodConfig: {
               moonpay: { useSandbox: false },
             },
