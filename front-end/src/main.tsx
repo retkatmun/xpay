@@ -24,9 +24,12 @@ createRoot(document.getElementById('root')!).render(
             },
             loginMethods: ['email', 'google'],
             embeddedWallets: {
-              // 'off' avoids wallet provisioning on login, which was the main
-              // source of auth slowness. Wallets are created on demand later.
+              // Wallets created on demand (avoids slow auth on login)
               createOnLogin: 'off',
+            },
+            // Enable MoonPay + Stripe card onramps
+            fundingMethodConfig: {
+              moonpay: { useSandbox: false },
             },
           }}
         >

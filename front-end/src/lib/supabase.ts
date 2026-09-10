@@ -92,3 +92,71 @@ export async function updateUserRole(userId: string, role: "user" | "admin") {
     .eq("id", userId);
   if (error) throw new Error(error.message);
 }
+
+/** Update a profile — used to sync wallet address and other data */
+export async function updateProfile(userId: string, updates: {
+  wallet_address?: string | null;
+  display_name?: string;
+  email?: string | null;
+  [key: string]: any;
+}) {
+  const { data, error } = await supabaseAdmin
+    .from("profiles")
+    .update({
+      ...updates,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", userId)
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message || "Failed to update profile");
+  return data;
+}
+
+// ─── Saved Beneficiaries ──────────────────────────────────────────────────────
+
+export type SavedBeneficiary = {
+  id: string;
+  user_id: string;
+  type: "bank_account" | "xpay_user";
+  label: string;
+  bank_name?: string | null;
+  bank_code?: string | null;
+  account_number?: string | null;
+  account_name?: string | null;
+  xpay_username?: string | null;
+  phone?: string | null;
+  created_at: string;
+};
+
+export async function getSavedBeneficiaries(userId: string): Promise<SavedBeneficiary[]> {
+  const { data, error } = await supabaseAdmin
+    .from("saved_beneficiaries")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as SavedBeneficiary[];
+}
+
+export async function saveBeneficiary(
+  userId: string,
+  beneficiary: Omit<SavedBeneficiary, "id" | "user_id" | "created_at">
+): Promise<SavedBeneficiary> {
+  const { data, error } = await supabaseAdmin
+    .from("saved_beneficiaries")
+    .insert({ ...beneficiary, user_id: userId })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data as SavedBeneficiary;
+}
+
+export async function deleteBeneficiary(id: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("saved_beneficiaries")
+    .delete()
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+}
