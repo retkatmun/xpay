@@ -14,14 +14,13 @@ export function Field({ label, prefix, suffix, hint, error, className = "", ...r
       {label && (
         <span className="mb-1.5 block text-sm font-semibold text-gray-700">{label}</span>
       )}
-      {/* Double border: border-2 (inner) + ring-2 (outer) */}
       <span
         className={[
           "flex h-12 items-center gap-2 rounded-xl bg-white px-4",
           "transition-all duration-150",
           error
-            ? "border-2 border-red-400 ring-2 ring-red-100"
-            : "border-2 border-gray-200 ring-2 ring-transparent focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100",
+            ? "border border-red-400 focus-within:border-red-400 focus-within:ring-2 focus-within:ring-red-100"
+            : "border border-gray-200 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100",
         ].join(" ")}
       >
         {prefix && <span className="shrink-0 text-gray-400">{prefix}</span>}
