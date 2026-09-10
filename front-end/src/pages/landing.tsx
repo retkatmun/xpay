@@ -84,7 +84,7 @@ function HeroCard() {
       {/* Card */}
       <div className="relative overflow-hidden rounded-3xl border border-gray-200/80 bg-white shadow-2xl shadow-blue-100/50">
         {/* Card header */}
-        <div className="border-b border-gray-100 bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-4">
+        <div className="border-b border-gray-100 bg-blue-600 px-5 py-4">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold uppercase tracking-widest text-blue-200">Receive &amp; Convert</p>
             <span className="flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-[11px] font-semibold text-white">
@@ -142,7 +142,7 @@ function HeroCard() {
 
           {/* Recipient */}
           <div className="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 text-xs font-bold text-white">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
               OA
             </div>
             <div className="flex-1 min-w-0">
@@ -158,7 +158,7 @@ function HeroCard() {
           </div>
 
           {/* CTA */}
-          <div className="flex h-11 items-center justify-center rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-sm font-semibold text-white shadow-md shadow-blue-200">
+          <div className="flex h-11 items-center justify-center rounded-2xl bg-blue-600 text-sm font-semibold text-white shadow-sm shadow-blue-100">
             Convert &amp; Send ₦825,000 →
           </div>
         </div>
@@ -230,7 +230,7 @@ export default function Landing() {
             </Link>
             <Link
               to="/onboarding"
-              className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm shadow-blue-200 transition hover:opacity-90 active:scale-[.98]"
+              className="rounded-xl bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm shadow-blue-100 transition hover:bg-blue-700 active:scale-[.98]"
             >
               Get started
             </Link>
@@ -267,7 +267,7 @@ export default function Landing() {
                 Log in
               </Link>
               <Link to="/onboarding" onClick={() => setMenuOpen(false)}
-                className="mt-1 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-3 text-sm font-semibold text-white text-center">
+                className="mt-1 rounded-xl bg-blue-600 px-3 py-3 text-sm font-semibold text-white text-center hover:bg-blue-700">
                 Create free account
               </Link>
             </div>
@@ -279,12 +279,12 @@ export default function Landing() {
       <section className="relative overflow-hidden bg-white pb-24 pt-14 md:pb-32 md:pt-20">
         {/* Background grid */}
         <div
-          className="pointer-events-none absolute inset-0 opacity-[0.03]"
-          style={{ backgroundImage: "radial-gradient(#2563eb 1px, transparent 1px)", backgroundSize: "30px 30px" }}
+          className="pointer-events-none absolute inset-0 opacity-[0.025]"
+          style={{ backgroundImage: "radial-gradient(#94a3b8 1px, transparent 1px)", backgroundSize: "30px 30px" }}
         />
-        {/* Gradient orbs */}
-        <div className="pointer-events-none absolute right-0 top-0 h-[500px] w-[500px] -translate-y-24 translate-x-24 rounded-full bg-gradient-to-br from-blue-400 to-indigo-400 opacity-[0.07] blur-3xl" />
-        <div className="pointer-events-none absolute bottom-0 left-0 h-[400px] w-[400px] translate-y-24 -translate-x-24 rounded-full bg-gradient-to-br from-cyan-400 to-blue-400 opacity-[0.06] blur-3xl" />
+        {/* Soft ambient orbs — very low opacity so they barely show */}
+        <div className="pointer-events-none absolute right-0 top-0 h-[600px] w-[600px] -translate-y-24 translate-x-24 rounded-full bg-blue-100 opacity-60 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-0 left-0 h-[500px] w-[500px] translate-y-24 -translate-x-24 rounded-full bg-slate-100 opacity-50 blur-3xl" />
 
         <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-center gap-14 px-5 sm:px-8 lg:grid-cols-2 lg:gap-12">
           {/* Left copy */}
@@ -298,7 +298,7 @@ export default function Landing() {
 
             <h1 className="text-[2.9rem] font-extrabold leading-[1.07] tracking-[-0.03em] text-gray-900 sm:text-[3.5rem]">
               Receive crypto.<br />
-              <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              <span className="text-blue-600">
                 Convert to naira.
               </span><br />
               Instantly.
@@ -311,7 +311,7 @@ export default function Landing() {
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
                 to="/onboarding"
-                className="group inline-flex items-center gap-2.5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-7 py-3.5 text-[0.95rem] font-semibold text-white shadow-lg shadow-blue-200 transition hover:opacity-90 active:scale-[.98]"
+                className="group inline-flex items-center gap-2.5 rounded-2xl bg-blue-600 px-7 py-3.5 text-[0.95rem] font-semibold text-white shadow-md shadow-blue-100 transition hover:bg-blue-700 active:scale-[.98]"
               >
                 Create free account
                 <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition group-hover:translate-x-0.5">
@@ -355,7 +355,7 @@ export default function Landing() {
       </section>
 
       {/* ── Supported networks ──────────────────────────────────────────── */}
-      <section id="networks" className="border-y border-gray-100 bg-gradient-to-b from-gray-50 to-white py-16">
+      <section id="networks" className="border-y border-gray-100 bg-gray-50/50 py-16">
         <div className="mx-auto max-w-6xl px-5 sm:px-8">
           <div className="mb-10 text-center">
             <p className="mb-2 text-xs font-bold uppercase tracking-widest text-blue-600">Multi-chain</p>
@@ -437,7 +437,7 @@ export default function Landing() {
 
           <div className="relative grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {/* Connector line desktop */}
-            <div className="absolute top-8 left-[calc(12.5%+28px)] right-[calc(12.5%+28px)] hidden h-px bg-gradient-to-r from-blue-200 via-indigo-200 to-blue-200 lg:block" />
+            <div className="absolute top-8 left-[calc(12.5%+28px)] right-[calc(12.5%+28px)] hidden h-px bg-gray-200 lg:block" />
 
             {[
               {
@@ -470,7 +470,7 @@ export default function Landing() {
               },
             ].map((s) => (
               <div key={s.n} className="relative flex flex-col items-center text-center">
-                <div className={`relative z-10 mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br shadow-lg shadow-blue-100 ${s.color}`}>
+                <div className={`relative z-10 mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-600 shadow-md shadow-blue-100`}>
                   {s.icon}
                   <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-gray-900 text-[9px] font-bold text-white">
                     {parseInt(s.n)}
@@ -485,7 +485,7 @@ export default function Landing() {
       </section>
 
       {/* ── Features ───────────────────────────────────────────────────── */}
-      <section id="features" className="border-t border-gray-100 bg-gradient-to-b from-gray-50 to-white py-24">
+      <section id="features" className="border-t border-gray-100 bg-gray-50/50 py-24">
         <div className="mx-auto max-w-6xl px-5 sm:px-8">
           <div className="mb-14 text-center">
             <p className="mb-2 text-xs font-bold uppercase tracking-widest text-blue-600">Why XPay</p>
@@ -571,7 +571,7 @@ export default function Landing() {
                 Send to any XPay username instantly. Just type <code className="rounded bg-gray-100 px-1.5 py-0.5 text-xs font-mono text-gray-700">@username</code> and go.
               </p>
               <div className="mt-5 flex items-center gap-3 rounded-2xl bg-gray-50 px-4 py-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 text-xs font-bold text-white">SC</div>
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">SC</div>
                 <div>
                   <p className="text-sm font-semibold text-gray-900">Scholar Chidi</p>
                   <p className="text-xs text-gray-400">@scholar</p>
@@ -581,7 +581,7 @@ export default function Landing() {
             </div>
 
             {/* Phone number */}
-            <div className="rounded-3xl border border-indigo-100 bg-gradient-to-br from-blue-600 to-indigo-700 p-7 text-white shadow-lg shadow-blue-200">
+            <div className="rounded-3xl border border-blue-100 bg-blue-600 p-7 text-white shadow-md shadow-blue-100">
               <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15">
                 <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="white" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
@@ -622,7 +622,7 @@ export default function Landing() {
       </section>
 
       {/* ── Security ───────────────────────────────────────────────────── */}
-      <section id="security" className="border-t border-gray-100 bg-gradient-to-b from-gray-50 to-white py-24">
+      <section id="security" className="border-t border-gray-100 bg-gray-50/50 py-24">
         <div className="mx-auto max-w-6xl px-5 sm:px-8">
           <div className="mb-14 text-center">
             <p className="mb-2 text-xs font-bold uppercase tracking-widest text-blue-600">Security</p>
@@ -673,10 +673,10 @@ export default function Landing() {
       {/* ── CTA ────────────────────────────────────────────────────────── */}
       <section className="py-24">
         <div className="mx-auto max-w-2xl px-5 sm:px-8 text-center">
-          <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 px-8 py-16 shadow-2xl shadow-blue-200">
-            {/* Grid overlay */}
+          <div className="overflow-hidden rounded-3xl bg-blue-600 px-8 py-16 shadow-xl shadow-blue-100">
+            {/* Subtle dot overlay */}
             <div
-              className="pointer-events-none absolute inset-0 opacity-[0.06]"
+              className="pointer-events-none absolute inset-0 opacity-[0.04]"
               style={{ backgroundImage: "radial-gradient(white 1px, transparent 1px)", backgroundSize: "24px 24px" }}
             />
             <div className="relative">
@@ -692,7 +692,7 @@ export default function Landing() {
               </p>
               <Link
                 to="/onboarding"
-                className="mt-8 inline-flex items-center gap-2.5 rounded-2xl bg-white px-9 py-4 text-base font-bold text-blue-700 shadow-xl shadow-blue-900/20 transition hover:bg-blue-50 active:scale-[.98]"
+                className="mt-8 inline-flex items-center gap-2.5 rounded-2xl bg-white px-9 py-4 text-base font-bold text-blue-600 shadow-lg shadow-blue-900/10 transition hover:bg-blue-50 active:scale-[.98]"
               >
                 Create free account
                 <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
