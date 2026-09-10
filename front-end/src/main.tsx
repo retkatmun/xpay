@@ -4,7 +4,7 @@ import { PrivyProvider } from '@privy-io/react-auth'
 import './index.css'
 import App from './App'
 
-const privyAppId = (import.meta.env.VITE_PRIVY_APP_ID as string) || 'placeholder-app-id'
+const privyAppId = import.meta.env.VITE_PRIVY_APP_ID as string
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
