@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useSession } from "@/lib/session";
 import xpayLogo from "@/assets/xpay_logo.png";
+import { getBankLogo, getNetworkLogo, getTokenLogo } from "@/assets/logos";
 
 // ─── Animated counter ─────────────────────────────────────────────────────────
 function Counter({ to, suffix = "" }: { to: number; suffix?: string }) {
@@ -59,56 +60,84 @@ const COINS = [
 function BankChip({ bank }: { bank: typeof BANKS[0] }) {
   return (
     <div className="flex shrink-0 items-center gap-2.5 rounded-2xl border border-gray-100 bg-white px-4 py-2.5 shadow-sm">
-      <div
-        className="flex h-8 w-8 items-center justify-center rounded-xl text-[9px] font-black tracking-tight shrink-0"
-        style={{ background: bank.bg, color: bank.text }}
-      >
-        {bank.abbr}
-      </div>
+      <img 
+        src={getBankLogo(bank.name)} 
+        alt={bank.name} 
+        className="h-8 w-8 rounded-xl object-cover shrink-0" 
+      />
       <span className="whitespace-nowrap text-sm font-semibold text-gray-700">{bank.name}</span>
     </div>
   );
 }
 
-// ─── Hero card ─────────────────────────────────────────────────────────────────
+// ─── Hero card (futuristic, soft light theme) ─────────────────────────────────
 function HeroCard() {
   const [activeNetwork, setActiveNetwork] = useState(0);
-  const networks = ["Ethereum", "Base", "Tron", "Polygon", "BNB Chain"];
+  const networks = ["Ethereum", "Base", "Tron", "Polygon", "BNB"];
 
   return (
     <div className="relative w-full max-w-[360px] select-none mx-auto">
-      {/* Glow blobs */}
+      {/* Soft ambient glows */}
       <div className="pointer-events-none absolute -top-10 -left-10 h-52 w-52 rounded-full bg-blue-400/20 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-10 -right-10 h-52 w-52 rounded-full bg-indigo-400/20 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-10 -right-10 h-52 w-52 rounded-full bg-indigo-300/20 blur-3xl" />
 
       {/* Card */}
-      <div className="relative overflow-hidden rounded-3xl border border-gray-200/80 bg-white shadow-2xl shadow-blue-100/50">
+      <div className="relative overflow-hidden rounded-3xl border border-blue-100 bg-white shadow-2xl shadow-blue-100/60">
+        {/* Subtle dot grid overlay */}
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.035]"
+          style={{
+            backgroundImage: "radial-gradient(#2563eb 1px, transparent 1px)",
+            backgroundSize: "22px 22px",
+          }}
+        />
+        {/* Top shimmer line */}
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-400/50 to-transparent" />
+
         {/* Card header */}
-        <div className="border-b border-gray-100 bg-blue-600 px-5 py-4">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-widest text-blue-200">Receive &amp; Convert</p>
-            <span className="flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-[11px] font-semibold text-white">
+        <div className="relative border-b border-blue-50 bg-gradient-to-br from-blue-600 to-blue-700 px-5 py-4">
+          {/* Subtle grid on header */}
+          <div
+            className="pointer-events-none absolute inset-0 opacity-[0.07]"
+            style={{
+              backgroundImage: "linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)",
+              backgroundSize: "28px 28px",
+            }}
+          />
+          <div className="relative flex items-center justify-between">
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-200">
+              Receive &amp; Convert
+            </p>
+            <span className="flex items-center gap-1.5 rounded-full border border-green-400/30 bg-green-400/15 px-3 py-1 text-[11px] font-semibold text-green-300">
               <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
-              Live rates
+              Live
             </span>
           </div>
-          <p className="mt-2 text-3xl font-extrabold tracking-tight text-white">$500 <span className="text-lg font-normal text-blue-200">USDC</span></p>
-          <p className="mt-0.5 text-sm text-blue-200">≈ ₦825,000 NGN</p>
+          <div className="relative mt-2 flex items-end gap-2">
+            <p className="text-3xl font-extrabold tracking-tight text-white">$500</p>
+            <span className="mb-1 text-sm font-semibold text-blue-200">USDC</span>
+          </div>
+          <div className="relative mt-0.5 flex items-center gap-2">
+            <span className="text-xs text-blue-300">converts to</span>
+            <span className="rounded-lg border border-white/20 bg-white/15 px-2 py-0.5 text-xs font-bold text-white">
+              ₦825,000
+            </span>
+          </div>
         </div>
 
         {/* Network select */}
         <div className="border-b border-gray-100 px-5 py-3">
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400">Network</p>
+          <p className="mb-2 text-[9px] font-bold uppercase tracking-[0.18em] text-gray-400">Network</p>
           <div className="flex gap-1.5 overflow-x-auto pb-0.5">
             {networks.map((n, i) => (
               <button
                 key={n}
                 onClick={() => setActiveNetwork(i)}
                 className={[
-                  "shrink-0 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition",
+                  "shrink-0 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all",
                   activeNetwork === i
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-100 text-gray-500 hover:bg-gray-200",
+                    ? "bg-blue-600 text-white shadow-sm shadow-blue-200"
+                    : "bg-gray-100 text-gray-500 hover:bg-blue-50 hover:text-blue-600",
                 ].join(" ")}
               >
                 {n}
@@ -121,11 +150,20 @@ function HeroCard() {
         <div className="px-5 py-4 space-y-3">
           {/* Coins */}
           <div className="flex gap-2">
-            {[{ s: "USDC", c: "#2775CA", bg: "#EBF3FD" }, { s: "USDT", c: "#26A17B", bg: "#E6F5F0" }].map((coin) => (
-              <div key={coin.s} className="flex flex-1 items-center gap-2 rounded-xl border border-gray-100 px-3 py-2.5" style={{ background: coin.bg }}>
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-black text-white" style={{ background: coin.c }}>
-                  $
-                </div>
+            {[
+              { s: "USDC", c: "#2775CA", bg: "#EBF3FD", border: "border-blue-100" },
+              { s: "USDT", c: "#26A17B", bg: "#E6F5F0", border: "border-green-100" },
+            ].map((coin) => (
+              <div
+                key={coin.s}
+                className={`flex flex-1 items-center gap-2 rounded-xl border ${coin.border} px-3 py-2.5`}
+                style={{ background: coin.bg }}
+              >
+                <img
+                  src={getTokenLogo(coin.s)}
+                  alt={coin.s}
+                  className="h-7 w-7 shrink-0 rounded-full object-cover ring-1 ring-white/80"
+                />
                 <div>
                   <p className="text-xs font-bold" style={{ color: coin.c }}>{coin.s}</p>
                   <p className="text-[10px] text-gray-400">Supported</p>
@@ -135,9 +173,9 @@ function HeroCard() {
           </div>
 
           {/* Rate row */}
-          <div className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-2.5">
+          <div className="flex items-center justify-between rounded-xl border border-blue-50 bg-blue-50/60 px-4 py-2.5">
             <span className="text-xs text-gray-400">Rate</span>
-            <span className="text-sm font-bold tabular-nums text-gray-800">$1 = ₦1,650</span>
+            <span className="text-sm font-bold tabular-nums text-blue-700">$1 = ₦1,650</span>
           </div>
 
           {/* Recipient */}
@@ -158,14 +196,18 @@ function HeroCard() {
           </div>
 
           {/* CTA */}
-          <div className="flex h-11 items-center justify-center rounded-2xl bg-blue-600 text-sm font-semibold text-white shadow-sm shadow-blue-100">
-            Convert &amp; Send ₦825,000 →
+          <div className="relative overflow-hidden flex h-11 items-center justify-center rounded-2xl bg-blue-600 text-sm font-semibold text-white shadow-md shadow-blue-200">
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent -skew-x-12 animate-[shimmer_2.8s_ease-in-out_infinite]" />
+            <span className="relative">Convert &amp; Send ₦825,000</span>
           </div>
         </div>
+
+        {/* Bottom shimmer line */}
+        <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-blue-300/40 to-transparent" />
       </div>
 
       {/* Float: success toast */}
-      <div className="absolute -right-4 top-8 flex items-center gap-2 rounded-2xl border border-gray-100 bg-white px-3.5 py-2.5 shadow-xl">
+      <div className="absolute -right-4 top-8 flex items-center gap-2 rounded-2xl border border-gray-100 bg-white px-3.5 py-2.5 shadow-xl shadow-blue-100/40">
         <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-green-100">
           <svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 8l3.5 3.5 6.5-7" />
@@ -196,22 +238,27 @@ export default function Landing() {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  useEffect(() => {
-    if (!loading && authUser && profile) navigate("/home", { replace: true });
-    else if (!loading && authUser && !profile) navigate("/onboarding", { replace: true });
-  }, [loading, authUser, profile, navigate]);
+  // Remove automatic redirect - allow logged-in users to see the landing page
+  // useEffect(() => {
+  //   if (!loading && authUser && profile) navigate("/home", { replace: true });
+  //   else if (!loading && authUser && !profile) navigate("/onboarding", { replace: true });
+  // }, [loading, authUser, profile, navigate]);
 
-  if (loading || authUser) return <div className="min-h-dvh bg-white" />;
+  // if (loading || authUser) return <div className="min-h-dvh bg-white" />;
+
+  const isLoggedIn = !loading && authUser && profile;
 
   return (
     <div className="min-h-dvh overflow-x-hidden bg-white font-[var(--font-public-sans)] text-gray-900 antialiased">
 
       {/* ── Navbar ─────────────────────────────────────────────────────── */}
-      <nav className="sticky top-0 z-50 border-b border-gray-100/80 bg-white/95 backdrop-blur-md">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-8">
-          <img src={xpayLogo} alt="XPay" className="h-8 w-auto object-contain" />
+      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-gray-100/80 bg-white/95 backdrop-blur-md">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center">
+            <img src={xpayLogo} alt="XPay" className="h-8 w-auto object-contain" />
+          </div>
 
-          <div className="hidden items-center gap-8 md:flex">
+          <div className="hidden items-center gap-6 md:flex lg:gap-8">
             {[
               ["#how-it-works", "How it works"],
               ["#networks", "Networks"],
@@ -224,16 +271,27 @@ export default function Landing() {
             ))}
           </div>
 
-          <div className="flex items-center gap-2">
-            <Link to="/login" className="hidden rounded-xl px-4 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-100 md:block">
-              Log in
-            </Link>
-            <Link
-              to="/onboarding"
-              className="rounded-xl bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm shadow-blue-100 transition hover:bg-blue-700 active:scale-[.98]"
-            >
-              Get started
-            </Link>
+          <div className="flex items-center gap-3">
+            {!isLoggedIn ? (
+              <>
+                <Link to="/login" className="hidden rounded-xl px-4 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-100 sm:block">
+                  Log in
+                </Link>
+                <Link
+                  to="/onboarding"
+                  className="w-full sm:w-auto rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-blue-100 transition hover:bg-blue-700 active:scale-[.98] text-center"
+                >
+                  Get started
+                </Link>
+              </>
+            ) : (
+              <Link
+                to="/home"
+                className="w-full sm:w-auto rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-blue-100 transition hover:bg-blue-700 active:scale-[.98] text-center"
+              >
+                Dashboard
+              </Link>
+            )}
             <button
               className="flex h-9 w-9 items-center justify-center rounded-xl text-gray-500 hover:bg-gray-100 md:hidden"
               onClick={() => setMenuOpen(!menuOpen)}
@@ -249,7 +307,7 @@ export default function Landing() {
         </div>
 
         {menuOpen && (
-          <div className="border-t border-gray-100 bg-white px-5 pb-5 md:hidden">
+          <div className="border-t border-gray-100 bg-white px-4 pb-4 md:hidden">
             <div className="flex flex-col gap-1 pt-3">
               {[
                 ["#how-it-works", "How it works"],
@@ -262,110 +320,133 @@ export default function Landing() {
                   {label}
                 </a>
               ))}
-              <Link to="/login" onClick={() => setMenuOpen(false)}
-                className="rounded-xl px-3 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50">
-                Log in
-              </Link>
-              <Link to="/onboarding" onClick={() => setMenuOpen(false)}
-                className="mt-1 rounded-xl bg-blue-600 px-3 py-3 text-sm font-semibold text-white text-center hover:bg-blue-700">
-                Create free account
-              </Link>
+              {!isLoggedIn ? (
+                <>
+                  <Link to="/login" onClick={() => setMenuOpen(false)}
+                    className="rounded-xl px-3 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                    Log in
+                  </Link>
+                  <Link to="/onboarding" onClick={() => setMenuOpen(false)}
+                    className="mt-1 rounded-xl bg-blue-600 px-3 py-3 text-sm font-semibold text-white text-center hover:bg-blue-700">
+                    Create free account
+                  </Link>
+                </>
+              ) : (
+                <Link to="/home" onClick={() => setMenuOpen(false)}
+                  className="mt-1 rounded-xl bg-blue-600 px-3 py-3 text-sm font-semibold text-white text-center hover:bg-blue-700">
+                  Dashboard
+                </Link>
+              )}
             </div>
           </div>
         )}
       </nav>
 
       {/* ── Hero ───────────────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-white pb-24 pt-14 md:pb-32 md:pt-20">
-        {/* Background grid */}
+      <section className="relative overflow-hidden bg-white pt-20 pb-16 sm:pt-24 sm:pb-20 lg:pt-28 lg:pb-24">
+        {/* Soft dot grid */}
         <div
-          className="pointer-events-none absolute inset-0 opacity-[0.025]"
-          style={{ backgroundImage: "radial-gradient(#94a3b8 1px, transparent 1px)", backgroundSize: "30px 30px" }}
+          className="pointer-events-none absolute inset-0 opacity-[0.03]"
+          style={{ backgroundImage: "radial-gradient(#2563eb 1px, transparent 1px)", backgroundSize: "28px 28px" }}
         />
-        {/* Soft ambient orbs — very low opacity so they barely show */}
+        {/* Soft ambient orbs */}
         <div className="pointer-events-none absolute right-0 top-0 h-[600px] w-[600px] -translate-y-24 translate-x-24 rounded-full bg-blue-100 opacity-60 blur-3xl" />
-        <div className="pointer-events-none absolute bottom-0 left-0 h-[500px] w-[500px] translate-y-24 -translate-x-24 rounded-full bg-slate-100 opacity-50 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-0 left-0 h-[500px] w-[500px] translate-y-24 -translate-x-24 rounded-full bg-indigo-50 opacity-70 blur-3xl" />
 
-        <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-center gap-14 px-5 sm:px-8 lg:grid-cols-2 lg:gap-12">
-          {/* Left copy */}
-          <div className="max-w-lg">
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-4 py-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
-              <span className="text-xs font-bold uppercase tracking-widest text-blue-700">
-                Multi-chain · USDC &amp; USDT
-              </span>
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 items-center gap-8 lg:grid-cols-2 lg:gap-16">
+            {/* Left copy */}
+            <div className="text-center lg:text-left">
+              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-4 py-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
+                <span className="text-xs font-bold uppercase tracking-widest text-blue-700">
+                  Multi-chain · USDC &amp; USDT
+                </span>
+              </div>
+
+              <h1 className="text-3xl font-extrabold leading-tight tracking-[-0.03em] text-gray-900 sm:text-4xl lg:text-5xl">
+                Receive crypto.<br />
+                <span className="text-blue-600">
+                  Convert to naira.
+                </span><br />
+                Instantly.
+              </h1>
+
+              <p className="mt-6 text-lg leading-relaxed text-gray-500 max-w-2xl mx-auto lg:mx-0">
+                Deposit USDC or USDT from Ethereum, Base, Tron, Polygon or BNB Chain. XPay converts it to Nigerian naira and pays out to any bank account in seconds.
+              </p>
+
+              <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:justify-center lg:justify-start">
+                {!isLoggedIn ? (
+                  <Link
+                    to="/onboarding"
+                    className="group inline-flex w-full sm:w-auto items-center justify-center gap-2.5 rounded-2xl bg-blue-600 px-8 py-4 text-base font-semibold text-white shadow-md shadow-blue-200 transition hover:bg-blue-700 active:scale-[.98]"
+                  >
+                    Create free account
+                    <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition group-hover:translate-x-0.5">
+                      <path d="M3 8h10M9 4l4 4-4 4" />
+                    </svg>
+                  </Link>
+                ) : (
+                  <Link
+                    to="/home"
+                    className="group inline-flex w-full sm:w-auto items-center justify-center gap-2.5 rounded-2xl bg-blue-600 px-8 py-4 text-base font-semibold text-white shadow-md shadow-blue-200 transition hover:bg-blue-700 active:scale-[.98]"
+                  >
+                    Go to Dashboard
+                    <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition group-hover:translate-x-0.5">
+                      <path d="M3 8h10M9 4l4 4-4 4" />
+                    </svg>
+                  </Link>
+                )}
+                <a
+                  href="#how-it-works"
+                  className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-8 py-4 text-base font-semibold text-gray-700 transition hover:bg-gray-50 hover:border-gray-300"
+                >
+                  How it works
+                </a>
+              </div>
+
+              <p className="mt-6 text-sm text-gray-400 text-center lg:text-left">Free to sign up · No crypto experience needed</p>
+
+              {/* Stats */}
+              <div className="mt-10 grid grid-cols-3 gap-6 border-t border-gray-100 pt-8">
+                {[
+                  { label: "Networks supported", value: 5, suffix: "+" },
+                  { label: "Nigerian banks", value: 40, suffix: "+" },
+                  { label: "Avg. payout time", value: "< 60", suffix: "s" },
+                ].map((s) => (
+                  <div key={s.label} className="text-center">
+                    <p className="text-xl sm:text-2xl font-extrabold tracking-tight text-gray-900">
+                      {typeof s.value === "number"
+                        ? <Counter to={s.value} suffix={s.suffix} />
+                        : <>{s.value}{s.suffix}</>}
+                    </p>
+                    <p className="mt-0.5 text-xs text-gray-400">{s.label}</p>
+                  </div>
+                ))}
+              </div>
             </div>
 
-            <h1 className="text-[2.9rem] font-extrabold leading-[1.07] tracking-[-0.03em] text-gray-900 sm:text-[3.5rem]">
-              Receive crypto.<br />
-              <span className="text-blue-600">
-                Convert to naira.
-              </span><br />
-              Instantly.
-            </h1>
-
-            <p className="mt-5 text-[1.05rem] leading-relaxed text-gray-500">
-              Deposit USDC or USDT from Ethereum, Base, Tron, Polygon or BNB Chain — XPay converts it to Nigerian naira and pays out to any bank account in seconds.
-            </p>
-
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link
-                to="/onboarding"
-                className="group inline-flex items-center gap-2.5 rounded-2xl bg-blue-600 px-7 py-3.5 text-[0.95rem] font-semibold text-white shadow-md shadow-blue-100 transition hover:bg-blue-700 active:scale-[.98]"
-              >
-                Create free account
-                <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition group-hover:translate-x-0.5">
-                  <path d="M3 8h10M9 4l4 4-4 4" />
-                </svg>
-              </Link>
-              <a
-                href="#how-it-works"
-                className="inline-flex items-center gap-2 rounded-2xl border border-gray-200 bg-white px-7 py-3.5 text-[0.95rem] font-semibold text-gray-700 transition hover:bg-gray-50 hover:border-gray-300"
-              >
-                How it works
-              </a>
+            {/* Right card */}
+            <div className="flex justify-center mt-8 lg:mt-0">
+              <HeroCard />
             </div>
-
-            <p className="mt-4 text-sm text-gray-400">Free to sign up · No crypto experience needed</p>
-
-            {/* Stats */}
-            <div className="mt-10 grid grid-cols-3 gap-6 border-t border-gray-100 pt-8">
-              {[
-                { label: "Networks supported", value: 5, suffix: "+" },
-                { label: "Nigerian banks", value: 40, suffix: "+" },
-                { label: "Avg. payout time", value: "< 60", suffix: "s" },
-              ].map((s) => (
-                <div key={s.label}>
-                  <p className="text-2xl font-extrabold tracking-tight text-gray-900">
-                    {typeof s.value === "number"
-                      ? <Counter to={s.value} suffix={s.suffix} />
-                      : <>{s.value}{s.suffix}</>}
-                  </p>
-                  <p className="mt-0.5 text-xs text-gray-400">{s.label}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Right card */}
-          <div className="flex justify-center lg:justify-end">
-            <HeroCard />
           </div>
         </div>
       </section>
 
       {/* ── Supported networks ──────────────────────────────────────────── */}
-      <section id="networks" className="border-y border-gray-100 bg-gray-50/50 py-16">
-        <div className="mx-auto max-w-6xl px-5 sm:px-8">
-          <div className="mb-10 text-center">
+      <section id="networks" className="border-y border-gray-100 bg-gray-50/50 py-16 sm:py-20">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mb-12 text-center">
             <p className="mb-2 text-xs font-bold uppercase tracking-widest text-blue-600">Multi-chain</p>
-            <h2 className="text-2xl font-extrabold tracking-tight text-gray-900 sm:text-3xl">
+            <h2 className="text-2xl font-extrabold tracking-tight text-gray-900 sm:text-3xl lg:text-4xl">
               Deposit from any major network
             </h2>
-            <p className="mt-3 text-gray-500">We accept USDC and USDT from 5 networks — all convert to naira.</p>
+            <p className="mt-4 text-lg text-gray-500 max-w-2xl mx-auto">We accept USDC and USDT from 6 networks, all converting to naira.</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
             {[
               { name: "Ethereum",  symbol: "ETH", color: "#627EEA", bg: "#EEF0FE", coins: "USDC · USDT" },
               { name: "Base",      symbol: "BASE", color: "#0052FF", bg: "#E6EEFF", coins: "USDC · USDT" },
@@ -376,31 +457,34 @@ export default function Landing() {
             ].map((n) => (
               <div
                 key={n.name}
-                className="group flex flex-col items-center gap-2.5 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition hover:shadow-md hover:-translate-y-0.5"
+                className="group flex flex-col items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 sm:p-6 shadow-sm transition hover:shadow-md hover:-translate-y-0.5"
               >
-                <div
-                  className="flex h-12 w-12 items-center justify-center rounded-2xl text-xs font-black tracking-tight"
-                  style={{ background: n.bg, color: n.color }}
-                >
-                  {n.symbol}
+                <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-2xl bg-gray-100 flex items-center justify-center">
+                  <span className="text-xs sm:text-sm font-bold text-gray-600">
+                    {n.symbol.slice(0, 3)}
+                  </span>
                 </div>
-                <p className="text-sm font-bold text-gray-900">{n.name}</p>
-                <p className="text-[10px] font-semibold text-gray-400">{n.coins}</p>
+                <div className="text-center">
+                  <p className="text-sm font-bold text-gray-900">{n.name}</p>
+                  <p className="text-xs font-semibold text-gray-400">{n.coins}</p>
+                </div>
               </div>
             ))}
           </div>
 
           {/* Coin badges */}
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
             {COINS.map((c, i) => (
               <div
                 key={i}
-                className="flex items-center gap-1.5 rounded-full border border-gray-100 px-3.5 py-1.5 shadow-sm"
+                className="flex items-center gap-2 rounded-full border border-gray-100 px-4 py-2 shadow-sm"
                 style={{ background: c.bg }}
               >
-                <div className="flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-black text-white" style={{ background: c.color }}>$</div>
+                <div className="h-5 w-5 rounded-full bg-gray-600 flex items-center justify-center">
+                  <span className="text-xs font-black text-white">$</span>
+                </div>
                 <span className="text-xs font-bold" style={{ color: c.color }}>{c.symbol}</span>
-                <span className="text-[10px] text-gray-400">on {c.network}</span>
+                <span className="text-xs text-gray-400">on {c.network}</span>
               </div>
             ))}
           </div>
@@ -432,7 +516,7 @@ export default function Landing() {
             <h2 className="text-[2.25rem] font-extrabold tracking-[-0.025em] text-gray-900">
               Four steps. Under 60 seconds.
             </h2>
-            <p className="mt-4 text-gray-500">No crypto knowledge needed — just deposit and get paid.</p>
+            <p className="mt-4 text-gray-500">No crypto knowledge needed. Just deposit and get paid.</p>
           </div>
 
           <div className="relative grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
@@ -671,35 +755,47 @@ export default function Landing() {
       </section>
 
       {/* ── CTA ────────────────────────────────────────────────────────── */}
-      <section className="py-24">
-        <div className="mx-auto max-w-2xl px-5 sm:px-8 text-center">
-          <div className="overflow-hidden rounded-3xl bg-blue-600 px-8 py-16 shadow-xl shadow-blue-100">
+      <section className="py-16 sm:py-20 lg:py-24">
+        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center">
+          <div className="overflow-hidden rounded-3xl bg-blue-600 px-6 py-12 sm:px-8 sm:py-16 shadow-xl shadow-blue-100">
             {/* Subtle dot overlay */}
             <div
               className="pointer-events-none absolute inset-0 opacity-[0.04]"
               style={{ backgroundImage: "radial-gradient(white 1px, transparent 1px)", backgroundSize: "24px 24px" }}
             />
             <div className="relative">
-              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1.5">
+              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2">
                 <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
                 <span className="text-xs font-bold uppercase tracking-widest text-white/80">Live now</span>
               </div>
-              <h2 className="text-[2.4rem] font-extrabold leading-[1.1] tracking-[-0.03em] text-white">
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold leading-tight tracking-[-0.03em] text-white">
                 Start receiving crypto<br />as naira today
               </h2>
-              <p className="mt-5 text-[1.05rem] leading-relaxed text-blue-100 max-w-md mx-auto">
+              <p className="mt-6 text-lg leading-relaxed text-blue-100 max-w-2xl mx-auto">
                 Deposit USDC or USDT from any chain. XPay converts it and pays out naira to any Nigerian bank — in seconds.
               </p>
-              <Link
-                to="/onboarding"
-                className="mt-8 inline-flex items-center gap-2.5 rounded-2xl bg-white px-9 py-4 text-base font-bold text-blue-600 shadow-lg shadow-blue-900/10 transition hover:bg-blue-50 active:scale-[.98]"
-              >
-                Create free account
-                <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 8h10M9 4l4 4-4 4" />
-                </svg>
-              </Link>
-              <p className="mt-4 text-sm text-white/40">Free to sign up · No crypto knowledge required</p>
+              {!isLoggedIn ? (
+                <Link
+                  to="/onboarding"
+                  className="mt-8 inline-flex w-full sm:w-auto items-center justify-center gap-2.5 rounded-2xl bg-white px-10 py-4 text-lg font-bold text-blue-600 shadow-lg shadow-blue-900/10 transition hover:bg-blue-50 active:scale-[.98]"
+                >
+                  Create free account
+                  <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 8h10M9 4l4 4-4 4" />
+                  </svg>
+                </Link>
+              ) : (
+                <Link
+                  to="/home"
+                  className="mt-8 inline-flex w-full sm:w-auto items-center justify-center gap-2.5 rounded-2xl bg-white px-10 py-4 text-lg font-bold text-blue-600 shadow-lg shadow-blue-900/10 transition hover:bg-blue-50 active:scale-[.98]"
+                >
+                  Go to Dashboard
+                  <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 8h10M9 4l4 4-4 4" />
+                  </svg>
+                </Link>
+              )}
+              <p className="mt-6 text-sm text-white/40">Free to sign up · No crypto knowledge required</p>
             </div>
           </div>
         </div>

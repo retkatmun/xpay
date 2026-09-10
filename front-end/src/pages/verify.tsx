@@ -123,7 +123,7 @@ export default function VerifyStep() {
         {/* dev code banner */}
         {devCode && (
           <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Dev mode — no SMS sent</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Dev mode. No SMS sent.</p>
             <p className="mt-1 text-sm text-amber-800">
               Your code is{" "}
               <span className="font-mono text-xl font-bold tracking-[0.15em]">{devCode}</span>

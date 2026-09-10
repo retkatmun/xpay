@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { usePrivy } from "@privy-io/react-auth";
+import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { isUsernameTaken, createProfile } from "@/lib/supabase";
 import { useSession } from "@/lib/session";
 import { Spinner } from "@/components/icons";
@@ -202,7 +202,8 @@ function Logo() {
 export default function Onboarding() {
   const navigate = useNavigate();
   const { authUser, profile, loading, setProfile } = useSession();
-  const { ready: privyReady, authenticated: privyAuthed, user: privyUser, login } = usePrivy();
+  const { ready: privyReady, authenticated: privyAuthed, user: privyUser, login, logout } = usePrivy();
+  const { wallets } = useWallets();
 
   const [step, setStep] = useState<Step>("auth");
   const [draft, setDraft] = useState<Draft>(EMPTY);
@@ -218,11 +219,16 @@ export default function Onboarding() {
   const [confirmPin, setConfirmPin] = useState("");
   const [pinError, setPinError] = useState<string | null>(null);
 
-  // Redirect if already fully onboarded
+  // Get embedded wallet address
+  const embeddedWallet = wallets.find(wallet => wallet.walletClientType === 'privy');
+  const walletAddress = embeddedWallet?.address || null;
+
+  // Only redirect if user is fully authenticated AND has completed profile
   useEffect(() => {
     if (!loading && authUser && profile) {
       navigate("/home", { replace: true });
     }
+    // Don't redirect if user is authenticated but has no profile - let them complete onboarding
   }, [loading, authUser, profile, navigate]);
 
   // When Privy auth completes, advance to profile step
@@ -236,7 +242,7 @@ export default function Onboarding() {
       patch({ displayName: name });
       setStep("profile");
     }
-  }, [privyReady, privyAuthed, step]);
+  }, [privyReady, privyAuthed, step, privyUser]); // Added privyUser to deps
 
   // Username availability check
   useEffect(() => {
@@ -252,10 +258,20 @@ export default function Onboarding() {
     return () => clearTimeout(id);
   }, [draft.username]);
 
-  if (!privyReady || loading) {
+  if (!privyReady) {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-white">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+        <span className="ml-3">Loading authentication...</span>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-white">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+        <span className="ml-3">Loading profile...</span>
       </div>
     );
   }
@@ -322,7 +338,7 @@ export default function Onboarding() {
         username: draft.username.toLowerCase().trim(),
         display_name: draft.displayName.trim(),
         pin_hash: pin,
-        wallet_address: null,
+        wallet_address: walletAddress, // Use the actual wallet address
       });
 
       setProfile(created as never);
@@ -406,6 +422,23 @@ export default function Onboarding() {
                   Sign in
                 </button>
               </p>
+
+              {/* Show option to sign out if already authenticated */}
+              {privyAuthed && (
+                <p className="mt-3 text-center text-xs text-gray-400">
+                  Want to use a different account?{" "}
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await logout();
+                      setStep("auth");
+                    }}
+                    className="font-semibold text-blue-600 hover:underline"
+                  >
+                    Sign out
+                  </button>
+                </p>
+              )}
             </div>
           )}
 
@@ -416,7 +449,7 @@ export default function Onboarding() {
                 Set up your profile
               </h1>
               <p className="mt-2 text-sm text-gray-500">
-                Almost done — fill in a few details.
+                Almost done. Fill in a few details.
               </p>
 
               {/* Info callout */}
@@ -445,7 +478,7 @@ export default function Onboarding() {
                     placeholder="Bola Adeyemi"
                     autoComplete="name"
                     autoFocus
-                    className="h-12 w-full rounded-xl border-2 border-gray-200 bg-white px-4 text-sm text-gray-900 outline-none ring-2 ring-transparent transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   />
                 </div>
 
@@ -457,7 +490,7 @@ export default function Onboarding() {
                     patch({ phone, phoneValid: isValid });
                     setError(null);
                   }}
-                  hint="Used as your payment address — people can send you money using this number"
+                  hint="Used as your payment address. People can send you money using this number"
                   error={error && error.toLowerCase().includes("phone") ? error : null}
                 />
 
@@ -467,12 +500,12 @@ export default function Onboarding() {
                   <div className="relative">
                     <div
                       className={[
-                        "flex h-12 items-center rounded-xl border-2 bg-white transition-all duration-150",
+                        "flex h-12 items-center rounded-xl border bg-white transition-all duration-150",
                         usernameState === "taken"
                           ? "border-red-400 ring-2 ring-red-100"
                           : usernameState === "ok"
                           ? "border-green-400 ring-2 ring-green-100"
-                          : "border-gray-200 ring-2 ring-transparent focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100",
+                          : "border-gray-200 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100",
                       ].join(" ")}
                     >
                       <span className="pl-4 text-sm font-medium text-gray-400">@</span>
@@ -510,7 +543,7 @@ export default function Onboarding() {
                     {usernameState === "ok"
                       ? `✓ @${draft.username} is available`
                       : usernameState === "taken"
-                      ? "Username already taken — please choose another"
+                      ? "Username already taken. Please choose another"
                       : "3–16 chars · letters, numbers, underscore"}
                   </p>
                 </div>
@@ -576,7 +609,7 @@ export default function Onboarding() {
               {error && <ErrorBox message={error} />}
 
               <p className="mt-6 text-center text-xs text-gray-400">
-                Never share your PIN — not even with XPay support.
+                Never share your PIN. Not even with XPay support.
               </p>
             </div>
           )}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSession } from '@/lib/session'
+import { useWallet } from '@/lib/useWallet-simple'
 import { Screen } from '@/components/Screen'
 import { Title } from '@/components/Screen'
 import { CopyButton } from '@/components/CopyButton'
@@ -10,6 +11,7 @@ import { ChevronDown } from '@/components/icons'
 export default function Receive() {
   const navigate = useNavigate()
   const { authUser, profile, loading, signOut } = useSession()
+  const { address, isLoading: walletLoading } = useWallet()
   const [showAddress, setShowAddress] = useState(false)
 
   useEffect(() => {
@@ -20,11 +22,12 @@ export default function Receive() {
   if (!profile) return <div className="min-h-dvh bg-white" />
 
   const handle = `@${profile.username}`
+  const walletAddress = address || profile.wallet_address
 
   return (
     <Screen back onBack={() => navigate('/home')}>
       <div className="flex flex-1 flex-col pt-4 pb-10">
-        <Title sub="Share your handle or phone — anyone on XPay can pay you instantly.">
+        <Title sub="Share your handle or phone. Anyone on XPay can pay you instantly.">
           Receive money
         </Title>
 
@@ -51,7 +54,7 @@ export default function Receive() {
         </div>
 
         {/* USDC deposit address toggle */}
-        {profile.wallet_address && (
+        {(walletAddress || walletLoading) && (
           <div className="mt-6">
             <button
               type="button"
@@ -66,17 +69,28 @@ export default function Receive() {
             {showAddress && (
               <div className="mt-3 rounded-2xl border border-gray-100 bg-gray-50 p-5">
                 <p className="text-xs font-semibold text-gray-700">Your USDC deposit address</p>
-                <div className="mt-3 flex items-center justify-between gap-3">
-                  <p className="break-all font-mono text-xs leading-relaxed text-gray-800">
-                    {profile.wallet_address}
-                  </p>
-                  <CopyButton value={profile.wallet_address!} label="Copy address" />
-                </div>
-                <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3">
-                  <p className="text-xs leading-relaxed text-amber-700">
-                    <strong>Only send USDC on the Base network to this address.</strong> Sending any other asset or on a different network will result in permanent loss.
-                  </p>
-                </div>
+                {walletLoading ? (
+                  <div className="mt-3 flex items-center">
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                    <span className="ml-2 text-sm text-gray-500">Loading wallet address...</span>
+                  </div>
+                ) : walletAddress ? (
+                  <>
+                    <div className="mt-3 flex items-center justify-between gap-3">
+                      <p className="break-all font-mono text-xs leading-relaxed text-gray-800">
+                        {walletAddress}
+                      </p>
+                      <CopyButton value={walletAddress} label="Copy address" />
+                    </div>
+                    <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                      <p className="text-xs leading-relaxed text-amber-700">
+                        <strong>Only send USDC on the Base network to this address.</strong> Sending any other asset or on a different network will result in permanent loss.
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <p className="mt-3 text-sm text-gray-500">Unable to load wallet address</p>
+                )}
               </div>
             )}
           </div>

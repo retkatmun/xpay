@@ -6,8 +6,8 @@ import {
   useMemo,
   useState,
 } from "react";
-import { usePrivy } from "@privy-io/react-auth";
-import { fetchProfileById, supabaseSignOut } from "@/lib/supabase";
+import { usePrivy, useWallets } from "@privy-io/react-auth";
+import { fetchProfileById, supabaseSignOut, updateUserRole } from "@/lib/supabase";
 
 export type XPayProfile = {
   id: string;
@@ -28,6 +28,7 @@ type SessionValue = {
   profile: XPayProfile | null;
   loading: boolean;
   isAdmin: boolean;
+  walletAddress: string | null;
   setProfile: (p: XPayProfile | null) => void;
   refresh: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -37,6 +38,7 @@ const SessionContext = createContext<SessionValue | null>(null);
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const { ready, authenticated, user: privyUser, logout } = usePrivy();
+  const { wallets } = useWallets();
 
   const [profile, setProfile] = useState<XPayProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
@@ -53,10 +55,22 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     };
   }, [authenticated, privyUser]);
 
+  // Get embedded wallet address
+  const embeddedWallet = wallets.find(wallet => wallet.walletClientType === 'privy');
+  const walletAddress = embeddedWallet?.address || null;
+
   const refresh = useCallback(async () => {
-    if (!authUser) { setProfile(null); return; }
-    const p = await fetchProfileById(authUser.id);
-    setProfile(p as XPayProfile | null);
+    if (!authUser) { 
+      setProfile(null); 
+      return; 
+    }
+    try {
+      const p = await fetchProfileById(authUser.id);
+      setProfile(p as XPayProfile | null);
+    } catch (error) {
+      console.error('Failed to fetch profile:', error);
+      setProfile(null);
+    }
   }, [authUser]);
 
   // Load profile whenever Privy auth state changes
@@ -68,31 +82,43 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     setProfileLoading(true);
+
+    // Timeout after 8s so we never hang forever on a slow Supabase response
+    const timer = setTimeout(() => {
+      setProfileLoaded(true);
+      setProfileLoading(false);
+    }, 8000);
+
     fetchProfileById(privyUser.id)
       .then((p) => {
         setProfile(p as XPayProfile | null);
         setProfileLoaded(true);
         setProfileLoading(false);
       })
-      .catch(() => {
+      .catch((error) => {
+        console.error('Error loading profile:', error);
         setProfile(null);
         setProfileLoaded(true);
         setProfileLoading(false);
-      });
+      })
+      .finally(() => clearTimeout(timer));
   }, [ready, authenticated, privyUser?.id]);
 
   const signOut = useCallback(async () => {
     await logout();
     try { await supabaseSignOut(); } catch { /* ignore */ }
     setProfile(null);
+    setProfileLoaded(false);
   }, [logout]);
 
-  const loading = !ready || (authenticated && profileLoading && !profileLoaded);
+  // Only block on Privy not being ready OR on the first profile fetch.
+  // Once profileLoaded is true we never show a loading state again.
+  const loading = !ready || (authenticated && !profileLoaded);
   const isAdmin = profile?.role === "admin";
 
   const value = useMemo(
-    () => ({ authUser, profile, loading, isAdmin, setProfile, refresh, signOut }),
-    [authUser, profile, loading, isAdmin, refresh, signOut]
+    () => ({ authUser, profile, loading, isAdmin, walletAddress, setProfile, refresh, signOut }),
+    [authUser, profile, loading, isAdmin, walletAddress, refresh, signOut]
   );
 
   return (
