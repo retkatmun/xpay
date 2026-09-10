@@ -11,6 +11,7 @@ import Receive from '@/pages/receive'
 import Activity from '@/pages/activity'
 import ActivityDetail from '@/pages/activity-detail'
 import Wallet from '@/pages/wallet'
+import Admin from '@/pages/admin'
 
 export default function App() {
   return (
@@ -26,6 +27,7 @@ export default function App() {
           <Route path="/receive" element={<Receive />} />
           <Route path="/activity" element={<Activity />} />
           <Route path="/activity/:id" element={<ActivityDetail />} />
+          <Route path="/admin" element={<Admin />} />
         </Routes>
       </SessionProvider>
     </BrowserRouter>

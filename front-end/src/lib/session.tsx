@@ -17,6 +17,7 @@ export type XPayProfile = {
   display_name: string;
   wallet_address?: string | null;
   pin_hash?: string | null;
+  role: "user" | "admin";
   created_at?: string;
   updated_at?: string;
 };
@@ -26,6 +27,7 @@ type SessionValue = {
   authUser: { id: string; email?: string } | null;
   profile: XPayProfile | null;
   loading: boolean;
+  isAdmin: boolean;
   setProfile: (p: XPayProfile | null) => void;
   refresh: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -86,10 +88,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, [logout]);
 
   const loading = !ready || (authenticated && profileLoading && !profileLoaded);
+  const isAdmin = profile?.role === "admin";
 
   const value = useMemo(
-    () => ({ authUser, profile, loading, setProfile, refresh, signOut }),
-    [authUser, profile, loading, refresh, signOut]
+    () => ({ authUser, profile, loading, isAdmin, setProfile, refresh, signOut }),
+    [authUser, profile, loading, isAdmin, refresh, signOut]
   );
 
   return (

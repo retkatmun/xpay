@@ -4,6 +4,7 @@ import { usePrivy } from "@privy-io/react-auth";
 import { isUsernameTaken, createProfile } from "@/lib/supabase";
 import { useSession } from "@/lib/session";
 import { Spinner } from "@/components/icons";
+import { PhoneInput } from "@/components/PhoneInput";
 import xpayLogo from "@/assets/xpay_logo.png";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -11,12 +12,13 @@ import xpayLogo from "@/assets/xpay_logo.png";
 type Step = "auth" | "profile" | "pin" | "done";
 
 type Draft = {
-  phone: string;
+  phone: string;       // E.164 format
+  phoneValid: boolean;
   displayName: string;
   username: string;
 };
 
-const EMPTY: Draft = { phone: "", displayName: "", username: "" };
+const EMPTY: Draft = { phone: "", phoneValid: false, displayName: "", username: "" };
 const USERNAME_RE = /^[a-z][a-z0-9_]{2,15}$/;
 const VISIBLE_STEPS: Step[] = ["auth", "profile", "pin"];
 
@@ -263,11 +265,12 @@ export default function Onboarding() {
     setError(null);
     if (!draft.displayName.trim()) { setError("Enter your full name."); return; }
     if (!draft.phone.trim()) { setError("Enter your phone number."); return; }
+    if (!draft.phoneValid) { setError("Enter a valid phone number for the selected country."); return; }
     if (!USERNAME_RE.test(draft.username)) {
       setError("Username must be 3–16 characters, start with a letter, and use only letters, numbers, or underscores.");
       return;
     }
-    if (usernameState === "taken") { setError("That username is already taken."); return; }
+    if (usernameState === "taken") { setError("That username is already taken. Please choose another."); return; }
     if (usernameState === "checking") { setError("Still checking username availability…"); return; }
     setStep("pin");
   }
@@ -305,18 +308,19 @@ export default function Onboarding() {
     setBusy(true);
     setError(null);
     try {
-      // Privy is the auth provider — use the Privy user ID as the profile ID
       if (!privyUser?.id) throw new Error("Not authenticated. Please sign in again.");
+
+      const email =
+        privyUser.email?.address ??
+        (privyUser.google as { email?: string } | null)?.email ??
+        null;
 
       const created = await createProfile({
         id: privyUser.id,
-        email:
-          privyUser.email?.address ??
-          (privyUser.google as { email?: string } | null)?.email ??
-          null,
+        email,
         phone: draft.phone,
-        username: draft.username,
-        display_name: draft.displayName,
+        username: draft.username.toLowerCase().trim(),
+        display_name: draft.displayName.trim(),
         pin_hash: pin,
         wallet_address: null,
       });
@@ -327,8 +331,18 @@ export default function Onboarding() {
     } catch (e: unknown) {
       setBusy(false);
       setConfirmPin(""); setFirstPin(""); setPinStage("choose");
-      setError(e instanceof Error ? e.message : "Account creation failed. Please try again.");
-      setStep("profile");
+
+      const msg = e instanceof Error ? e.message : "";
+      if (msg.toLowerCase().includes("username")) {
+        setError(msg);
+        setStep("profile");
+      } else if (msg.toLowerCase().includes("authenticated")) {
+        setError(msg);
+        setStep("auth");
+      } else {
+        setError(msg || "Account creation failed. Please try again.");
+        setStep("profile");
+      }
     }
   }
 
@@ -352,10 +366,9 @@ export default function Onboarding() {
                 Create your account
               </h1>
               <p className="mt-2 text-sm leading-relaxed text-gray-500">
-                Join XPay to send and receive money instantly across Nigeria.
+                Join XPay to send and receive money instantly.
               </p>
 
-              {/* Single Privy login button */}
               <button
                 onClick={() => login()}
                 disabled={busy}
@@ -387,7 +400,7 @@ export default function Onboarding() {
                 Already have an account?{" "}
                 <button
                   type="button"
-                  onClick={() => login()}
+                  onClick={() => navigate("/login")}
                   className="font-semibold text-blue-600 hover:underline"
                 >
                   Sign in
@@ -417,7 +430,7 @@ export default function Onboarding() {
                 <div>
                   <p className="text-xs font-semibold text-blue-800">How people pay you</p>
                   <p className="mt-0.5 text-xs leading-relaxed text-blue-700">
-                    Your <strong>phone number</strong> and <strong>@username</strong> are your payment addresses — anyone can send you money using either one.
+                    Your <strong>phone number</strong> and <strong>@username</strong> are your payment addresses.
                   </p>
                 </div>
               </div>
@@ -432,58 +445,61 @@ export default function Onboarding() {
                     placeholder="Bola Adeyemi"
                     autoComplete="name"
                     autoFocus
-                    className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-3 focus:ring-blue-100"
+                    className="h-12 w-full rounded-xl border-2 border-gray-200 bg-white px-4 text-sm text-gray-900 outline-none ring-2 ring-transparent transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   />
                 </div>
 
-                {/* Phone */}
-                <div>
-                  <label className="mb-1.5 block text-sm font-semibold text-gray-700">Phone number</label>
-                  <div className="relative">
-                    <div className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
-                      <span className="text-sm">🇳🇬</span>
-                      <span className="text-gray-300">|</span>
-                    </div>
-                    <input
-                      value={draft.phone}
-                      onChange={(e) => { patch({ phone: e.target.value }); setError(null); }}
-                      placeholder="0803 123 4567"
-                      inputMode="tel"
-                      autoComplete="tel"
-                      className="h-12 w-full rounded-xl border border-gray-200 bg-white pl-14 pr-4 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-3 focus:ring-blue-100"
-                    />
-                  </div>
-                  <p className="mt-1.5 text-xs text-gray-400">Nigerian mobile number — used to receive money</p>
-                </div>
+                {/* Phone with country selector */}
+                <PhoneInput
+                  label="Phone number"
+                  value={draft.phone}
+                  onChange={(phone, isValid) => {
+                    patch({ phone, phoneValid: isValid });
+                    setError(null);
+                  }}
+                  hint="Used as your payment address — people can send you money using this number"
+                  error={error && error.toLowerCase().includes("phone") ? error : null}
+                />
 
                 {/* Username */}
                 <div>
                   <label className="mb-1.5 block text-sm font-semibold text-gray-700">Username</label>
                   <div className="relative">
-                    <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-400">@</span>
-                    <input
-                      value={draft.username}
-                      onChange={(e) => {
-                        const v = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "");
-                        patch({ username: v });
-                        setError(null);
-                      }}
-                      placeholder="yourhandle"
-                      className="h-12 w-full rounded-xl border border-gray-200 bg-white pl-8 pr-10 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-3 focus:ring-blue-100"
-                    />
-                    <span className="absolute right-3.5 top-1/2 -translate-y-1/2">
-                      {usernameState === "checking" && <Spinner className="h-4 w-4 text-gray-400" />}
-                      {usernameState === "ok" && (
-                        <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M3 8l3.5 3.5 6.5-7" />
-                        </svg>
-                      )}
-                      {usernameState === "taken" && (
-                        <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round">
-                          <path d="M4 4l8 8M12 4l-8 8" />
-                        </svg>
-                      )}
-                    </span>
+                    <div
+                      className={[
+                        "flex h-12 items-center rounded-xl border-2 bg-white transition-all duration-150",
+                        usernameState === "taken"
+                          ? "border-red-400 ring-2 ring-red-100"
+                          : usernameState === "ok"
+                          ? "border-green-400 ring-2 ring-green-100"
+                          : "border-gray-200 ring-2 ring-transparent focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100",
+                      ].join(" ")}
+                    >
+                      <span className="pl-4 text-sm font-medium text-gray-400">@</span>
+                      <input
+                        value={draft.username}
+                        onChange={(e) => {
+                          const v = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "");
+                          patch({ username: v });
+                          setError(null);
+                        }}
+                        placeholder="yourhandle"
+                        className="h-full flex-1 bg-transparent px-2 text-sm text-gray-900 outline-none placeholder:text-gray-400"
+                      />
+                      <span className="pr-3.5">
+                        {usernameState === "checking" && <Spinner className="h-4 w-4 text-gray-400" />}
+                        {usernameState === "ok" && (
+                          <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M3 8l3.5 3.5 6.5-7" />
+                          </svg>
+                        )}
+                        {usernameState === "taken" && (
+                          <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round">
+                            <path d="M4 4l8 8M12 4l-8 8" />
+                          </svg>
+                        )}
+                      </span>
+                    </div>
                   </div>
                   <p className={[
                     "mt-1.5 text-xs",
@@ -494,18 +510,24 @@ export default function Onboarding() {
                     {usernameState === "ok"
                       ? `✓ @${draft.username} is available`
                       : usernameState === "taken"
-                      ? "Username already taken"
+                      ? "Username already taken — please choose another"
                       : "3–16 chars · letters, numbers, underscore"}
                   </p>
                 </div>
               </div>
 
-              {error && <ErrorBox message={error} />}
+              {error && !error.toLowerCase().includes("phone") && <ErrorBox message={error} />}
 
               <button
                 onClick={handleProfileContinue}
-                disabled={busy || !draft.displayName.trim() || !draft.phone.trim() || usernameState !== "ok"}
-                className="mt-6 flex h-13 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 text-sm font-semibold text-white shadow-sm shadow-blue-200 transition hover:bg-blue-700 active:scale-[.98] disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 disabled:shadow-none"
+                disabled={
+                  busy ||
+                  !draft.displayName.trim() ||
+                  !draft.phone.trim() ||
+                  !draft.phoneValid ||
+                  usernameState !== "ok"
+                }
+                className="mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 text-sm font-semibold text-white shadow-sm shadow-blue-200 transition hover:bg-blue-700 active:scale-[.98] disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 disabled:shadow-none"
               >
                 {busy && <Spinner className="h-4 w-4" />}
                 Continue

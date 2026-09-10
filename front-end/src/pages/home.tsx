@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useSession } from "@/lib/session";
+
 import { Avatar } from "@/components/Avatar";
 import { Badge } from "@/components/Badge";
 import { Screen } from "@/components/Screen";
@@ -58,7 +59,7 @@ function TxRow({ tx, last }: { tx: Transaction; last: boolean }) {
 
 export default function Home() {
   const navigate = useNavigate();
-  const { authUser, profile, loading } = useSession();
+  const { authUser, profile, loading, isAdmin } = useSession();
   const [balance, setBalance] = useState<Balance | null>(null);
   const [transactions, setTransactions] = useState<Transaction[] | null>(null);
 
@@ -152,6 +153,29 @@ export default function Home() {
             <span className="text-sm font-semibold text-gray-700">Receive</span>
           </button>
         </section>
+
+        {/* Admin panel button — only visible to admins */}
+        {isAdmin && (
+          <section className="mt-3">
+            <button
+              onClick={() => navigate("/admin")}
+              className="flex w-full items-center gap-3 rounded-xl border border-purple-100 bg-purple-50 px-4 py-3.5 text-left shadow-sm transition hover:bg-purple-100 active:scale-[.98]"
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-purple-600">
+                <svg viewBox="0 0 18 18" width="15" height="15" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 1l2 5h5l-4 3 1.5 5L9 11l-4.5 3L6 9 2 6h5z"/>
+                </svg>
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-purple-900">Admin Panel</p>
+                <p className="text-xs text-purple-500">Manage users &amp; roles</p>
+              </div>
+              <svg className="ml-auto" viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="#9333ea" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 4l4 4-4 4" />
+              </svg>
+            </button>
+          </section>
+        )}
 
         {/* Recent transactions */}
         <section className="mt-8">

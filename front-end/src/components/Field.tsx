@@ -12,15 +12,16 @@ export function Field({ label, prefix, suffix, hint, error, className = "", ...r
   return (
     <label className="block">
       {label && (
-        <span className="mb-1.5 block text-sm font-medium text-gray-700">{label}</span>
+        <span className="mb-1.5 block text-sm font-semibold text-gray-700">{label}</span>
       )}
+      {/* Double border: border-2 (inner) + ring-2 (outer) */}
       <span
         className={[
-          "flex h-11 items-center gap-2 rounded-xl border bg-white px-4",
-          "transition-colors duration-150",
-          // Single focus ring via outline on the wrapper, no ring utility (avoids double border)
-          "focus-within:border-blue-500 focus-within:outline focus-within:outline-2 focus-within:outline-offset-0 focus-within:outline-blue-100",
-          error ? "border-red-400 outline outline-2 outline-offset-0 outline-red-100" : "border-gray-200",
+          "flex h-12 items-center gap-2 rounded-xl bg-white px-4",
+          "transition-all duration-150",
+          error
+            ? "border-2 border-red-400 ring-2 ring-red-100"
+            : "border-2 border-gray-200 ring-2 ring-transparent focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100",
         ].join(" ")}
       >
         {prefix && <span className="shrink-0 text-gray-400">{prefix}</span>}
