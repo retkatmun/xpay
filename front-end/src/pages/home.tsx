@@ -12,6 +12,24 @@ import type { Transaction, Balance } from "@/lib/types";
 import { getBalance, getTransactions } from "@/lib/api";
 import xpayLogo from "@/assets/xpay_logo.png";
 
+// ─── Eye icons ────────────────────────────────────────────────────────────────
+function EyeIcon() {
+  return (
+    <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 10s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/>
+      <circle cx="10" cy="10" r="2.5"/>
+    </svg>
+  );
+}
+function EyeOffIcon() {
+  return (
+    <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M13.875 13.875A8.963 8.963 0 0110 15c-5.5 0-9-5-9-5a16.47 16.47 0 014.125-4.125M8.25 4.135A8.963 8.963 0 0110 4c5.5 0 9 5 9 5a16.47 16.47 0 01-2.1 2.773M3 3l14 14"/>
+      <path d="M11.768 11.768A2.5 2.5 0 018.232 8.232"/>
+    </svg>
+  );
+}
+
 // ─── Tx row ───────────────────────────────────────────────────────────────────
 function TxRow({ tx, last }: { tx: Transaction; last: boolean }) {
   const navigate = useNavigate();
@@ -66,6 +84,7 @@ export default function Home() {
   const [transactions, setTransactions] = useState<Transaction[] | null>(null);
   const [fundLoading, setFundLoading] = useState(false);
   const [fundSuccess, setFundSuccess] = useState(false);
+  const [balanceVisible, setBalanceVisible] = useState(true);
 
   useEffect(() => {
     if (!loading && !authUser) navigate("/login", { replace: true });
@@ -156,19 +175,26 @@ export default function Home() {
                 style={{ backgroundImage: "radial-gradient(#fff 1px, transparent 1px)", backgroundSize: "20px 20px" }}
               />
               <div className="relative">
-                <p className="text-[0.68rem] font-bold uppercase tracking-widest text-blue-200">Total balance</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-[0.68rem] font-bold uppercase tracking-widest text-blue-200">Total balance</p>
+                  <button
+                    onClick={() => setBalanceVisible(v => !v)}
+                    className="flex items-center justify-center rounded-full p-1 text-blue-200 transition hover:text-white active:scale-90"
+                    aria-label={balanceVisible ? "Hide balance" : "Show balance"}
+                  >
+                    {balanceVisible ? <EyeOffIcon /> : <EyeIcon />}
+                  </button>
+                </div>
                 <p className="mt-1.5 font-[var(--font-instrument-serif)] text-[2.8rem] leading-none tracking-[-0.03em] text-white tabular-nums">
-                  {amount === null ? <span className="opacity-30">$0.00</span> : formatUSD(amount)}
+                  {!balanceVisible
+                    ? <span className="tracking-widest">••••••</span>
+                    : amount === null
+                      ? <span className="opacity-30">$0.00</span>
+                      : formatUSD(amount)}
                 </p>
-                <div className="mt-3 flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <img src={getTokenLogo("USDC")} alt="USDC" className="h-4 w-4 rounded-full" />
-                    <span className="text-xs font-semibold text-blue-200">USDC on Base</span>
-                  </div>
-                  <span className="flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-[10px] font-semibold text-white">
-                    <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
-                    Live
-                  </span>
+                <div className="mt-3 flex items-center gap-1.5">
+                  <img src={getTokenLogo("USDC")} alt="USDC" className="h-4 w-4 rounded-full" />
+                  <span className="text-xs font-semibold text-blue-200">USDC on Base</span>
                 </div>
               </div>
             </div>
@@ -179,8 +205,8 @@ export default function Home() {
             <div className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 px-4 py-2.5">
               <span className="text-xs text-gray-400">Your handle</span>
               <div className="flex items-center gap-1.5">
-                <span className="font-mono text-xs font-semibold text-gray-700">@{profile.username}</span>
-                <CopyButton value={`@${profile.username}`} label="Copy" />
+                <span className="font-mono text-xs font-semibold text-gray-700">{profile.username}.xpay</span>
+                <CopyButton value={`${profile.username}.xpay`} label="Copy" />
               </div>
             </div>
           </section>

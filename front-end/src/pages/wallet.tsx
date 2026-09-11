@@ -80,8 +80,8 @@ export default function Wallet() {
           <h1 className="text-xl font-bold text-gray-900">{displayName}</h1>
           {displayEmail && <p className="mt-0.5 text-sm text-gray-400">{displayEmail}</p>}
           <div className="mt-3 flex items-center gap-1.5 rounded-full border border-gray-100 bg-gray-50 px-3 py-1">
-            <span className="font-mono text-xs font-semibold text-gray-600">@{profile.username}</span>
-            <CopyButton value={`@${profile.username}`} label="Copy" />
+            <span className="font-mono text-xs font-semibold text-gray-600">{profile.username}.xpay</span>
+            <CopyButton value={`${profile.username}.xpay`} label="Copy" />
           </div>
         </div>
 
@@ -214,7 +214,7 @@ export default function Wallet() {
                     <p className="text-xs text-gray-400 truncate">
                       {b.type === "bank_account"
                         ? `${b.bank_name} · ${b.account_number}`
-                        : `@${b.xpay_username}`}
+                        : `${b.xpay_username}.xpay`}
                     </p>
                   </div>
                   <button

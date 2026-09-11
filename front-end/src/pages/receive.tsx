@@ -23,7 +23,6 @@ export default function Receive() {
 
   if (!profile) return <div className="min-h-dvh bg-white" />
 
-  const handle = `@${profile.username}`
   const walletAddress = address || sessionWallet || profile.wallet_address
 
   const handleFund = async () => {
@@ -44,28 +43,38 @@ export default function Receive() {
   return (
     <Screen back onBack={() => navigate('/home')}>
       <div className="flex flex-1 flex-col pt-4 pb-10 space-y-4">
-        <Title sub="Share your handle or phone. Anyone on XPay can pay you instantly.">
+        <Title sub="Share your handle or phone number. Anyone on XPay can pay you instantly.">
           Receive money
         </Title>
 
         {/* ── XPay handle ── */}
-        <div className="flex items-center justify-between rounded-2xl border border-gray-100 bg-white px-5 py-4 shadow-sm">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">XPay handle</p>
-            <p className="mt-1 text-2xl font-bold leading-none tracking-tight text-gray-900">
-              {handle}
-            </p>
+        <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+          <div className="flex items-center justify-between px-5 py-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">XPay handle</p>
+              <p className="mt-1 text-2xl font-bold leading-none tracking-tight text-gray-900">
+                {profile.username}.xpay
+              </p>
+            </div>
+            <CopyButton value={`${profile.username}.xpay`} label="Copy handle" />
           </div>
-          <CopyButton value={handle} label="Copy handle" />
         </div>
 
         {/* ── Phone number ── */}
-        <div className="flex items-center justify-between rounded-2xl border border-gray-100 bg-white px-5 py-4 shadow-sm">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Phone number</p>
-            <p className="mt-1 text-lg font-medium tabular-nums text-gray-900">{profile.phone}</p>
+        <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+          <div className="flex items-center justify-between px-5 py-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Phone address</p>
+              <p className="mt-1 text-lg font-bold tabular-nums text-gray-900">{profile.phone}</p>
+            </div>
+            <CopyButton value={profile.phone} label="Copy phone" />
           </div>
-          <CopyButton value={profile.phone} label="Copy phone" />
+          <div className="border-t border-blue-50 bg-blue-50 px-5 py-3">
+            <p className="text-xs leading-relaxed text-blue-700">
+              <strong>How to receive with your phone:</strong> Anyone can send to you using your phone number.
+              Just share your number without the country code — for example, if your number is <strong>+234 707 166 3687</strong>, your receive address is <strong>7071663687</strong>.
+            </p>
+          </div>
         </div>
 
         {/* ── USDC deposit address — always visible ── */}
