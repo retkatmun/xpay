@@ -9,6 +9,21 @@ const supabaseServiceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY as str
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
+/**
+ * Derive a 10-digit account number from an E.164 phone number by stripping
+ * the country code and taking the last 10 digits.
+ *
+ * e.g. "+2347071663687" → "7071663687"
+ *      "+12125551234"   → "2125551234"
+ *
+ * Works for any country code length (1–4 digits) because we always take the
+ * last 10 digits of the digit-only string.
+ */
+export function phoneToAccountNumber(phone: string): string {
+  const digits = phone.replace(/\D/g, ""); // strip everything except digits
+  return digits.slice(-10);               // last 10 = local number
+}
+
 /** No-op — we use Privy for auth, not Supabase auth sessions */
 export async function supabaseSignOut() {
   // intentionally empty
@@ -38,6 +53,7 @@ export async function fetchProfileById(userId: string) {
  * Insert a new XPay profile row.
  * All new users get role = 'user' by default.
  * Role can only be changed from the Admin Panel inside the app.
+ * account_number is automatically derived from the phone number.
  */
 export async function createProfile(profile: {
   id: string;
@@ -58,9 +74,12 @@ export async function createProfile(profile: {
   const existing = await fetchProfileById(profile.id);
   if (existing) return existing;
 
+  // Derive the 10-digit account number from the phone number
+  const account_number = phoneToAccountNumber(profile.phone);
+
   const { data, error } = await supabaseAdmin
     .from("profiles")
-    .insert({ ...profile, role: "user" })
+    .insert({ ...profile, role: "user", account_number })
     .select()
     .single();
 
