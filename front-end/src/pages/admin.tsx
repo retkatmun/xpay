@@ -139,7 +139,7 @@ export default function Admin() {
 
         {/* Search */}
         <div className="mt-4">
-          <div className="flex h-10 items-center gap-2 rounded-xl border-2 border-gray-200 bg-white px-3 ring-2 ring-transparent transition focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100">
+          <div className="flex h-10 items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 transition focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100">
             <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round">
               <circle cx="6.5" cy="6.5" r="4" />
               <path d="M11 11l3 3" />

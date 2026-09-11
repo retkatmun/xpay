@@ -192,10 +192,9 @@ export function PhoneInput({
       <div
         className={[
           "relative flex h-12 items-center rounded-xl transition-all duration-150",
-          // Double border effect: box-shadow for outer + border for inner
           error
-            ? "border-2 border-red-400 ring-2 ring-red-100"
-            : "border-2 border-gray-200 ring-2 ring-transparent focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100",
+            ? "border border-red-400 ring-2 ring-red-100"
+            : "border border-gray-200 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100",
         ].join(" ")}
       >
         {/* Country selector button */}

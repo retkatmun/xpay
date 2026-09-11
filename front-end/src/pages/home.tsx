@@ -10,6 +10,7 @@ import { statusLabel, statusColor } from "@/lib/txStatus";
 import { getTokenLogo, getNetworkLogo } from "@/assets/logos";
 import type { Transaction, Balance } from "@/lib/types";
 import { getBalance, getTransactions } from "@/lib/api";
+import xpayLogo from "@/assets/xpay_logo.png";
 
 // ─── Tx row ───────────────────────────────────────────────────────────────────
 function TxRow({ tx, last }: { tx: Transaction; last: boolean }) {
@@ -117,8 +118,7 @@ export default function Home() {
     }
   };
 
-  // Request funds — copy a pre-filled link
-  const requestLink = `${window.location.origin}/send?to=@${profile.username}`;
+  // Request funds — copy a pre-filled link (used by receive page)
 
   return (
     <div className="min-h-dvh bg-white">
@@ -126,9 +126,7 @@ export default function Home() {
       <nav className="fixed inset-x-0 top-0 z-40 border-b border-gray-100 bg-white/95 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-[26.25rem] items-center justify-between px-5">
           {/* Logo */}
-          <span className="font-[var(--font-instrument-serif)] text-xl tracking-[-0.01em] text-blue-600">
-            XPay
-          </span>
+          <img src={xpayLogo} alt="XPay" className="h-7 w-auto object-contain" />
           {/* Right: network badge + avatar */}
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1">
@@ -187,95 +185,110 @@ export default function Home() {
             </div>
           </section>
 
-          {/* ── Action grid ── */}
-          <section className="mt-4 grid grid-cols-4 gap-2.5">
+          {/* ── Action cards — 2×2 grid ── */}
+          <section className="mt-5 grid grid-cols-2 gap-3">
             {/* Send */}
             <button
               onClick={() => navigate("/send")}
-              className="group flex flex-col items-center gap-2"
+              className="group flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white p-4 text-left shadow-sm transition hover:border-blue-200 hover:bg-blue-50/60 active:scale-[.98]"
             >
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 shadow-md shadow-blue-200 transition group-hover:bg-blue-700 group-active:scale-95">
-                <svg viewBox="0 0 18 18" width="16" height="16" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 9h12M11 5l4 4-4 4"/>
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 shadow-sm shadow-blue-200 transition group-hover:bg-blue-700">
+                <svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 10h14M13 5l5 5-5 5"/>
                 </svg>
               </span>
-              <span className="text-[11px] font-semibold text-gray-600">Send</span>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Send money</p>
+                <p className="mt-0.5 text-[11px] leading-tight text-gray-400">To users, banks, or wallets</p>
+              </div>
             </button>
 
             {/* Receive */}
             <button
               onClick={() => navigate("/receive")}
-              className="group flex flex-col items-center gap-2"
+              className="group flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white p-4 text-left shadow-sm transition hover:border-gray-200 hover:bg-gray-50 active:scale-[.98]"
             >
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-100 transition group-hover:bg-gray-200 group-active:scale-95">
-                <svg viewBox="0 0 18 18" width="16" height="16" fill="none" stroke="#374151" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M15 9H3M7 13l-4-4 4-4"/>
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 transition group-hover:bg-gray-200">
+                <svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="#374151" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17 10H3M7 15l-5-5 5-5"/>
                 </svg>
               </span>
-              <span className="text-[11px] font-semibold text-gray-600">Receive</span>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Receive money</p>
+                <p className="mt-0.5 text-[11px] leading-tight text-gray-400">Share your handle or address</p>
+              </div>
             </button>
 
-            {/* Add Funds */}
+            {/* Convert USDC → NGN */}
+            <button
+              onClick={() => navigate("/convert")}
+              className="group flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white p-4 text-left shadow-sm transition hover:border-orange-200 hover:bg-orange-50/60 active:scale-[.98]"
+            >
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 transition group-hover:bg-orange-100">
+                <svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="#ea580c" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10 3v14M6 6l4-3 4 3M6 14l4 3 4-3"/>
+                </svg>
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Convert to Naira</p>
+                <p className="mt-0.5 text-[11px] leading-tight text-gray-400">Sell USDC → Nigerian bank</p>
+              </div>
+            </button>
+
+            {/* Add funds */}
             <button
               onClick={handleFund}
               disabled={fundLoading}
-              className="group flex flex-col items-center gap-2"
+              className="group flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white p-4 text-left shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50/60 active:scale-[.98] disabled:opacity-60"
             >
-              <span className={`flex h-12 w-12 items-center justify-center rounded-2xl transition group-active:scale-95 ${
-                fundSuccess ? "bg-green-500" : "bg-emerald-50"
-              }`}>
+              <span className={`flex h-10 w-10 items-center justify-center rounded-xl transition ${fundSuccess ? "bg-green-500" : "bg-emerald-50 group-hover:bg-emerald-100"}`}>
                 {fundLoading ? (
-                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
                 ) : fundSuccess ? (
-                  <svg viewBox="0 0 18 18" width="16" height="16" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M3 9l4 4 8-7"/>
+                  <svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 10l4.5 4.5L16 6"/>
                   </svg>
                 ) : (
-                  <svg viewBox="0 0 18 18" width="16" height="16" fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M9 3v12M3 9h12"/>
+                  <svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M10 4v12M4 10h12"/>
                   </svg>
                 )}
               </span>
-              <span className="text-[11px] font-semibold text-gray-600">Add funds</span>
-            </button>
-
-            {/* Request */}
-            <button
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(requestLink);
-                  // Brief visual feedback handled by browser
-                } catch {
-                  // fallback
-                }
-                navigate(`/receive`);
-              }}
-              className="group flex flex-col items-center gap-2"
-            >
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 transition group-hover:bg-indigo-100 group-active:scale-95">
-                <svg viewBox="0 0 18 18" width="16" height="16" fill="none" stroke="#4f46e5" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M9 2a5 5 0 100 10A5 5 0 009 2z"/>
-                  <path d="M3.5 15.5c0-2 2.5-3.5 5.5-3.5s5.5 1.5 5.5 3.5"/>
-                </svg>
-              </span>
-              <span className="text-[11px] font-semibold text-gray-600">Request</span>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">
+                  {fundSuccess ? "Funds received!" : "Add funds"}
+                </p>
+                <p className="mt-0.5 text-[11px] leading-tight text-gray-400">
+                  {fundSuccess ? "Balance updating…" : "Buy USDC with card"}
+                </p>
+              </div>
             </button>
           </section>
 
-          {/* ── Fund success banner ── */}
-          {fundSuccess && (
-            <div className="mt-3 flex items-center gap-2 rounded-xl border border-green-100 bg-green-50 px-4 py-3">
-              <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 8l3.5 3.5 6.5-7"/>
-              </svg>
-              <p className="text-xs font-semibold text-green-700">Funds confirmed! Balance updating...</p>
-            </div>
-          )}
-
-          {/* ── Assets ── */}
+          {/* ── Assets / Wallet card — below action grid ── */}
           <section className="mt-6">
-            <h2 className="mb-3 text-[0.68rem] font-bold uppercase tracking-widest text-gray-400">Assets</h2>
+            <h2 className="mb-3 text-[0.68rem] font-bold uppercase tracking-widest text-gray-400">Wallet</h2>
             <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+              {/* Embedded wallet row */}
+              {walletAddress && (
+                <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3.5">
+                  <div className="flex items-center gap-3">
+                    <img src={getNetworkLogo("base")} alt="Base" className="h-8 w-8 rounded-full shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">Embedded wallet</p>
+                      <p className="text-xs text-gray-400">Base · Privy</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-mono text-xs font-semibold text-gray-600">
+                      {walletAddress.slice(0, 6)}…{walletAddress.slice(-4)}
+                    </span>
+                    <span className="flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-semibold text-green-600">
+                      <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />Active
+                    </span>
+                  </div>
+                </div>
+              )}
               {/* USDC */}
               <div className="flex items-center gap-3 border-b border-gray-100 px-4 py-3.5">
                 <img src={getTokenLogo("USDC")} alt="USDC" className="h-9 w-9 rounded-full shrink-0" />

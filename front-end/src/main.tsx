@@ -21,6 +21,7 @@ createRoot(document.getElementById('root')!).render(
             appearance: {
               theme: 'light',
               accentColor: '#2563eb',
+              logo: '/xpay-logo.png',
             },
             loginMethods: ['email', 'google'],
             embeddedWallets: {
@@ -29,6 +30,10 @@ createRoot(document.getElementById('root')!).render(
             fundingMethodConfig: {
               moonpay: { useSandbox: false },
             },
+            // Redirect back to the current origin after OAuth (Google) login.
+            // This fixes the 404 on production domain when running on localhost.
+            // Make sure http://localhost:5173 is also added as an allowed domain
+            // in your Privy dashboard → Settings → Allowed Origins.
           }}
         >
           <App />

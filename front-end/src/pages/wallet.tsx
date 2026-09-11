@@ -85,27 +85,6 @@ export default function Wallet() {
           </div>
         </div>
 
-        {/* ── Account details ── */}
-        <div className="mb-4">
-          <p className="mb-2 text-[0.68rem] font-bold uppercase tracking-widest text-gray-400">Account</p>
-          <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm divide-y divide-gray-100">
-            <Row icon={<UserIcon />} label="Display name" value={displayName} />
-            <Row icon={<PhoneIcon />} label="Phone" value={profile.phone} copyable />
-            {displayEmail && <Row icon={<EmailIcon />} label="Email" value={displayEmail} truncate />}
-            <div className="flex items-center justify-between px-4 py-3.5">
-              <div className="flex items-center gap-3">
-                <IconBox><RoleIcon /></IconBox>
-                <span className="text-sm text-gray-500">Role</span>
-              </div>
-              <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
-                isAdmin ? "bg-purple-50 text-purple-700 border border-purple-100" : "bg-gray-100 text-gray-600"
-              }`}>
-                {isAdmin ? "Admin" : "User"}
-              </span>
-            </div>
-          </div>
-        </div>
-
         {/* ── Wallet ── */}
         <div className="mb-4">
           <p className="mb-2 text-[0.68rem] font-bold uppercase tracking-widest text-gray-400">Wallet</p>
@@ -144,6 +123,27 @@ export default function Wallet() {
                 <p className="text-sm text-gray-500">No wallet yet. Send or receive funds to create one.</p>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* ── Account details ── */}
+        <div className="mb-4">
+          <p className="mb-2 text-[0.68rem] font-bold uppercase tracking-widest text-gray-400">Account</p>
+          <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm divide-y divide-gray-100">
+            <Row icon={<UserIcon />} label="Display name" value={displayName} />
+            <Row icon={<PhoneIcon />} label="Phone" value={profile.phone} copyable />
+            {displayEmail && <Row icon={<EmailIcon />} label="Email" value={displayEmail} truncate />}
+            <div className="flex items-center justify-between px-4 py-3.5">
+              <div className="flex items-center gap-3">
+                <IconBox><RoleIcon /></IconBox>
+                <span className="text-sm text-gray-500">Role</span>
+              </div>
+              <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                isAdmin ? "bg-purple-50 text-purple-700 border border-purple-100" : "bg-gray-100 text-gray-600"
+              }`}>
+                {isAdmin ? "Admin" : "User"}
+              </span>
+            </div>
           </div>
         </div>
 

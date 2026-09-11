@@ -51,6 +51,7 @@ type Step =
   | "xpay_lookup"
   | "bank_account"
   | "bank_confirm_recipient"
+  | "wallet_address"
   | "amount"
   | "review"
   | "pin"
@@ -113,6 +114,10 @@ export default function Send() {
   const [verifiedAccount, setVerifiedAccount] =
     useState<(BankResolveResult & { success: true }) | null>(null)
   const bankDropdownRef = useRef<HTMLDivElement>(null)
+
+  // ── wallet address ──
+  const [walletAddressInput, setWalletAddressInput] = useState("")
+  const [walletAddressError, setWalletAddressError] = useState<string | null>(null)
 
   // ── amount ──
   // User enters NGN; USDC amount is derived from the quote
@@ -263,8 +268,25 @@ export default function Send() {
 
   // ─── XPay lookup ─────────────────────────────────────────────────────────
   async function lookupXpay(value: string) {
-    const trimmed = value.trim()
+    let trimmed = value.trim()
     if (!trimmed || resolving) return
+
+    // Normalise Nigerian phone numbers entered without country code:
+    //   08012345678  → +2348012345678
+    //   8012345678   → +2348012345678
+    //   2348012345678 → +2348012345678
+    // Handles with @/. suffix are passed through unchanged.
+    if (/^\d/.test(trimmed)) {
+      const digits = trimmed.replace(/\D/g, "")
+      if (digits.startsWith("0") && digits.length === 11) {
+        trimmed = `+234${digits.slice(1)}`
+      } else if (digits.startsWith("234") && digits.length === 13) {
+        trimmed = `+${digits}`
+      } else if (digits.length === 10) {
+        trimmed = `+234${digits}`
+      }
+    }
+
     setResolving(true)
     setLookupError(null)
     try {
@@ -273,7 +295,7 @@ export default function Send() {
         setLookupError(
           result.reason === "not_found"
             ? "Nobody on XPay with that handle or number."
-            : "Enter an XPay handle like chidi.xpay, or a phone number.",
+            : "Enter a phone number (e.g. 08012345678) or XPay handle.",
         )
         return
       }
@@ -1132,6 +1154,91 @@ export default function Send() {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
+  // WALLET ADDRESS
+  // ══════════════════════════════════════════════════════════════════════════
+  if (step === "wallet_address") {
+    const isValidAddress = /^0x[0-9a-fA-F]{40}$/.test(walletAddressInput.trim())
+
+    return (
+      <Screen
+        back
+        onBack={() => {
+          setStep("recipient_mode")
+          setWalletAddressInput("")
+          setWalletAddressError(null)
+        }}
+      >
+        <form
+          onSubmit={e => {
+            e.preventDefault()
+            const addr = walletAddressInput.trim()
+            if (!isValidAddress) {
+              setWalletAddressError("Enter a valid Base / EVM wallet address (0x…)")
+              return
+            }
+            // Use xpayRecipient slot with a synthetic entry so the amount
+            // step can show the recipient chip. We store the address in
+            // displayName and username so both display and lookup work.
+            setXpayRecipient({ username: addr, displayName: addr.slice(0, 6) + "…" + addr.slice(-4) })
+            setWalletAddressError(null)
+            setStep("amount")
+          }}
+          className="flex flex-1 flex-col pt-4 pb-10"
+        >
+          <Title sub="Send USDC on Base to any wallet address.">
+            Wallet address
+          </Title>
+
+          <div className="mt-6">
+            <label className="mb-1.5 block text-sm font-semibold text-gray-700">
+              Recipient address
+            </label>
+            <input
+              value={walletAddressInput}
+              onChange={e => {
+                setWalletAddressInput(e.target.value)
+                setWalletAddressError(null)
+              }}
+              placeholder="0x..."
+              autoFocus
+              autoComplete="off"
+              spellCheck={false}
+              className={[
+                "h-12 w-full rounded-xl border bg-white px-4 font-mono text-sm text-gray-900 outline-none transition",
+                "placeholder:text-gray-400 placeholder:font-sans",
+                walletAddressError
+                  ? "border-red-400 ring-2 ring-red-100"
+                  : "border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100",
+              ].join(" ")}
+            />
+            {walletAddressError && (
+              <p className="mt-1.5 text-xs text-red-600">{walletAddressError}</p>
+            )}
+            {!walletAddressError && walletAddressInput && (
+              <p className={`mt-1.5 text-xs ${isValidAddress ? "text-green-600" : "text-gray-400"}`}>
+                {isValidAddress ? "✓ Valid address" : "Must be a 42-character hex address starting with 0x"}
+              </p>
+            )}
+          </div>
+
+          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+            <p className="text-xs leading-relaxed text-amber-700">
+              <strong>Base network only.</strong> Only send to addresses that support USDC on Base.
+              Sending to the wrong network will result in permanent loss.
+            </p>
+          </div>
+
+          <div className="mt-auto pt-8">
+            <Button full type="submit" size="lg" disabled={!walletAddressInput.trim()}>
+              Continue
+            </Button>
+          </div>
+        </form>
+      </Screen>
+    )
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
   // XPAY LOOKUP
   // ══════════════════════════════════════════════════════════════════════════
   if (step === "xpay_lookup") {
@@ -1156,11 +1263,13 @@ export default function Send() {
             <Field
               value={query}
               onChange={e => { setQuery(e.target.value); setLookupError(null) }}
-              placeholder="chidi.xpay or 0803 123 4567"
+              placeholder="08012345678 or @username"
               autoFocus
               autoCapitalize="none"
+              inputMode="text"
               spellCheck={false}
               error={lookupError}
+              hint="Enter a phone number (e.g. 08012345678) or XPay handle"
               suffix={resolving ? <Spinner className="h-4 w-4 text-gray-400" /> : null}
             />
           </div>
@@ -1223,53 +1332,72 @@ export default function Send() {
         <Title sub="Choose how you want to send.">Send money</Title>
 
         <div className="mt-8 space-y-3">
-          {(
-            [
-              {
-                key: "xpay",
-                onClick: () => setStep("xpay_lookup"),
-                icon: (
-                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
-                    stroke="#2563eb" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                  </svg>
-                ),
-                label: "XPay user",
-                sub: "By username or phone number",
-              },
-              {
-                key: "bank",
-                onClick: () => setStep("bank_account"),
-                icon: (
-                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
-                    stroke="#2563eb" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"/>
-                  </svg>
-                ),
-                label: "Nigerian bank account",
-                sub: "Any verified bank — no XPay needed",
-              },
-            ] as const
-          ).map(item => (
-            <button
-              key={item.key}
-              type="button"
-              onClick={item.onClick}
-              className="flex w-full items-center gap-4 rounded-2xl border border-gray-100 bg-white p-5 text-left shadow-sm transition hover:border-blue-200 hover:bg-blue-50 active:scale-[.99]"
-            >
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50">
-                {item.icon}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="font-semibold text-gray-900">{item.label}</p>
-                <p className="mt-0.5 text-sm text-gray-500">{item.sub}</p>
-              </div>
-              <svg viewBox="0 0 20 20" width="16" height="16" fill="none"
-                stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M8 4l6 6-6 6"/>
+          {/* XPay user */}
+          <button
+            type="button"
+            onClick={() => setStep("xpay_lookup")}
+            className="flex w-full items-center gap-4 rounded-2xl border border-gray-100 bg-white p-5 text-left shadow-sm transition hover:border-blue-200 hover:bg-blue-50 active:scale-[.99]"
+          >
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
+                stroke="#2563eb" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
               </svg>
-            </button>
-          ))}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-gray-900">XPay user</p>
+              <p className="mt-0.5 text-sm text-gray-500">By username or phone number</p>
+            </div>
+            <svg viewBox="0 0 20 20" width="16" height="16" fill="none"
+              stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M8 4l6 6-6 6"/>
+            </svg>
+          </button>
+
+          {/* Nigerian bank */}
+          <button
+            type="button"
+            onClick={() => setStep("bank_account")}
+            className="flex w-full items-center gap-4 rounded-2xl border border-gray-100 bg-white p-5 text-left shadow-sm transition hover:border-blue-200 hover:bg-blue-50 active:scale-[.99]"
+          >
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
+                stroke="#2563eb" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"/>
+              </svg>
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-gray-900">Nigerian bank account</p>
+              <p className="mt-0.5 text-sm text-gray-500">Any verified bank — no XPay needed</p>
+            </div>
+            <svg viewBox="0 0 20 20" width="16" height="16" fill="none"
+              stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M8 4l6 6-6 6"/>
+            </svg>
+          </button>
+
+          {/* Crypto wallet address */}
+          <button
+            type="button"
+            onClick={() => setStep("wallet_address")}
+            className="flex w-full items-center gap-4 rounded-2xl border border-gray-100 bg-white p-5 text-left shadow-sm transition hover:border-purple-200 hover:bg-purple-50 active:scale-[.99]"
+          >
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-purple-50">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
+                stroke="#7c3aed" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="7" width="20" height="14" rx="2"/>
+                <path d="M16 3H8M16 11h.01"/>
+              </svg>
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-gray-900">Crypto wallet address</p>
+              <p className="mt-0.5 text-sm text-gray-500">Send USDC to any Base address</p>
+            </div>
+            <svg viewBox="0 0 20 20" width="16" height="16" fill="none"
+              stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M8 4l6 6-6 6"/>
+            </svg>
+          </button>
         </div>
       </div>
     </Screen>
