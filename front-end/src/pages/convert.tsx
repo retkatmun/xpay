@@ -105,23 +105,41 @@ export default function Convert() {
   useEffect(() => {
     void getBalance().then(b => setBalance(BigInt(b.usd))).catch(() => null)
     void getBanks().then(setBanks).catch(() => null)
-
-    // Fetch live rate on mount
-    setRateLoading(true)
-    setRateError(false)
-    getQuote(1_000_000n)
-      .then(q => { setLiveRate(q.fxRate); setRateLoading(false) })
-      .catch(() => { setRateError(true); setRateLoading(false) })
+    void fetchRate()
   }, [])
 
   // ── retry rate fetch ──
-  function retryRate() {
+  async function fetchRate() {
     setRateLoading(true)
     setRateError(false)
-    getQuote(1_000_000n)
-      .then(q => { setLiveRate(q.fxRate); setRateLoading(false) })
-      .catch(() => { setRateError(true); setRateLoading(false) })
+    try {
+      // 1st choice: backend (has spread/fee baked in)
+      const q = await getQuote(1_000_000n)
+      setLiveRate(q.fxRate)
+      setRateLoading(false)
+      return
+    } catch {
+      // backend unavailable — fall through
+    }
+    try {
+      // 2nd choice: public exchange rate API (no key required)
+      const res = await fetch("https://api.exchangerate-api.com/v4/latest/USD")
+      if (!res.ok) throw new Error("rate api error")
+      const data = await res.json() as { rates: Record<string, number> }
+      const ngn = data.rates["NGN"]
+      if (ngn && ngn > 0) {
+        setLiveRate(Math.round(ngn))
+        setRateLoading(false)
+        return
+      }
+    } catch {
+      // both sources failed
+    }
+    setRateError(true)
+    setRateLoading(false)
   }
+
+  function retryRate() { void fetchRate() }
 
   // ── poll done tx ──
   useEffect(() => {
