@@ -60,19 +60,23 @@ export default function Receive() {
           </div>
         </div>
 
-        {/* ── Phone number ── */}
+        {/* ── Phone address ── */}
         <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
           <div className="flex items-center justify-between px-5 py-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Phone address</p>
-              <p className="mt-1 text-lg font-bold tabular-nums text-gray-900">{profile.phone}</p>
+              <p className="mt-1 text-2xl font-bold tabular-nums tracking-tight text-gray-900">
+                {profile.account_number ?? profile.phone.replace(/^\+\d{1,4}/, "")}
+              </p>
             </div>
-            <CopyButton value={profile.phone} label="Copy phone" />
+            <CopyButton
+              value={profile.account_number ?? profile.phone.replace(/^\+\d{1,4}/, "")}
+              label="Copy"
+            />
           </div>
           <div className="border-t border-blue-50 bg-blue-50 px-5 py-3">
             <p className="text-xs leading-relaxed text-blue-700">
-              <strong>How to receive with your phone:</strong> Anyone can send to you using your phone number.
-              Just share your number without the country code — for example, if your number is <strong>+234 707 166 3687</strong>, your receive address is <strong>7071663687</strong>.
+              Share this 10-digit number. Anyone on XPay can send you money using it — no country code needed.
             </p>
           </div>
         </div>
