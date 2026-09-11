@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { PrivyProvider } from '@privy-io/react-auth'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { mainnet, sepolia, base, baseSepolia } from 'viem/chains'
 import './index.css'
 import App from './App'
 
@@ -30,10 +31,9 @@ createRoot(document.getElementById('root')!).render(
             fundingMethodConfig: {
               moonpay: { useSandbox: false },
             },
-            // Redirect back to the current origin after OAuth (Google) login.
-            // This fixes the 404 on production domain when running on localhost.
-            // Make sure http://localhost:5173 is also added as an allowed domain
-            // in your Privy dashboard → Settings → Allowed Origins.
+            // All supported networks
+            defaultChain: base,
+            supportedChains: [mainnet, sepolia, base, baseSepolia],
           }}
         >
           <App />

@@ -1,37 +1,35 @@
-import { base } from 'viem/chains'
+import { mainnet, sepolia, base, baseSepolia } from 'viem/chains'
+
+export const SUPPORTED_CHAINS = [mainnet, sepolia, base, baseSepolia]
 
 export const privyConfig = {
   appId: import.meta.env.VITE_PRIVY_APP_ID || '',
   config: {
-    // Appearance
     appearance: {
       theme: 'light',
       accentColor: '#2563eb',
-      logo: 'https://your-domain.com/logo.png', // Update with your logo
+      logo: '/xpay-logo.png',
       showWalletLoginFirst: false,
     },
-    // Login methods
-    loginMethods: ['email', 'google', 'wallet'],
-    // Embedded wallets
+    loginMethods: ['email', 'google'],
     embeddedWallets: {
-      createOnLogin: 'users-without-wallets',
+      createOnLogin: 'off',
       requireUserPasswordOnCreate: false,
     },
-    // Default chain
     defaultChain: base,
-    supportedChains: [base],
-    // Wallet configuration
+    supportedChains: SUPPORTED_CHAINS,
     fundingMethodConfig: {
       moonpay: {
-        useSandbox: true, // Set to false in production
+        useSandbox: false,
       },
     },
   },
 }
 
-export const wagmiConfig = {
-  chains: [base],
-  transports: {
-    [base.id]: 'https://mainnet.base.org',
-  },
+// Public RPC transports for each supported chain
+export const chainTransports: Record<number, string> = {
+  [mainnet.id]:    'https://eth.llamarpc.com',
+  [sepolia.id]:    'https://rpc.sepolia.org',
+  [base.id]:       'https://mainnet.base.org',
+  [baseSepolia.id]:'https://sepolia.base.org',
 }
