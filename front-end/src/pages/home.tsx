@@ -8,8 +8,9 @@ import { formatUSD } from "@/lib/money";
 import { dayLabel } from "@/lib/time";
 import { statusLabel, statusColor } from "@/lib/txStatus";
 import { getTokenLogo, getNetworkLogo } from "@/assets/logos";
-import type { Transaction, Balance } from "@/lib/types";
-import { getBalance, getTransactions } from "@/lib/api";
+import type { Transaction } from "@/lib/types";
+import { getTransactions } from "@/lib/api";
+import { useUsdcBalance } from "@/lib/useUsdcBalance";
 import xpayLogo from "@/assets/xpay_logo.png";
 
 // ─── Eye icons ────────────────────────────────────────────────────────────────
@@ -80,7 +81,7 @@ export default function Home() {
   const navigate = useNavigate();
   const { authUser, profile, loading, walletAddress, isAdmin } = useSession();
   const { fundWallet } = useFundWallet();
-  const [balance, setBalance] = useState<Balance | null>(null);
+  const { balance: usdcBalance, loading: balanceLoading, refresh: refreshBalance } = useUsdcBalance();
   const [transactions, setTransactions] = useState<Transaction[] | null>(null);
   const [fundLoading, setFundLoading] = useState(false);
   const [fundSuccess, setFundSuccess] = useState(false);
@@ -93,13 +94,12 @@ export default function Home() {
 
   useEffect(() => {
     if (!profile) return;
-    void getBalance().then(setBalance).catch(() => null);
     void getTransactions().then(setTransactions).catch(() => setTransactions([]));
   }, [profile]);
 
   if (loading || !authUser || !profile) return <div className="min-h-dvh bg-white" />;
 
-  const amount = balance ? BigInt(balance.usd) : null;
+  const amount = usdcBalance;
   const recent = transactions?.slice(0, 5) ?? [];
   const displayName = profile.display_name || profile.username;
 
@@ -115,9 +115,6 @@ export default function Home() {
     for (const [label, items] of map) groups.push({ label, items });
   }
 
-  // Fund wallet via MoonPay card onramp (Privy useFundWallet)
-  // Note: Stripe requires @privy-io/react-auth v3+ which needs Solana peer deps
-  // To enable Stripe: upgrade privy and install @solana/kit, @solana-program/* peer deps
   const handleFund = async () => {
     const addr = walletAddress || profile.wallet_address;
     if (!addr) { navigate("/receive"); return; }
@@ -127,7 +124,7 @@ export default function Home() {
       await fundWallet(addr, { chain: { id: 8453 }, amount: "50" });
       setFundSuccess(true);
       setTimeout(() => {
-        void getBalance().then(setBalance).catch(() => null);
+        void refreshBalance();
         setFundSuccess(false);
       }, 3000);
     } catch {
@@ -136,8 +133,6 @@ export default function Home() {
       setFundLoading(false);
     }
   };
-
-  // Request funds — copy a pre-filled link (used by receive page)
 
   return (
     <div className="min-h-dvh bg-white">
@@ -188,9 +183,11 @@ export default function Home() {
                 <p className="mt-1.5 font-[var(--font-instrument-serif)] text-[2.8rem] leading-none tracking-[-0.03em] text-white tabular-nums">
                   {!balanceVisible
                     ? <span className="tracking-widest">••••••</span>
-                    : amount === null
-                      ? <span className="opacity-30">$0.00</span>
-                      : formatUSD(amount)}
+                    : balanceLoading
+                      ? <span className="inline-block h-9 w-32 animate-pulse rounded-xl bg-white/20 align-middle" />
+                      : amount === null
+                        ? <span className="opacity-30">$0.00</span>
+                        : formatUSD(amount)}
                 </p>
                 <div className="mt-3 flex items-center gap-1.5">
                   <img src={getTokenLogo("USDC")} alt="USDC" className="h-4 w-4 rounded-full" />
@@ -324,9 +321,9 @@ export default function Home() {
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-semibold tabular-nums text-gray-900">
-                    {amount === null ? (
+                    {balanceLoading ? (
                       <span className="h-3 w-14 inline-block animate-pulse rounded bg-gray-100" />
-                    ) : formatUSD(amount)}
+                    ) : amount !== null ? formatUSD(amount) : "$0.00"}
                   </p>
                   <p className="text-[10px] text-gray-400 uppercase tracking-wider">stablecoin</p>
                 </div>

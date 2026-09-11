@@ -14,10 +14,11 @@ import { Badge } from "@/components/Badge"
 import { Spinner } from "@/components/icons"
 import {
   getBanks, resolveBankAccount, getQuote, getTransaction,
-  sendToBank, getBalance,
+  sendToBank,
 } from "@/lib/api"
 import { formatUSD } from "@/lib/money"
 import { useSession } from "@/lib/session"
+import { useUsdcBalance } from "@/lib/useUsdcBalance"
 import { isTerminal, statusLabel } from "@/lib/txStatus"
 import { getTokenLogo } from "@/assets/logos"
 import type { Bank, BankResolveResult, Quote, Transaction } from "@/lib/types"
@@ -52,9 +53,9 @@ function SummaryRow({ label, value, highlight }: { label: string; value: React.R
 export default function Convert() {
   const navigate = useNavigate()
   const { authUser, loading } = useSession()
+  const { balance, refresh: refreshBalance } = useUsdcBalance()
 
   const [step, setStep] = useState<Step>("amount")
-  const [balance, setBalance] = useState<bigint | null>(null)
   const [liveRate, setLiveRate] = useState<number | null>(null)
   const [rateLoading, setRateLoading] = useState(true)
   const [rateError, setRateError] = useState(false)
@@ -103,7 +104,6 @@ export default function Convert() {
 
   // ── bootstrap ──
   useEffect(() => {
-    void getBalance().then(b => setBalance(BigInt(b.usd))).catch(() => null)
     void getBanks().then(setBanks).catch(() => null)
     void fetchRate()
   }, [])
@@ -194,16 +194,18 @@ export default function Convert() {
 
       const rate = liveRate
       if (rate && rate > 0) {
-        // Compute NGN: (usdcUnits / 1_000_000) * rate
+        // Compute NGN gross, then deduct 0.5% platform fee
         const ngnGross = (usdcUnits * BigInt(Math.round(rate))) / 1_000_000n
+        const feeNgn = ngnGross / 200n              // 0.5% = divide by 200
+        const ngnNet = ngnGross - feeNgn
         const syntheticQuote: Quote = {
           id: `local_${Date.now()}`,
           asset: "USDC",
           amount: usdcUnits.toString(),
           fxRate: rate,
-          feeNgn: "0",
+          feeNgn: feeNgn.toString(),
           ngnAmountGross: ngnGross.toString(),
-          ngnAmount: ngnGross.toString(),
+          ngnAmount: ngnNet.toString(),
           expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
         }
         setQuote(syntheticQuote)
@@ -318,18 +320,20 @@ export default function Convert() {
         // backend unavailable — fall through to synthetic quote
       }
 
-      // Build synthetic quote from live rate
+      // Build synthetic quote from live rate with 0.5% platform fee
       const rate = liveRate
       if (rate && rate > 0) {
         const ngnGross = (usdcUnits * BigInt(Math.round(rate))) / 1_000_000n
+        const feeNgn = ngnGross / 200n              // 0.5% = divide by 200
+        const ngnNet = ngnGross - feeNgn
         const syntheticQuote: Quote = {
           id: `local_${Date.now()}`,
           asset: "USDC",
           amount: usdcUnits.toString(),
           fxRate: rate,
-          feeNgn: "0",
+          feeNgn: feeNgn.toString(),
           ngnAmountGross: ngnGross.toString(),
-          ngnAmount: ngnGross.toString(),
+          ngnAmount: ngnNet.toString(),
           expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
         }
         setQuote(syntheticQuote)
@@ -383,6 +387,7 @@ export default function Convert() {
         setPinError(friendlyError(result.reason)); setPin(""); setStep("pin"); return
       }
       setReceipt(result.transaction); setStep("done")
+      void refreshBalance()  // refresh on-chain balance after successful conversion
     } catch {
       setPinError("Network error. Please try again."); setPin(""); setStep("pin")
     } finally {
