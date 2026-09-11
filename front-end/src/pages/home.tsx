@@ -313,7 +313,7 @@ export default function Home() {
                 </div>
               )}
               {/* USDC */}
-              <div className="flex items-center gap-3 border-b border-gray-100 px-4 py-3.5">
+              <div className="flex items-center gap-3 px-4 py-3.5">
                 <img src={getTokenLogo("USDC")} alt="USDC" className="h-9 w-9 rounded-full shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-900">USDC</p>
@@ -325,18 +325,6 @@ export default function Home() {
                       <span className="h-3 w-14 inline-block animate-pulse rounded bg-gray-100" />
                     ) : amount !== null ? formatUSD(amount) : "$0.00"}
                   </p>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">stablecoin</p>
-                </div>
-              </div>
-              {/* USDT */}
-              <div className="flex items-center gap-3 px-4 py-3.5">
-                <img src={getTokenLogo("USDT")} alt="USDT" className="h-9 w-9 rounded-full shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900">USDT</p>
-                  <p className="text-xs text-gray-400">Tether · Base</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-semibold tabular-nums text-gray-900">$0.00</p>
                   <p className="text-[10px] text-gray-400 uppercase tracking-wider">stablecoin</p>
                 </div>
               </div>
