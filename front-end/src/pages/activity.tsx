@@ -8,6 +8,8 @@ import { dayLabel } from '@/lib/time'
 import { statusLabel, statusColor } from '@/lib/txStatus'
 import { formatUSD } from '@/lib/money'
 import { Avatar } from '@/components/Avatar'
+import { useNetwork } from '@/lib/NetworkContext'
+import { NetworkSwitcher } from '@/components/NetworkSwitcher'
 import type { Transaction } from '@/lib/types'
 
 function TxRow({ tx, last }: { tx: Transaction; last: boolean }) {
@@ -53,6 +55,7 @@ function TxRow({ tx, last }: { tx: Transaction; last: boolean }) {
 export default function Activity() {
   const navigate = useNavigate()
   const { authUser, profile, loading } = useSession()
+  const { activeChain } = useNetwork()
   const [transactions, setTransactions] = useState<Transaction[] | null>(null)
 
   useEffect(() => {
@@ -60,9 +63,12 @@ export default function Activity() {
     if (!loading && authUser && !profile) navigate('/onboarding', { replace: true })
   }, [loading, authUser, profile, navigate])
 
+  // Re-fetch whenever the active network changes
   useEffect(() => {
-    if (profile) void getTransactions().then(setTransactions).catch(() => setTransactions([]))
-  }, [profile])
+    if (!profile) return
+    setTransactions(null)
+    void getTransactions(authUser?.id).then(setTransactions).catch(() => setTransactions([]))
+  }, [profile, activeChain.id])
 
   const groups = useMemo(() => {
     if (!transactions) return []
@@ -77,7 +83,7 @@ export default function Activity() {
   if (!authUser || !profile) return <div className="min-h-dvh bg-white" />
 
   return (
-    <Screen back onBack={() => navigate('/home')}>
+    <Screen back onBack={() => navigate('/home')} action={<NetworkSwitcher />}>
       <div className="flex-1 pt-4 pb-12">
         <Title>Transactions</Title>
 

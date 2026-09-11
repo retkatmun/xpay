@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useSession } from "@/lib/session";
 import { useFundWallet } from "@privy-io/react-auth";
@@ -7,11 +7,30 @@ import { CopyButton } from "@/components/CopyButton";
 import { formatUSD } from "@/lib/money";
 import { dayLabel } from "@/lib/time";
 import { statusLabel, statusColor } from "@/lib/txStatus";
-import { getTokenLogo, getNetworkLogo } from "@/assets/logos";
+import { getTokenLogo } from "@/assets/logos";
 import type { Transaction } from "@/lib/types";
 import { getTransactions } from "@/lib/api";
-import { useUsdcBalance } from "@/lib/useUsdcBalance";
+import { useWalletBalances } from "@/lib/useUsdcBalance";
+import { useOnChainTxs, type OnChainTx } from "@/lib/useOnChainTxs";
+import { useNetwork } from "@/lib/NetworkContext";
+import { NetworkSwitcher } from "@/components/NetworkSwitcher";
 import xpayLogo from "@/assets/xpay_logo.png";
+
+const BALANCE_VISIBLE_KEY = "xpay_balance_visible"
+
+function readBalanceVisible(): boolean {
+  try {
+    const raw = localStorage.getItem(BALANCE_VISIBLE_KEY)
+    if (raw !== null) return raw !== "false"
+  } catch { /* ignore */ }
+  return true
+}
+
+/** Format wei (18 dp) as a human ETH string e.g. "0.05 ETH" */
+function formatEth(wei: bigint): string {
+  const eth = Number(wei) / 1e18
+  return eth.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 6 }) + " ETH"
+}
 
 // ─── Eye icons ────────────────────────────────────────────────────────────────
 function EyeIcon() {
@@ -76,44 +95,157 @@ function TxRow({ tx, last }: { tx: Transaction; last: boolean }) {
   );
 }
 
+// ─── On-chain tx row (ETH / USDC deposits from outside XPay) ─────────────────
+function OnChainTxRow({ tx, last }: { tx: OnChainTx; last: boolean }) {
+  const isIn = tx.type === "eth_in" || tx.type === "usdc_in"
+
+  const valueLabel = tx.asset === "ETH"
+    ? `${(Number(tx.value) / 1e18).toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 6 })} ETH`
+    : formatUSD(tx.value)
+
+  return (
+    <a
+      href={tx.explorerUrl}
+      target="_blank"
+      rel="noreferrer"
+      className={[
+        "flex w-full items-center gap-3 px-4 py-3.5 text-left transition hover:bg-gray-50 active:bg-gray-100",
+        !last ? "border-b border-gray-100" : "",
+      ].join(" ")}
+    >
+      <div className="relative shrink-0">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-50">
+          {tx.asset === "ETH" ? (
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none">
+              <path d="M12 2L4 12l8 5 8-5L12 2z" fill="#627EEA" opacity="0.9"/>
+              <path d="M4 12l8 10 8-10" fill="#627EEA" opacity="0.5"/>
+            </svg>
+          ) : (
+            <img src={getTokenLogo("USDC")} alt="USDC" className="h-6 w-6 rounded-full" />
+          )}
+        </div>
+        <span className={`absolute -right-0.5 -bottom-0.5 flex h-[14px] w-[14px] items-center justify-center rounded-full text-[8px] font-bold text-white ${isIn ? "bg-blue-500" : "bg-gray-400"}`}>
+          {isIn ? "↓" : "↑"}
+        </span>
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-gray-900">
+          {isIn ? `Received ${tx.asset}` : `Sent ${tx.asset}`}
+        </p>
+        <p className="text-xs text-gray-400">{tx.counterpart}</p>
+      </div>
+      <div className="shrink-0 text-right">
+        <p className={`text-sm font-semibold tabular-nums ${isIn ? "text-blue-600" : "text-gray-800"}`}>
+          {isIn ? "+" : "−"}{valueLabel}
+        </p>
+        <p className="text-[10px] text-gray-400">on-chain</p>
+      </div>
+    </a>
+  )
+}
+
 // ─── Main home ────────────────────────────────────────────────────────────────
 export default function Home() {
   const navigate = useNavigate();
   const { authUser, profile, loading, walletAddress, isAdmin } = useSession();
   const { fundWallet } = useFundWallet();
-  const { balance: usdcBalance, loading: balanceLoading, refresh: refreshBalance } = useUsdcBalance();
+  const { activeChain } = useNetwork();
+  const { usdc: usdcBalance, eth: ethBalance, loading: balanceLoading, refresh: refreshBalance } = useWalletBalances(activeChain);
   const [transactions, setTransactions] = useState<Transaction[] | null>(null);
+  const [txLoading, setTxLoading] = useState(false);
   const [fundLoading, setFundLoading] = useState(false);
   const [fundSuccess, setFundSuccess] = useState(false);
-  const [balanceVisible, setBalanceVisible] = useState(true);
+  const [balanceVisible, setBalanceVisible] = useState(readBalanceVisible);
+  const [refreshing, setRefreshing] = useState(false);
+  const lastChainId = useRef<number>(activeChain.id);
+
+  // on-chain txs (ETH + USDC from explorer)
+  const effectiveWallet = walletAddress || profile?.wallet_address || null;
+  const { txs: onChainTxs, loading: onChainLoading, refresh: refreshOnChain } = useOnChainTxs(effectiveWallet, activeChain);
+
+  const toggleBalanceVisible = () => {
+    setBalanceVisible(v => {
+      const next = !v
+      try { localStorage.setItem(BALANCE_VISIBLE_KEY, String(next)) } catch { /* ignore */ }
+      return next
+    })
+  }
+
+  // ── fetch XPay transactions ───────────────────────────────────────────────
+  const fetchTx = useCallback(async (silent = false) => {
+    if (!profile) return;
+    if (!silent) setTransactions(null);
+    setTxLoading(true);
+    try {
+      const txs = await getTransactions(authUser?.id);
+      setTransactions(txs);
+    } catch {
+      setTransactions([]);
+    } finally {
+      setTxLoading(false);
+    }
+  }, [profile, authUser?.id]);
+
+  // ── manual refresh (balance + transactions) ───────────────────────────────
+  const handleRefresh = useCallback(async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    await Promise.all([refreshBalance(), fetchTx(true), refreshOnChain()]);
+    setRefreshing(false);
+  }, [refreshing, refreshBalance, fetchTx, refreshOnChain]);
 
   useEffect(() => {
     if (!loading && !authUser) navigate("/login", { replace: true });
     if (!loading && authUser && !profile) navigate("/onboarding", { replace: true });
   }, [loading, authUser, profile, navigate]);
 
+  // ── initial load ──────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (profile) void fetchTx();
+  }, [profile]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── silent refresh on network switch ─────────────────────────────────────
   useEffect(() => {
     if (!profile) return;
-    void getTransactions().then(setTransactions).catch(() => setTransactions([]));
-  }, [profile]);
+    if (activeChain.id === lastChainId.current) return; // skip on mount
+    lastChainId.current = activeChain.id;
+    // balance clears itself inside useUsdcBalance, just re-fetch transactions
+    void fetchTx(true);
+  }, [activeChain.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading || !authUser || !profile) return <div className="min-h-dvh bg-white" />;
 
-  const amount = usdcBalance;
-  const recent = transactions?.slice(0, 5) ?? [];
+  const usdcAmount = usdcBalance;
+  const ethAmount = ethBalance;
   const displayName = profile.display_name || profile.username;
 
-  // Group transactions by date
-  const groups: { label: string; items: Transaction[] }[] = [];
-  if (transactions) {
-    const map = new Map<string, Transaction[]>();
-    for (const t of recent) {
-      const k = dayLabel(t.createdAt);
-      const b = map.get(k);
-      if (b) b.push(t); else map.set(k, [t]);
-    }
-    for (const [label, items] of map) groups.push({ label, items });
+  // ── Merge XPay txs + on-chain txs into a unified feed ────────────────────
+  type FeedItem =
+    | { kind: "xpay"; tx: Transaction; ts: number }
+    | { kind: "onchain"; tx: OnChainTx; ts: number }
+
+  const feedItems: FeedItem[] = [
+    ...(transactions ?? []).map(tx => ({
+      kind: "xpay" as const,
+      tx,
+      ts: new Date(tx.createdAt).getTime(),
+    })),
+    ...onChainTxs.map(tx => ({
+      kind: "onchain" as const,
+      tx,
+      ts: tx.timestamp * 1000,
+    })),
+  ].sort((a, b) => b.ts - a.ts).slice(0, 10)
+
+  // Group by date label
+  const groups: { label: string; items: FeedItem[] }[] = []
+  const groupMap = new Map<string, FeedItem[]>()
+  for (const item of feedItems) {
+    const k = dayLabel(new Date(item.ts).toISOString())
+    const arr = groupMap.get(k)
+    if (arr) arr.push(item); else groupMap.set(k, [item])
   }
+  for (const [label, items] of groupMap) groups.push({ label, items })
 
   const handleFund = async () => {
     const addr = walletAddress || profile.wallet_address;
@@ -121,7 +253,7 @@ export default function Home() {
     setFundLoading(true);
     setFundSuccess(false);
     try {
-      await fundWallet(addr, { chain: { id: 8453 }, amount: "50" });
+      await fundWallet(addr, { chain: { id: activeChain.id }, amount: "50" });
       setFundSuccess(true);
       setTimeout(() => {
         void refreshBalance();
@@ -141,12 +273,9 @@ export default function Home() {
         <div className="mx-auto flex h-14 max-w-[26.25rem] items-center justify-between px-5">
           {/* Logo */}
           <img src={xpayLogo} alt="XPay" className="h-7 w-auto object-contain" />
-          {/* Right: network badge + avatar */}
+          {/* Right: network switcher + avatar */}
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1">
-              <img src={getNetworkLogo("base")} alt="Base" className="h-3.5 w-3.5 rounded-full" />
-              <span className="text-[10px] font-bold text-blue-600">Base</span>
-            </div>
+            <NetworkSwitcher />
             <Link
               to="/wallet"
               className="flex items-center gap-2 rounded-full border border-gray-200 bg-white py-1 pr-1 pl-3 shadow-sm transition hover:border-gray-300"
@@ -170,28 +299,71 @@ export default function Home() {
                 style={{ backgroundImage: "radial-gradient(#fff 1px, transparent 1px)", backgroundSize: "20px 20px" }}
               />
               <div className="relative">
+                {/* header row */}
                 <div className="flex items-center justify-between">
                   <p className="text-[0.68rem] font-bold uppercase tracking-widest text-blue-200">Total balance</p>
-                  <button
-                    onClick={() => setBalanceVisible(v => !v)}
-                    className="flex items-center justify-center rounded-full p-1 text-blue-200 transition hover:text-white active:scale-90"
-                    aria-label={balanceVisible ? "Hide balance" : "Show balance"}
-                  >
-                    {balanceVisible ? <EyeOffIcon /> : <EyeIcon />}
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={handleRefresh}
+                      disabled={refreshing || balanceLoading}
+                      aria-label="Refresh balance and transactions"
+                      className="flex items-center justify-center rounded-full p-1 text-blue-200 transition hover:text-white active:scale-90 disabled:opacity-50"
+                    >
+                      <svg
+                        viewBox="0 0 20 20" width="15" height="15" fill="none"
+                        stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                        className={refreshing || balanceLoading ? "animate-spin" : ""}
+                      >
+                        <path d="M4 4a8 8 0 0112 0M16 16a8 8 0 01-12 0"/>
+                        <path d="M2 10a8 8 0 001.5 4.7M18 10a8 8 0 01-1.5 4.7"/>
+                        <path d="M17 6l-1-3-2 2M3 14l1 3 2-2"/>
+                      </svg>
+                    </button>
+                    <button
+                      onClick={toggleBalanceVisible}
+                      className="flex items-center justify-center rounded-full p-1 text-blue-200 transition hover:text-white active:scale-90"
+                      aria-label={balanceVisible ? "Hide balance" : "Show balance"}
+                    >
+                      {balanceVisible ? <EyeOffIcon /> : <EyeIcon />}
+                    </button>
+                  </div>
                 </div>
+
+                {/* USDC balance — primary */}
                 <p className="mt-1.5 font-[var(--font-instrument-serif)] text-[2.8rem] leading-none tracking-[-0.03em] text-white tabular-nums">
                   {!balanceVisible
                     ? <span className="tracking-widest">••••••</span>
-                    : balanceLoading
+                    : (balanceLoading || refreshing)
                       ? <span className="inline-block h-9 w-32 animate-pulse rounded-xl bg-white/20 align-middle" />
-                      : amount === null
+                      : usdcAmount === null
                         ? <span className="opacity-30">$0.00</span>
-                        : formatUSD(amount)}
+                        : formatUSD(usdcAmount)}
                 </p>
-                <div className="mt-3 flex items-center gap-1.5">
-                  <img src={getTokenLogo("USDC")} alt="USDC" className="h-4 w-4 rounded-full" />
-                  <span className="text-xs font-semibold text-blue-200">USDC on Base</span>
+
+                {/* ETH balance — secondary line */}
+                {!balanceLoading && !refreshing && ethAmount !== null && ethAmount > 0n && (
+                  <p className="mt-1 text-sm font-semibold tabular-nums text-blue-100">
+                    {!balanceVisible
+                      ? "•••• ETH"
+                      : formatEth(ethAmount)}
+                  </p>
+                )}
+
+                {/* footer row */}
+                <div className="mt-3 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <img src={getTokenLogo("USDC")} alt="USDC" className="h-4 w-4 rounded-full" />
+                    <span className="text-xs font-semibold text-blue-200">USDC on {activeChain.name}</span>
+                    {activeChain.isTestnet && (
+                      <span className="rounded-full bg-amber-400/20 px-1.5 py-0.5 text-[9px] font-bold uppercase text-amber-200">testnet</span>
+                    )}
+                  </div>
+                  {(refreshing || txLoading) && (
+                    <span className="flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wide text-blue-200">
+                      <span className="h-1.5 w-1.5 rounded-full bg-blue-200 animate-pulse" />
+                      Updating
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -288,7 +460,7 @@ export default function Home() {
             </button>
           </section>
 
-          {/* ── Assets / Wallet card — below action grid ── */}
+          {/* ── Assets / Wallet card ── */}
           <section className="mt-6">
             <h2 className="mb-3 text-[0.68rem] font-bold uppercase tracking-widest text-gray-400">Wallet</h2>
             <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
@@ -296,10 +468,12 @@ export default function Home() {
               {walletAddress && (
                 <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3.5">
                   <div className="flex items-center gap-3">
-                    <img src={getNetworkLogo("base")} alt="Base" className="h-8 w-8 rounded-full shrink-0" />
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: activeChain.color + "22" }}>
+                      <span className="h-3 w-3 rounded-full" style={{ backgroundColor: activeChain.color }} />
+                    </span>
                     <div>
                       <p className="text-sm font-semibold text-gray-900">Embedded wallet</p>
-                      <p className="text-xs text-gray-400">Base · Privy</p>
+                      <p className="text-xs text-gray-400">{activeChain.name} · Privy</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5">
@@ -312,18 +486,44 @@ export default function Home() {
                   </div>
                 </div>
               )}
-              {/* USDC */}
+
+              {/* ETH row */}
+              <div className="flex items-center gap-3 border-b border-gray-100 px-4 py-3.5">
+                <div className="h-9 w-9 shrink-0 rounded-full bg-gray-100 flex items-center justify-center">
+                  {/* ETH diamond icon */}
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
+                    <path d="M12 2L4 12l8 5 8-5L12 2z" fill={activeChain.color} opacity="0.9"/>
+                    <path d="M4 12l8 10 8-10" fill={activeChain.color} opacity="0.5"/>
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900">ETH</p>
+                  <p className="text-xs text-gray-400">Ether · {activeChain.name}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-semibold tabular-nums text-gray-900">
+                    {(balanceLoading || refreshing) ? (
+                      <span className="h-3 w-14 inline-block animate-pulse rounded bg-gray-100" />
+                    ) : ethAmount !== null
+                      ? formatEth(ethAmount)
+                      : "—"}
+                  </p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">native</p>
+                </div>
+              </div>
+
+              {/* USDC row */}
               <div className="flex items-center gap-3 px-4 py-3.5">
                 <img src={getTokenLogo("USDC")} alt="USDC" className="h-9 w-9 rounded-full shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-900">USDC</p>
-                  <p className="text-xs text-gray-400">USD Coin · Base</p>
+                  <p className="text-xs text-gray-400">USD Coin · {activeChain.name}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-semibold tabular-nums text-gray-900">
-                    {balanceLoading ? (
+                    {(balanceLoading || refreshing) ? (
                       <span className="h-3 w-14 inline-block animate-pulse rounded bg-gray-100" />
-                    ) : amount !== null ? formatUSD(amount) : "$0.00"}
+                    ) : usdcAmount !== null ? formatUSD(usdcAmount) : "$0.00"}
                   </p>
                   <p className="text-[10px] text-gray-400 uppercase tracking-wider">stablecoin</p>
                 </div>
@@ -358,14 +558,15 @@ export default function Home() {
           <section className="mt-8">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-[0.68rem] font-bold uppercase tracking-widest text-gray-400">Recent</h2>
-              {recent.length > 0 && (
+              {feedItems.length > 0 && (
                 <Link to="/activity" className="text-xs font-semibold text-blue-600 transition hover:text-blue-700">
                   View all
                 </Link>
               )}
             </div>
 
-            {transactions === null && (
+            {/* skeleton while loading */}
+            {(transactions === null || onChainLoading) && feedItems.length === 0 && (
               <div className="space-y-3">
                 {[1, 2, 3].map(i => (
                   <div key={i} className="flex items-center gap-3 rounded-xl p-3">
@@ -380,7 +581,7 @@ export default function Home() {
               </div>
             )}
 
-            {transactions !== null && recent.length === 0 && (
+            {transactions !== null && !onChainLoading && feedItems.length === 0 && (
               <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-gray-200 py-12 text-center">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-50">
                   <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -402,8 +603,10 @@ export default function Home() {
               <div key={group.label} className="mb-5">
                 <p className="mb-2 text-[0.68rem] font-bold uppercase tracking-widest text-gray-400">{group.label}</p>
                 <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-                  {group.items.map((tx, i) => (
-                    <TxRow key={tx.id} tx={tx} last={i === group.items.length - 1} />
+                  {group.items.map((item, i) => (
+                    item.kind === "xpay"
+                      ? <TxRow key={item.tx.id} tx={item.tx} last={i === group.items.length - 1} />
+                      : <OnChainTxRow key={item.tx.hash + item.tx.type} tx={item.tx} last={i === group.items.length - 1} />
                   ))}
                 </div>
               </div>

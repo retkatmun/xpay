@@ -35,12 +35,14 @@ import { Screen, Title } from "@/components/Screen"
 import { Spinner } from "@/components/icons"
 import {
   ApiError,
-  formatHandle, getBalance, getQuote, getTransaction,
+  formatHandle, getQuote, getTransaction,
   getRecentRecipients, getBanks, resolveBankAccount,
   resolveRecipient, sendToUser, sendToBank,
 } from "@/lib/api"
 import { formatUSD } from "@/lib/money"
 import { useSession } from "@/lib/session"
+import { useNetwork } from "@/lib/NetworkContext"
+import { useUsdcBalance } from "@/lib/useUsdcBalance"
 import { isTerminal, statusLabel } from "@/lib/txStatus"
 import type { Bank, BankResolveResult, PublicUser, Quote, Transaction } from "@/lib/types"
 
@@ -89,12 +91,13 @@ function friendlyError(reason: string): string {
 export default function Send() {
   const navigate = useNavigate()
   const { authUser, loading } = useSession()
+  const { activeChain } = useNetwork()
 
   // ── navigation ──
   const [step, setStep] = useState<Step>("recipient_mode")
 
-  // ── wallet ──
-  const [balance, setBalance] = useState<bigint | null>(null)
+  // ── wallet balance (live from chain, respects network switcher) ──
+  const { balance } = useUsdcBalance(activeChain)
 
   // ── xpay lookup ──
   const [recents, setRecents]         = useState<PublicUser[]>([])
@@ -102,6 +105,10 @@ export default function Send() {
   const [resolving, setResolving]     = useState(false)
   const [lookupError, setLookupError] = useState<string | null>(null)
   const [xpayRecipient, setXpayRecipient] = useState<PublicUser | null>(null)
+  // live search suggestions
+  const [suggestions, setSuggestions]         = useState<PublicUser[]>([])
+  const [searchLoading, setSearchLoading]     = useState(false)
+  const searchTimeoutRef                       = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // ── bank / account ──
   const [banks, setBanks]               = useState<Bank[]>([])
@@ -146,7 +153,6 @@ export default function Send() {
   // ─── Bootstrap ───────────────────────────────────────────────────────────
   useEffect(() => {
     if (!authUser) return
-    void getBalance().then(b => setBalance(BigInt(b.usd)))
     void getRecentRecipients().then(setRecents)
     void getBanks().then(raw => {
       // Deduplicate by bank code
@@ -158,6 +164,34 @@ export default function Send() {
       }))
     })
   }, [authUser])
+
+  // ─── Live XPay search (debounced 300 ms) ─────────────────────────────────
+  useEffect(() => {
+    const trimmed = query.trim()
+    setSuggestions([])
+    if (!trimmed || trimmed.length < 2) { setSearchLoading(false); return }
+
+    setSearchLoading(true)
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current)
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const result = await resolveRecipient(trimmed)
+        if (result.found) {
+          setSuggestions([result.user])
+        } else {
+          setSuggestions([])
+        }
+      } catch {
+        setSuggestions([])
+      } finally {
+        setSearchLoading(false)
+      }
+    }, 300)
+
+    return () => {
+      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current)
+    }
+  }, [query])
 
   // ─── Bank dropdown: close on outside click ────────────────────────────────
   useEffect(() => {
@@ -1242,6 +1276,13 @@ export default function Send() {
   // XPAY LOOKUP
   // ══════════════════════════════════════════════════════════════════════════
   if (step === "xpay_lookup") {
+    // Merge live suggestions + recents, dedup by username
+    const seen = new Set<string>()
+    const combined: PublicUser[] = []
+    for (const u of [...suggestions, ...recents]) {
+      if (!seen.has(u.username)) { seen.add(u.username); combined.push(u) }
+    }
+
     return (
       <Screen
         back
@@ -1249,6 +1290,7 @@ export default function Send() {
           setStep("recipient_mode")
           setQuery("")
           setLookupError(null)
+          setSuggestions([])
         }}
       >
         <form
@@ -1263,34 +1305,48 @@ export default function Send() {
             <Field
               value={query}
               onChange={e => { setQuery(e.target.value); setLookupError(null) }}
-              placeholder="08012345678 or @username"
+              placeholder="08012345678 or username.xpay"
               autoFocus
               autoCapitalize="none"
               inputMode="text"
               spellCheck={false}
               error={lookupError}
               hint="Enter a phone number (e.g. 08012345678) or XPay handle"
-              suffix={resolving ? <Spinner className="h-4 w-4 text-gray-400" /> : null}
+              suffix={
+                resolving || searchLoading
+                  ? <Spinner className="h-4 w-4 text-gray-400" />
+                  : null
+              }
             />
           </div>
 
-          {recents.length > 0 && (
-            <div className="mt-8">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-gray-400">
-                Recent
-              </p>
+          {/* Live suggestions + recents */}
+          {combined.length > 0 && (
+            <div className="mt-5">
+              {suggestions.length > 0 && (
+                <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-gray-400">
+                  Match
+                </p>
+              )}
+              {suggestions.length === 0 && recents.length > 0 && (
+                <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-gray-400">
+                  Recent
+                </p>
+              )}
               <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-                {recents.map((p, i) => (
+                {combined.map((p, i) => (
                   <button
                     key={p.username}
                     type="button"
                     disabled={resolving}
                     onClick={() => {
                       setQuery(formatHandle(p.username))
-                      void lookupXpay(p.username)
+                      setXpayRecipient(p)
+                      setSuggestions([])
+                      setStep("amount")
                     }}
                     className={[
-                      "flex w-full items-center gap-3 px-4 py-3.5 text-left transition hover:bg-gray-50",
+                      "flex w-full items-center gap-3 px-4 py-3.5 text-left transition hover:bg-gray-50 active:bg-gray-100",
                       i > 0 ? "border-t border-gray-100" : "",
                     ].join(" ")}
                   >
@@ -1303,10 +1359,22 @@ export default function Send() {
                         {formatHandle(p.username)}
                       </p>
                     </div>
+                    {/* Tap to select indicator */}
+                    <svg viewBox="0 0 20 20" width="14" height="14" fill="none"
+                      stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M8 4l6 6-6 6"/>
+                    </svg>
                   </button>
                 ))}
               </div>
             </div>
+          )}
+
+          {/* No match hint when user has typed something */}
+          {query.trim().length >= 2 && !searchLoading && suggestions.length === 0 && (
+            <p className="mt-4 text-center text-xs text-gray-400">
+              No XPay user found — press Continue to search anyway
+            </p>
           )}
 
           <div className="mt-auto pt-8">

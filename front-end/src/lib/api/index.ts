@@ -20,6 +20,11 @@ import type {
   Payout,
   User,
 } from "@/lib/types"
+import {
+  fetchTransactions as fetchTxFromDb,
+  fetchTransaction as fetchTxByIdFromDb,
+  type SupabaseTransaction,
+} from "@/lib/supabase"
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000"
 
@@ -176,17 +181,67 @@ export async function getBalance(): Promise<Balance> {
 
 // ── Transactions ──────────────────────────────────────────────────────────────
 
-export async function getTransactions(): Promise<Transaction[]> {
-  return get("/api/transactions")
+/** Map a Supabase row to the Transaction shape the UI expects */
+function dbRowToTransaction(row: SupabaseTransaction): Transaction {
+  return {
+    id: row.id,
+    direction: row.direction,
+    recipientType: row.recipient_type,
+    recipientDisplayName: row.recipient_display_name,
+    recipientBankName: row.recipient_bank_name ?? null,
+    recipientAccountNumberLast4: row.recipient_account_number_last4 ?? null,
+    asset: "USDC",
+    amount: row.amount,
+    chainId: row.chain_id ?? null,
+    txHash: row.tx_hash ?? null,
+    status: row.status as Transaction["status"],
+    feeNgn: row.fee_ngn,
+    fxRate: row.fx_rate,
+    ngnAmount: row.ngn_amount,
+    memo: row.memo ?? null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+/** Get current user ID from session cookie (backend) or Supabase profile */
+async function getCurrentUserId(): Promise<string | null> {
+  try {
+    const user = await get<User | null>("/api/me")
+    return user?.id ?? null
+  } catch {
+    return null
+  }
+}
+
+export async function getTransactions(userId?: string): Promise<Transaction[]> {
+  // Try backend first
+  try {
+    return await get<Transaction[]>("/api/transactions")
+  } catch {
+    // Backend unavailable — fall back to Supabase directly
+  }
+
+  const uid = userId ?? await getCurrentUserId()
+  if (!uid) return []
+  const rows = await fetchTxFromDb(uid)
+  return rows.map(dbRowToTransaction)
 }
 
 export async function getTransaction(id: string): Promise<(Transaction & { payout: Payout | null }) | null> {
+  // Try backend first
   try {
-    return await get(`/api/transactions/${encodeURIComponent(id)}`)
+    return await get<(Transaction & { payout: Payout | null }) | null>(
+      `/api/transactions/${encodeURIComponent(id)}`
+    )
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) return null
-    throw err
+    // Backend unavailable — fall back to Supabase
   }
+
+  const row = await fetchTxByIdFromDb(id)
+  if (!row) return null
+  return { ...dbRowToTransaction(row), payout: null }
 }
 
 // ── Recipient lookup ──────────────────────────────────────────────────────────

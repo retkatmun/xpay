@@ -133,7 +133,72 @@ export async function updateProfile(userId: string, updates: {
   return data;
 }
 
-// ─── Saved Beneficiaries ──────────────────────────────────────────────────────
+// ─── Transactions ─────────────────────────────────────────────────────────────
+
+export type SupabaseTransaction = {
+  id: string
+  user_id: string
+  direction: "in" | "out"
+  recipient_type: "xpay_user" | "bank_account"
+  recipient_display_name: string
+  recipient_bank_name: string | null
+  recipient_account_number_last4: string | null
+  asset: string
+  amount: string
+  chain_id: number | null
+  tx_hash: string | null
+  status: string
+  fee_ngn: string
+  fx_rate: number
+  ngn_amount: string
+  memo: string | null
+  created_at: string
+  updated_at: string
+}
+
+/** Fetch all transactions for a user, newest first */
+export async function fetchTransactions(userId: string): Promise<SupabaseTransaction[]> {
+  const { data, error } = await supabaseAdmin
+    .from("transactions")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+  if (error) throw new Error(error.message)
+  return (data ?? []) as SupabaseTransaction[]
+}
+
+/** Fetch a single transaction by ID */
+export async function fetchTransaction(id: string): Promise<SupabaseTransaction | null> {
+  const { data, error } = await supabaseAdmin
+    .from("transactions")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle()
+  if (error) throw new Error(error.message)
+  return data as SupabaseTransaction | null
+}
+
+/** Insert a new transaction record */
+export async function insertTransaction(
+  tx: Omit<SupabaseTransaction, "id" | "created_at" | "updated_at">
+): Promise<SupabaseTransaction> {
+  const { data, error } = await supabaseAdmin
+    .from("transactions")
+    .insert(tx)
+    .select()
+    .single()
+  if (error) throw new Error(error.message)
+  return data as SupabaseTransaction
+}
+
+/** Update transaction status */
+export async function updateTransactionStatus(id: string, status: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("transactions")
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq("id", id)
+  if (error) throw new Error(error.message)
+}
 
 export type SavedBeneficiary = {
   id: string;

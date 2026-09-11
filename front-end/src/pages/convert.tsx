@@ -19,6 +19,7 @@ import {
 import { formatUSD } from "@/lib/money"
 import { useSession } from "@/lib/session"
 import { useUsdcBalance } from "@/lib/useUsdcBalance"
+import { useNetwork } from "@/lib/NetworkContext"
 import { isTerminal, statusLabel } from "@/lib/txStatus"
 import { getTokenLogo } from "@/assets/logos"
 import type { Bank, BankResolveResult, Quote, Transaction } from "@/lib/types"
