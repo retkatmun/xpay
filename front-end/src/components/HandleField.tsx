@@ -45,7 +45,7 @@ export function HandleField({
         <span className="inline-grid min-w-0 max-w-full">
           <span
             aria-hidden
-            className="invisible col-start-1 row-start-1 min-w-0 whitespace-pre text-[1rem]"
+            className="invisible col-start-1 row-start-1 min-w-0 whitespace-pre text-[1rem] select-none pointer-events-none h-0 leading-[0] overflow-hidden"
           >
             {value || placeholder}
           </span>

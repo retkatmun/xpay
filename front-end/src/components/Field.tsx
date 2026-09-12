@@ -26,6 +26,9 @@ export function Field({ label, prefix, suffix, hint, error, className = "", ...r
         {prefix && <span className="shrink-0 text-gray-400">{prefix}</span>}
         <input
           {...rest}
+          data-1p-ignore
+          data-lpignore="true"
+          data-bwignore
           className={[
             "min-w-0 flex-1 bg-transparent text-[0.95rem] text-gray-900 outline-none placeholder:text-gray-400",
             className,
