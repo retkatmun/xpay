@@ -13,7 +13,7 @@ export const privyConfig = {
     },
     loginMethods: ['email', 'google'],
     embeddedWallets: {
-      createOnLogin: 'off',
+      createOnLogin: 'users-without-wallets',
       requireUserPasswordOnCreate: false,
     },
     defaultChain: base,

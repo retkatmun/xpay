@@ -26,7 +26,7 @@ createRoot(document.getElementById('root')!).render(
             },
             loginMethods: ['email', 'google'],
             embeddedWallets: {
-              createOnLogin: 'off',
+              createOnLogin: 'users-without-wallets',
             },
             fundingMethodConfig: {
               moonpay: { useSandbox: false },

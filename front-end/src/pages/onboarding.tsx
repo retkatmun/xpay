@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { usePrivy, useWallets } from "@privy-io/react-auth";
+import { usePrivy, useWallets, useCreateWallet } from "@privy-io/react-auth";
 import { isUsernameTaken, createProfile } from "@/lib/supabase";
 import { useSession } from "@/lib/session";
 import { Spinner } from "@/components/icons";
@@ -204,6 +204,7 @@ export default function Onboarding() {
   const { authUser, profile, loading, setProfile } = useSession();
   const { ready: privyReady, authenticated: privyAuthed, user: privyUser, login, logout } = usePrivy();
   const { wallets } = useWallets();
+  const { createWallet } = useCreateWallet();
 
   const [step, setStep] = useState<Step>("auth");
   const [draft, setDraft] = useState<Draft>(EMPTY);
@@ -219,9 +220,9 @@ export default function Onboarding() {
   const [confirmPin, setConfirmPin] = useState("");
   const [pinError, setPinError] = useState<string | null>(null);
 
-  // Get embedded wallet address
-  const embeddedWallet = wallets.find(wallet => wallet.walletClientType === 'privy');
-  const walletAddress = embeddedWallet?.address || null;
+  // Get embedded wallet address — may be null until createWallet() is called
+  const embeddedWallet = wallets.find(wallet => wallet.walletClientType === "privy");
+  const walletAddress = embeddedWallet?.address ?? null;
 
   // Only redirect if user is fully authenticated AND has completed profile
   useEffect(() => {
@@ -331,6 +332,20 @@ export default function Onboarding() {
         (privyUser.google as { email?: string } | null)?.email ??
         null;
 
+      // Ensure the embedded wallet exists before saving the profile.
+      // createWallet() is idempotent — if the wallet already exists it returns it.
+      let resolvedWalletAddress = walletAddress;
+      if (!resolvedWalletAddress) {
+        try {
+          const newWallet = await createWallet();
+          resolvedWalletAddress = newWallet.address ?? null;
+        } catch {
+          // Wallet creation failed (e.g. already exists but not loaded yet)
+          // The session will sync it later via the auto-sync effect
+          resolvedWalletAddress = null;
+        }
+      }
+
       const created = await createProfile({
         id: privyUser.id,
         email,
@@ -338,7 +353,7 @@ export default function Onboarding() {
         username: draft.username.toLowerCase().trim(),
         display_name: draft.displayName.trim(),
         pin_hash: pin,
-        wallet_address: walletAddress, // Use the actual wallet address
+        wallet_address: resolvedWalletAddress,
       });
 
       setProfile(created as never);

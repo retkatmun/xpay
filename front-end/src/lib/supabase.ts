@@ -50,8 +50,8 @@ export async function fetchProfileById(userId: string) {
 }
 
 /**
- * Search profiles by username prefix OR phone/account_number.
- * Returns up to 8 matches with wallet_address included.
+ * Search profiles by username prefix OR display name OR phone/account_number.
+ * Returns up to 10 matches with wallet_address included.
  */
 export async function searchProfiles(query: string): Promise<{
   username: string
@@ -61,24 +61,30 @@ export async function searchProfiles(query: string): Promise<{
   account_number: string | null
   avatar_url: string | null
 }[]> {
-  const q = query.trim().toLowerCase().replace(/^@/, "").replace(/\.xpay$/, "")
+  // Strip @prefix and .xpay suffix, lowercase
+  const q = query.trim().toLowerCase().replace(/^@/, "").replace(/\.xpay$/i, "").trim()
   if (!q || q.length < 2) return []
 
   const isNumeric = /^\d+$/.test(q)
 
-  let queryBuilder = supabaseAdmin
+  let dbQuery = supabaseAdmin
     .from("profiles")
     .select("username, display_name, wallet_address, phone, account_number, avatar_url")
-    .limit(8)
+    .limit(10)
 
   if (isNumeric) {
-    queryBuilder = queryBuilder.or(`account_number.ilike.%${q}%,phone.ilike.%${q}%`)
+    // Search by phone or account number
+    dbQuery = dbQuery.or(`account_number.ilike.%${q}%,phone.ilike.%${q}%`)
   } else {
-    queryBuilder = queryBuilder.or(`username.ilike.${q}%,display_name.ilike.${q}%`)
+    // Search by username prefix OR display name (contains)
+    dbQuery = dbQuery.or(`username.ilike.${q}%,display_name.ilike.%${q}%,username.eq.${q}`)
   }
 
-  const { data, error } = await queryBuilder
-  if (error) return []
+  const { data, error } = await dbQuery
+  if (error) {
+    console.error("[searchProfiles] error:", error)
+    return []
+  }
   return (data ?? []) as {
     username: string
     display_name: string

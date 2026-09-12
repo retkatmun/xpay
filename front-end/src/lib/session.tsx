@@ -7,7 +7,7 @@ import {
   useState,
 } from "react";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
-import { fetchProfileById, supabaseSignOut } from "@/lib/supabase";
+import { fetchProfileById, updateProfile, supabaseSignOut } from "@/lib/supabase";
 
 export type XPayProfile = {
   id: string;
@@ -56,20 +56,20 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     };
   }, [authenticated, privyUser]);
 
-  // Get embedded wallet address
-  const embeddedWallet = wallets.find(wallet => wallet.walletClientType === 'privy');
-  const walletAddress = embeddedWallet?.address || null;
+  // Get embedded wallet address from Privy
+  const embeddedWallet = wallets.find(w => w.walletClientType === "privy");
+  const walletAddress = embeddedWallet?.address ?? null;
 
   const refresh = useCallback(async () => {
-    if (!authUser) { 
-      setProfile(null); 
-      return; 
+    if (!authUser) {
+      setProfile(null);
+      return;
     }
     try {
       const p = await fetchProfileById(authUser.id);
       setProfile(p as XPayProfile | null);
     } catch (error) {
-      console.error('Failed to fetch profile:', error);
+      console.error("Failed to fetch profile:", error);
       setProfile(null);
     }
   }, [authUser]);
@@ -83,7 +83,6 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Timeout after 8s so we never hang forever on a slow Supabase response
     const timer = setTimeout(() => setProfileLoaded(true), 8000);
 
     fetchProfileById(privyUser.id)
@@ -91,13 +90,32 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         setProfile(p as XPayProfile | null);
         setProfileLoaded(true);
       })
-      .catch((error) => {
-        console.error('Error loading profile:', error);
+      .catch(() => {
         setProfile(null);
         setProfileLoaded(true);
       })
       .finally(() => clearTimeout(timer));
   }, [ready, authenticated, privyUser?.id]);
+
+  // ── Auto-sync wallet address to profile ──────────────────────────────────
+  // Privy creates the embedded wallet after login — it may not exist yet when
+  // createProfile runs during onboarding. Whenever we have both a profile and
+  // a walletAddress from Privy but the profile row has no wallet_address,
+  // silently patch it in Supabase so other users can find and pay this user.
+  useEffect(() => {
+    if (!profile || !walletAddress) return;
+    if (profile.wallet_address === walletAddress) return; // already in sync
+
+    updateProfile(profile.id, { wallet_address: walletAddress })
+      .then(() => {
+        setProfile(prev => prev ? { ...prev, wallet_address: walletAddress } : prev);
+        console.info("[session] wallet address synced to profile:", walletAddress);
+      })
+      .catch((err) => {
+        // Non-fatal — log and continue
+        console.warn("[session] failed to sync wallet address:", err);
+      });
+  }, [profile?.id, walletAddress]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const signOut = useCallback(async () => {
     await logout();
@@ -106,8 +124,6 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setProfileLoaded(false);
   }, [logout]);
 
-  // Only block on Privy not being ready OR on the first profile fetch.
-  // Once profileLoaded is true we never show a loading state again.
   const loading = !ready || (authenticated && !profileLoaded);
   const isAdmin = profile?.role === "admin";
 
