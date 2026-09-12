@@ -72,7 +72,7 @@ export type Transaction = {
   recipientDisplayName: string
   recipientBankName?: string | null
   recipientAccountNumberLast4?: string | null
-  asset: "USDC"
+  asset: string
   /** Base units as a string */
   amount: string
   chainId?: number | null

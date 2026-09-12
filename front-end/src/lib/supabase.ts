@@ -7,7 +7,7 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 const supabaseServiceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY as string;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
 /**
  * Derive a 10-digit account number from an E.164 phone number by stripping

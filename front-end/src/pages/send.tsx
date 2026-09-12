@@ -19,6 +19,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react"
 import { useNavigate } from "react-router-dom"
+import { useWallets } from "@privy-io/react-auth"
 import { Avatar } from "@/components/Avatar"
 import { Badge } from "@/components/Badge"
 import { Button } from "@/components/Button"
@@ -33,7 +34,7 @@ import {
   getRecentRecipients, getBanks, resolveBankAccount,
   resolveRecipient, sendToUser, sendToBank,
 } from "@/lib/api"
-import { searchProfiles } from "@/lib/supabase"
+import { searchProfiles, supabaseAdmin } from "@/lib/supabase"
 import { formatUSD, parseAmount, toNGN } from "@/lib/money"
 import { useSession } from "@/lib/session"
 import { useNetwork, CHAINS } from "@/lib/NetworkContext"
@@ -273,8 +274,10 @@ function NetworkAndTokenPicker({
 
 export default function Send() {
   const navigate = useNavigate()
-  const { authUser, loading } = useSession()
+  const { authUser, profile, loading } = useSession()
   const { activeChain } = useNetwork()
+  const { wallets } = useWallets()
+  const embeddedWallet = wallets.find(w => w.walletClientType === "privy")
 
   // ── step ──
   const [step, setStep] = useState<Step>("recipient_mode")
@@ -565,45 +568,125 @@ export default function Send() {
     setSubmitting(true); setStep("sending")
 
     try {
-      const idempotencyKey = isUsdcSend && quote ? `send_${quote.id}` : `send_native_${Date.now()}`
+      // ── Native token send: verify PIN locally, execute on-chain directly ──
+      if (!isUsdcSend) {
+        // 1. Verify PIN against stored hash (plain comparison — hash is stored as plain text)
+        if (!profile?.pin_hash || pinValue !== profile.pin_hash) {
+          setPinError("Incorrect PIN. Try again."); setPin(""); setStep("pin")
+          setSubmitting(false); return
+        }
+
+        // 2. Resolve recipient address
+        let toAddress: string | null = null
+        let recipientLabel = ""
+        if (xpayRecipient) {
+          toAddress = xpayRecipient.walletAddress ?? null
+          recipientLabel = xpayRecipient.displayName || xpayRecipient.username
+          if (!toAddress) {
+            setPinError("This user has no wallet address set up yet.")
+            setPin(""); setStep("pin"); setSubmitting(false); return
+          }
+        } else if (walletRecipient) {
+          toAddress = walletRecipient.address
+          recipientLabel = walletRecipient.label || walletRecipient.address
+        } else {
+          setPinError("Recipient missing. Please start again.")
+          setPin(""); setStep("pin"); setSubmitting(false); return
+        }
+
+        // 3. Execute on-chain via Privy embedded wallet
+        if (!embeddedWallet) {
+          setPinError("Wallet not ready. Please try again.")
+          setPin(""); setStep("pin"); setSubmitting(false); return
+        }
+        const provider = await embeddedWallet.getEthereumProvider()
+
+        // Switch to correct chain
+        try {
+          await provider.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: `0x${selectedChain.id.toString(16)}` }],
+          })
+        } catch { /* already on correct chain */ }
+
+        const weiHex = `0x${parsedNativeAmount!.toString(16)}`
+        const txHash = await provider.request({
+          method: "eth_sendTransaction",
+          params: [{
+            from:  embeddedWallet.address,
+            to:    toAddress,
+            value: weiHex,
+            data:  "0x",
+          }],
+        }) as string
+
+        // 4. Record in Supabase
+        const now = new Date().toISOString()
+        await supabaseAdmin.from("transactions").insert({
+          user_id:                         authUser!.id,
+          direction:                       "out",
+          recipient_type:                  "xpay_user",
+          recipient_display_name:          recipientLabel,
+          recipient_bank_name:             null,
+          recipient_account_number_last4:  null,
+          asset:                           selectedChain.nativeSymbol,
+          amount:                          parsedNativeAmount!.toString(),
+          chain_id:                        selectedChain.id,
+          tx_hash:                         txHash,
+          status:                          "completed",
+          fee_ngn:                         "0",
+          fx_rate:                         0,
+          ngn_amount:                      "0",
+          memo:                            memo || null,
+          created_at:                      now,
+          updated_at:                      now,
+        })
+
+        // 5. Build a minimal receipt to show the done screen
+        const fakeReceipt: Transaction = {
+          id:                          txHash,
+          status:                      "completed",
+          amount:                      parsedNativeAmount!.toString(),
+          ngnAmount:                   "0",
+          feeNgn:                      "0",
+          fxRate:                      0,
+          asset:                       selectedChain.nativeSymbol,
+          direction:                   "out",
+          recipientType:               "xpay_user",
+          recipientDisplayName:        recipientLabel,
+          recipientBankName:           null,
+          recipientAccountNumberLast4: null,
+          memo:                        memo || null,
+          txHash,
+          chainId:                     selectedChain.id,
+          createdAt:                   now,
+          updatedAt:                   now,
+        }
+        setReceipt(fakeReceipt); setStep("done")
+        return
+      }
+
+      // ── USDC / backend sends (existing flow) ────────────────────────────
+      const idempotencyKey = `send_${quote!.id}`
 
       let result
       if (xpayRecipient) {
-        if (isUsdcSend) {
-          // USDC send to XPay user — backend resolves wallet address via username
-          result = await sendToUser({
-            recipient: xpayRecipient.username,
-            quoteId: quote!.id,
-            memo: memo || undefined,
-            pin: pinValue,
-            idempotencyKey,
-          })
-        } else {
-          // Native token send to XPay user — resolve their stored wallet_address
-          // and send directly on-chain (same path as a wallet address send)
-          const recipientAddress = xpayRecipient.walletAddress
-          if (!recipientAddress) {
-            setPinError("This user has no wallet address set up yet.")
-            setPin(""); setStep("pin"); return
-          }
-          result = await sendToUser({
-            recipient: recipientAddress,
-            quoteId: "",
-            memo: memo || undefined,
-            pin: pinValue,
-            idempotencyKey,
-          })
-        }
+        result = await sendToUser({
+          recipient: xpayRecipient.username,
+          quoteId: quote!.id,
+          memo: memo || undefined,
+          pin: pinValue,
+          idempotencyKey,
+        })
       } else if (walletRecipient) {
         result = await sendToUser({
           recipient: walletRecipient.address,
-          quoteId: isUsdcSend ? quote!.id : "",
+          quoteId: quote!.id,
           memo: memo || undefined,
           pin: pinValue,
           idempotencyKey,
         })
       } else if (verifiedAccount) {
-        // Bank sends are always USDC → NGN conversion
         result = await sendToBank({
           bankCode: verifiedAccount.bankCode,
           accountNumber: verifiedAccount.accountNumber,
@@ -623,7 +706,11 @@ export default function Send() {
       setReceipt(result.transaction); setStep("done")
     } catch (err) {
       console.error("[XPay] submitTransfer:", err)
-      setPinError("Network error. Please try again."); setPin(""); setStep("pin")
+      const msg = err instanceof Error ? err.message : ""
+      const pinErr = msg.toLowerCase().includes("reject") || msg.toLowerCase().includes("cancel")
+        ? "You cancelled the transaction."
+        : "Network error. Please try again."
+      setPinError(pinErr); setPin(""); setStep("pin")
     } finally { setSubmitting(false) }
   }
 
