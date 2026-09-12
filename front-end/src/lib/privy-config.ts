@@ -8,7 +8,7 @@ export const privyConfig = {
     appearance: {
       theme: 'light',
       accentColor: '#2563eb',
-      logo: '/xpay-logo.png',
+      logo: '/xpay_logo.png',
       showWalletLoginFirst: false,
     },
     loginMethods: ['email', 'google'],

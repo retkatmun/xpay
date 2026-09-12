@@ -22,7 +22,7 @@ createRoot(document.getElementById('root')!).render(
             appearance: {
               theme: 'light',
               accentColor: '#2563eb',
-              logo: '/xpay-logo.png',
+              logo: '/xpay_logo.png',
             },
             loginMethods: ['email', 'google'],
             embeddedWallets: {
