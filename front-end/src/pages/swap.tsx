@@ -1,5 +1,5 @@
 /**
- * Swap page — swap tokens using the Uniswap Trade API.
+ * Swap page — swap tokens using the 0x Swap API (Permit2).
  * Uses the API's returned transaction data directly for execution.
  */
 
@@ -41,6 +41,24 @@ interface SwapQuote {
     value: string
     gasLimit: string
   }
+  /** Permit2 signature request (present when selling ERC20) */
+  permit2: {
+    hash: string
+    eip712: {
+      types: Record<string, { name: string; type: string }[]>
+      domain: Record<string, unknown>
+      message: Record<string, unknown>
+      primaryType: string
+    }
+  } | null
+  /** Whether Permit2 allowance needs to be set first */
+  needsAllowance: boolean
+  /** Permit2 spender address */
+  allowanceSpender: string | null
+  /** The sell token (needed for approval tx) */
+  sellToken: Token
+  /** Raw sell amount (needed for approval tx) */
+  sellAmountRaw: bigint
 }
 
 // ─── Token catalogue per chain ────────────────────────────────────────────────
@@ -77,147 +95,22 @@ const CHAIN_TOKENS: Record<number, Token[]> = {
   ],
 }
 
-// ─── Universal Router addresses ───────────────────────────────────────────────
+// ─── 0x Swap API (Permit2) quote ─────────────────────────────────────────────
 
-function getUniversalRouter(chainId: number): string {
-  const routers: Record<number, string> = {
-    1:        "0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD",
-    11155111: "0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD",
-    8453:     "0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD",
-    84532:    "0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD",
+const ZERO_X_API_KEY = import.meta.env.VITE_0X_API_KEY as string
+
+/** Chain-specific 0x base URLs */
+function get0xBaseUrl(chainId: number): string {
+  const urls: Record<number, string> = {
+    1:        "https://api.0x.org",
+    11155111: "https://api.0x.org",   // Sepolia uses mainnet endpoint with chainId param
+    8453:     "https://api.0x.org",
+    84532:    "https://api.0x.org",   // Base Sepolia
   }
-  return routers[chainId] ?? routers[1]
+  return urls[chainId] ?? "https://api.0x.org"
 }
 
-function getWeth(chainId: number): string {
-  const weth: Record<number, string> = {
-    1:        "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-    11155111: "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
-    8453:     "0x4200000000000000000000000000000000000006",
-    84532:    "0x4200000000000000000000000000000000000006",
-  }
-  return weth[chainId] ?? weth[1]
-}
-
-// ─── ABI encoding helpers ─────────────────────────────────────────────────────
-
-function padHex(val: bigint | number | string, bytes = 32): string {
-  const hex = typeof val === "string"
-    ? val.replace("0x", "")
-    : BigInt(val).toString(16)
-  return hex.padStart(bytes * 2, "0")
-}
-
-function encodeAddress(addr: string): string {
-  return padHex(addr.replace("0x", "").toLowerCase())
-}
-
-// ─── Calldata builder (Uniswap V3 exactInputSingle via UniversalRouter) ───────
-
-function buildSwapCalldata(p: {
-  sellToken: Token
-  buyToken: Token
-  sellAmountRaw: bigint
-  toAmount: bigint
-  takerAddress: string
-  chain: ChainConfig
-  slippage: bigint // bps (50 = 0.5%)
-}): string {
-  const { sellToken, buyToken, sellAmountRaw, toAmount, takerAddress, chain, slippage } = p
-
-  const isEthIn  = sellToken.address === NATIVE
-  const isEthOut = buyToken.address  === NATIVE
-  const WETH = getWeth(chain.id)
-
-  const tokenIn  = isEthIn  ? WETH : (sellToken.address as string)
-  const tokenOut = isEthOut ? WETH : (buyToken.address  as string)
-
-  const minOut = toAmount - (toAmount * slippage / 10000n)
-
-  const recipient = isEthOut
-    ? "0x0000000000000000000000000000000000000002"
-    : takerAddress
-
-  const isStablePair =
-    (sellToken.symbol === "USDC" || sellToken.symbol === "USDT" || sellToken.symbol === "DAI") &&
-    (buyToken.symbol  === "USDC" || buyToken.symbol  === "USDT" || buyToken.symbol  === "DAI")
-  const fee = isStablePair ? 500n : 3000n
-
-  const path =
-    tokenIn.replace("0x", "").toLowerCase() +
-    padHex(fee, 3) +
-    tokenOut.replace("0x", "").toLowerCase()
-
-  const payerIsUser = isEthIn ? 0 : 1
-
-  const v3Inputs =
-    encodeAddress(recipient) +
-    padHex(sellAmountRaw) +
-    padHex(minOut) +
-    padHex(0xa0) +
-    padHex(payerIsUser) +
-    padHex(path.length / 2) +
-    path.padEnd(Math.ceil(path.length / 64) * 64, "0")
-
-  const unwrapInputs = isEthOut
-    ? encodeAddress(takerAddress) + padHex(minOut)
-    : ""
-
-  let commands = ""
-  const inputSegments: string[] = []
-
-  if (isEthIn) {
-    commands += "0b"
-    const wrapInputs = encodeAddress("0x0000000000000000000000000000000000000002") + padHex(sellAmountRaw)
-    inputSegments.push(wrapInputs)
-  }
-
-  commands += "00"
-  inputSegments.push(v3Inputs)
-
-  if (isEthOut) {
-    commands += "0c"
-    inputSegments.push(unwrapInputs)
-  }
-
-  const selector = "3593564c"
-  const deadline = BigInt(Math.floor(Date.now() / 1000) + 1800)
-
-  const numCommands = commands.length / 2
-  const cmdLen32 = Math.ceil(numCommands / 32) * 32
-  const offsetInputs = 0x60 + 0x20 + cmdLen32
-
-  let encoded = ""
-  encoded += padHex(0x60)
-  encoded += padHex(offsetInputs)
-  encoded += padHex(deadline)
-  encoded += padHex(numCommands)
-  encoded += commands.padEnd(cmdLen32 * 2, "0")
-
-  const numInputs = inputSegments.length
-  encoded += padHex(numInputs)
-
-  let innerOffset = numInputs * 32
-  const offsets: number[] = []
-  const encodedInputs: string[] = []
-
-  for (const seg of inputSegments) {
-    offsets.push(innerOffset)
-    const segLen = seg.length / 2
-    const segPadded = seg.padEnd(Math.ceil(segLen / 32) * 32 * 2, "0")
-    encodedInputs.push(padHex(segLen) + segPadded)
-    innerOffset += 32 + segPadded.length / 2
-  }
-
-  for (const off of offsets) encoded += padHex(off)
-  for (const inp of encodedInputs) encoded += inp
-
-  return "0x" + selector + encoded
-}
-
-// ─── Uniswap Trade API quote ──────────────────────────────────────────────────
-
-async function fetchUniswapQuote(params: {
+async function fetch0xQuote(params: {
   chain: ChainConfig
   sellToken: Token
   buyToken: Token
@@ -227,98 +120,83 @@ async function fetchUniswapQuote(params: {
   const { chain, sellToken, buyToken, sellAmountRaw, takerAddress } = params
 
   const sellAddress = sellToken.address === NATIVE ? NATIVE_ADDRESS : sellToken.address
-  const buyAddress  = buyToken.address  === NATIVE ? NATIVE_ADDRESS : buyToken.address
+  const buyAddress  = buyToken.address  === NATIVE ? "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE" : buyToken.address
 
-  const body = {
-    type: "EXACT_INPUT",
-    amount: sellAmountRaw.toString(),
-    inputToken: {
-      chainId: chain.id,
-      address: sellAddress,
-      decimals: sellToken.decimals,
-      symbol: sellToken.symbol,
-    },
-    outputToken: {
-      chainId: chain.id,
-      address: buyAddress,
-      decimals: buyToken.decimals,
-      symbol: buyToken.symbol,
-    },
-    swapper: takerAddress,
-    slippageTolerance: "0.5",
-  }
+  const url = new URL(`${get0xBaseUrl(chain.id)}/swap/permit2/quote`)
+  url.searchParams.set("chainId",     String(chain.id))
+  url.searchParams.set("sellToken",   sellAddress)
+  url.searchParams.set("buyToken",    buyAddress)
+  url.searchParams.set("sellAmount",  sellAmountRaw.toString())
+  url.searchParams.set("taker",       takerAddress)
+  url.searchParams.set("slippageBps", "50") // 0.5%
 
-  const res = await fetch("https://trade-api.gateway.uniswap.org/v2/quote", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+  const res = await fetch(url.toString(), {
+    headers: {
+      "0x-api-key": ZERO_X_API_KEY,
+      "0x-version": "v2",
+    },
   })
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({})) as { detail?: string; errorCode?: string }
-    throw new Error(err.detail ?? err.errorCode ?? `Quote failed (HTTP ${res.status})`)
+    const err = await res.json().catch(() => ({})) as { message?: string; reason?: string }
+    throw new Error(err.reason ?? err.message ?? `Quote failed (HTTP ${res.status})`)
   }
 
   const json = await res.json() as {
-    quote: {
-      output: { amount: string }
-      priceImpact?: number
-      routeString?: string
-    }
-    routing: string
-    transaction?: {
+    buyAmount: string
+    sellAmount: string
+    minBuyAmount: string
+    liquidityAvailable: boolean
+    route: { fills: { source: string }[] }
+    fees: { zeroExFee?: { amount: string; token: string } | null }
+    issues?: { allowance?: { actual: string; spender: string } | null }
+    permit2?: {
+      hash: string
+      eip712: {
+        types: Record<string, { name: string; type: string }[]>
+        domain: Record<string, unknown>
+        message: Record<string, unknown>
+        primaryType: string
+      }
+    } | null
+    transaction: {
       to: string
       data: string
       value: string
-      gasLimit?: string
-      gas?: string
+      gas: string
+      gasPrice: string
     }
   }
 
-  const toAmount = BigInt(json.quote.output.amount)
-  const priceImpact = json.quote.priceImpact != null
-    ? `${json.quote.priceImpact.toFixed(2)}%`
-    : "< 0.01%"
-
-  const routingLabel =
-    json.routing === "DUTCH_LIMIT" || json.routing === "DUTCH_V2"
-      ? "UniswapX"
-      : json.quote.routeString ?? "Uniswap V3"
-
-  const protocolLabel =
-    json.routing === "DUTCH_LIMIT" || json.routing === "DUTCH_V2"
-      ? "UniswapX"
-      : "Uniswap V3"
-
-  // Prefer the API's ready-made transaction; fall back to manual calldata
-  let txData: SwapQuote["tx"]
-  if (json.transaction?.to && json.transaction?.data) {
-    txData = {
-      to:       json.transaction.to,
-      data:     json.transaction.data,
-      value:    json.transaction.value ?? (sellToken.address === NATIVE ? `0x${sellAmountRaw.toString(16)}` : "0x0"),
-      gasLimit: json.transaction.gasLimit ?? json.transaction.gas ?? "0x493E0",
-    }
-  } else {
-    // Fallback: build calldata manually
-    const calldata = buildSwapCalldata({
-      sellToken,
-      buyToken,
-      sellAmountRaw,
-      toAmount,
-      takerAddress,
-      chain,
-      slippage: 50n,
-    })
-    txData = {
-      to:       getUniversalRouter(chain.id),
-      data:     calldata,
-      value:    sellToken.address === NATIVE ? `0x${sellAmountRaw.toString(16)}` : "0x0",
-      gasLimit: "0x493E0",
-    }
+  if (!json.liquidityAvailable) {
+    throw new Error("NO_ROUTE")
   }
 
-  return { toAmount, routeLabel: routingLabel, priceImpact, protocol: protocolLabel, tx: txData }
+  const toAmount = BigInt(json.buyAmount)
+  const sources  = json.route.fills.map(f => f.source).filter((v, i, a) => a.indexOf(v) === i)
+  const routeLabel  = sources.join(" + ") || "0x"
+  const priceImpact = "< 0.5%"  // 0x doesn't return price impact directly
+
+  const txData: SwapQuote["tx"] = {
+    to:       json.transaction.to,
+    data:     json.transaction.data,
+    value:    json.transaction.value ?? "0x0",
+    gasLimit: `0x${parseInt(json.transaction.gas).toString(16)}`,
+  }
+
+  // Carry permit2 and allowance issues through so executeSwap can handle them
+  return {
+    toAmount,
+    routeLabel,
+    priceImpact,
+    protocol: routeLabel,
+    tx: txData,
+    permit2:   json.permit2 ?? null,
+    needsAllowance: !!(json.issues?.allowance && BigInt(json.issues.allowance.actual) === 0n),
+    allowanceSpender: json.issues?.allowance?.spender ?? null,
+    sellToken,
+    sellAmountRaw,
+  }
 }
 
 // ─── Format helpers ───────────────────────────────────────────────────────────
@@ -495,7 +373,7 @@ export default function Swap() {
     setQuoteError(null)
     setQuote(null)
     try {
-      const q = await fetchUniswapQuote({
+      const q = await fetch0xQuote({
         chain: activeChain,
         sellToken: fromToken,
         buyToken: toToken,
@@ -506,7 +384,7 @@ export default function Swap() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Could not get quote."
       setQuoteError(
-        msg.includes("NO_ROUTE") || msg.includes("INSUFFICIENT_LIQUIDITY")
+        msg.includes("NO_ROUTE") || msg.includes("INSUFFICIENT_LIQUIDITY") || msg.includes("liquidityAvailable")
           ? "No liquidity available for this pair on this network. Try switching to mainnet."
           : msg.includes("429") || msg.includes("rate")
           ? "Rate limited. Please wait a moment and try again."
@@ -557,6 +435,7 @@ export default function Swap() {
     try {
       const provider = await embeddedWallet.getEthereumProvider()
 
+      // Switch to the correct chain
       try {
         await provider.request({
           method: "wallet_switchEthereumChain",
@@ -564,12 +443,47 @@ export default function Swap() {
         })
       } catch { /* already on correct chain */ }
 
+      // ── Step 1: If Permit2 allowance not set, approve it first (one-time) ──
+      if (quote.needsAllowance && quote.allowanceSpender && quote.sellToken.address !== NATIVE) {
+        const PERMIT2 = "0x000000000022D473030F116dDEE9F6B43aC78BA3"
+        // approve(PERMIT2, type(uint256).max)
+        const approveData =
+          "0x095ea7b3" +
+          PERMIT2.slice(2).toLowerCase().padStart(64, "0") +
+          "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        await provider.request({
+          method: "eth_sendTransaction",
+          params: [{
+            from: embeddedWallet.address,
+            to:   quote.sellToken.address as string,
+            data: approveData,
+            value: "0x0",
+          }],
+        })
+        // Small wait to let the approval confirm before the swap
+        await new Promise(r => setTimeout(r, 3000))
+      }
+
+      // ── Step 2: Sign Permit2 typed data (for ERC20 sells) ──────────────────
+      let txData = quote.tx.data
+      if (quote.permit2?.eip712) {
+        const signature = await provider.request({
+          method: "eth_signTypedData_v4",
+          params: [embeddedWallet.address, JSON.stringify(quote.permit2.eip712)],
+        }) as string
+
+        // Append signature length + signature to the tx data (0x convention)
+        const sigLenHex = (signature.length / 2 - 1).toString(16).padStart(64, "0")
+        txData = quote.tx.data + sigLenHex + signature.slice(2)
+      }
+
+      // ── Step 3: Send the swap transaction ───────────────────────────────────
       const hash = await provider.request({
         method: "eth_sendTransaction",
         params: [{
           from:  embeddedWallet.address,
           to:    quote.tx.to,
-          data:  quote.tx.data,
+          data:  txData,
           value: quote.tx.value,
           gas:   quote.tx.gasLimit,
         }],
@@ -828,7 +742,7 @@ export default function Swap() {
         </button>
 
         <p className="text-center text-[10px] text-gray-300">
-          Powered by Uniswap
+          Powered by 0x
         </p>
       </div>
 
