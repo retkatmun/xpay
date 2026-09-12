@@ -402,21 +402,7 @@ export default function Home() {
               </div>
             </button>
 
-            {/* Convert USDC → NGN */}
-            <button
-              onClick={() => navigate("/convert")}
-              className="group flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white p-4 text-left shadow-sm transition hover:border-orange-200 hover:bg-orange-50/60 active:scale-[.98]"
-            >
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 transition group-hover:bg-orange-100">
-                <svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="#ea580c" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M10 3v14M6 6l4-3 4 3M6 14l4 3 4-3"/>
-                </svg>
-              </span>
-              <div>
-                <p className="text-sm font-semibold text-gray-900">Convert to Naira</p>
-                <p className="mt-0.5 text-[11px] leading-tight text-gray-400">Sell USDC → Nigerian bank</p>
-              </div>
-            </button>
+
 
             {/* Swap tokens */}
             <button

@@ -509,7 +509,7 @@ export default function Send() {
     setQuoteError(null)
   }
 
-  // ─── Quote fetch (USDC only) ────────────────────────────────────────────
+  // ─── Quote fetch (USDC only — for NGN preview on review screen) ──────────
   const fetchQuote = useCallback(async (usdAmount: bigint): Promise<Quote | null> => {
     setQuoteLoading(true)
     setQuoteError(null)
@@ -520,7 +520,24 @@ export default function Send() {
       setQuote(q)
       return q
     } catch (err: unknown) {
+      // Rate fetch failed — build a minimal quote so the send can still proceed
+      // The NGN preview just won't show on the review screen
       const reason = err instanceof ApiError ? err.reason : err instanceof Error ? err.message : "server_error"
+      if (reason === "fx_unavailable" || reason.includes("fx")) {
+        // Build a zero-rate fallback quote so Continue still works
+        const fallback: Quote = {
+          id:            `local_${Date.now()}`,
+          asset:         "USDC",
+          amount:        usdAmount.toString(),
+          fxRate:        0,
+          feeNgn:        "0",
+          ngnAmountGross: "0",
+          ngnAmount:     "0",
+          expiresAt:     new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+        }
+        setQuote(fallback)
+        return fallback
+      }
       setQuoteError(friendlyError(reason))
       return null
     } finally {
@@ -561,8 +578,8 @@ export default function Send() {
 
   // ─── Submit transfer ────────────────────────────────────────────────────
   async function submitTransfer(pinValue: string) {
-    if (isUsdcSend && (!usdcAmount || !quote)) {
-      setPinError("Quote missing. Please go back and try again."); return
+    if (isUsdcSend && !parsedUsdcAmount) {
+      setPinError("Enter an amount to continue."); return
     }
     if (submitting) return
     setSubmitting(true); setStep("sending")
@@ -708,7 +725,7 @@ export default function Send() {
       // Build ERC-20 transfer(address,uint256) calldata
       // selector: a9059cbb
       const paddedTo     = toAddress.slice(2).toLowerCase().padStart(64, "0")
-      const paddedAmount = usdcAmount!.toString(16).padStart(64, "0")
+      const paddedAmount = parsedUsdcAmount!.toString(16).padStart(64, "0")
       const transferData = `0xa9059cbb${paddedTo}${paddedAmount}`
 
       const provider = await embeddedWallet.getEthereumProvider()
@@ -739,13 +756,13 @@ export default function Send() {
         recipient_bank_name:             null,
         recipient_account_number_last4:  null,
         asset:                           "USDC",
-        amount:                          usdcAmount!.toString(),
+        amount:                          parsedUsdcAmount!.toString(),
         chain_id:                        selectedChain.id,
         tx_hash:                         txHash,
         status:                          "completed",
-        fee_ngn:                         "0",
-        fx_rate:                         0,
-        ngn_amount:                      "0",
+        fee_ngn:                         quote?.feeNgn ?? "0",
+        fx_rate:                         quote?.fxRate ?? 0,
+        ngn_amount:                      quote?.ngnAmount ?? "0",
         memo:                            memo || null,
         created_at:                      now,
         updated_at:                      now,
@@ -754,10 +771,10 @@ export default function Send() {
       const receipt: Transaction = {
         id:                          txHash,
         status:                      "completed",
-        amount:                      usdcAmount!.toString(),
-        ngnAmount:                   "0",
-        feeNgn:                      "0",
-        fxRate:                      0,
+        amount:                      parsedUsdcAmount!.toString(),
+        ngnAmount:                   quote?.ngnAmount ?? "0",
+        feeNgn:                      quote?.feeNgn ?? "0",
+        fxRate:                      quote?.fxRate ?? 0,
         asset:                       "USDC",
         direction:                   "out",
         recipientType:               "xpay_user",
@@ -1616,19 +1633,19 @@ export default function Send() {
             <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 4l6 6-6 6"/></svg>
           </button>
 
-          {/* Nigerian bank — USDC only (converted to NGN) */}
-          <button type="button" onClick={() => { setSelectedToken("usdc"); setStep("bank_account") }}
-            className="flex w-full items-center gap-4 rounded-2xl border border-gray-100 bg-white p-5 text-left shadow-sm transition hover:border-blue-200 hover:bg-blue-50 active:scale-[.99]">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50">
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#2563eb" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"/>
+          {/* Convert to Naira — USDC only (converted to NGN) */}
+          <button type="button" onClick={() => navigate("/convert")}
+            className="flex w-full items-center gap-4 rounded-2xl border border-gray-100 bg-white p-5 text-left shadow-sm transition hover:border-orange-200 hover:bg-orange-50/60 active:scale-[.99]">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-50">
+              <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="#ea580c" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10 3v14M6 6l4-3 4 3M6 14l4 3 4-3"/>
               </svg>
             </div>
             <div className="min-w-0 flex-1">
-              <p className="font-semibold text-gray-900">Nigerian bank account</p>
+              <p className="font-semibold text-gray-900">Convert to Naira</p>
               <p className="mt-0.5 text-sm text-gray-500">
                 Any verified bank ·{" "}
-                <span className="font-medium text-blue-600">USDC → Naira</span>
+                <span className="font-medium text-orange-600">USDC → Naira</span>
               </p>
             </div>
             <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 4l6 6-6 6"/></svg>
