@@ -270,14 +270,37 @@ export async function getRecentRecipients(): Promise<PublicUser[]> {
 // ── Banks ─────────────────────────────────────────────────────────────────────
 
 export async function getBanks(): Promise<Bank[]> {
-  return get("/api/banks")
+  // Try backend first
+  try {
+    return await get("/api/banks")
+  } catch {
+    // Backend unavailable — fall back to Paystack public banks API
+  }
+  try {
+    const res = await fetch("https://api.paystack.co/bank?country=nigeria&perPage=200&use_cursor=false")
+    if (!res.ok) throw new Error("paystack error")
+    const data = await res.json() as { status: boolean; data: { name: string; code: string; slug: string }[] }
+    if (data.status && Array.isArray(data.data)) {
+      return data.data.map(b => ({ name: b.name, code: b.code, slug: b.slug }))
+    }
+  } catch {
+    // both failed
+  }
+  return []
 }
 
 export async function resolveBankAccount(
   bankCode: string,
   accountNumber: string,
 ): Promise<BankResolveResult> {
-  return post("/api/banks/resolve", { bankCode, accountNumber })
+  // This requires a backend with a Paystack secret key — cannot be done client-side
+  try {
+    return await post("/api/banks/resolve", { bankCode, accountNumber })
+  } catch (err) {
+    if (err instanceof ApiError && err.status !== 0) throw err
+    // Network error — backend is down
+    throw new ApiError(503, "backend_unavailable", "Account verification requires an active backend. Please try again later.")
+  }
 }
 
 // ── Quotes ────────────────────────────────────────────────────────────────────

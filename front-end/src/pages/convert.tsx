@@ -357,8 +357,13 @@ export default function Convert() {
       if (!result.success) { setVerifyError(friendlyError(result.reason)); return }
       setVerifiedAccount(result)
       setStep("bank_confirm")
-    } catch {
-      setVerifyError("Could not verify account. Check your connection.")
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : ""
+      if (msg.includes("backend_unavailable") || msg.includes("backend")) {
+        setVerifyError("Account verification is unavailable right now — the backend is offline. Please try again later.")
+      } else {
+        setVerifyError("Could not verify account. Check your connection and try again.")
+      }
     } finally {
       setVerifying(false)
     }
