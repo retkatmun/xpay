@@ -116,9 +116,7 @@ body {
 ::selection { background-color: var(--color-blue); color: #fff; }
 
 :focus-visible {
-  outline: 2px solid var(--color-blue);
-  outline-offset: 2px;
-  border-radius: 3px;
+  outline: none;
 }
 
 button          { cursor: pointer; }

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useFundWallet } from '@privy-io/react-auth'
 import { useSession } from '@/lib/session'
 import { useWallet } from '@/lib/useWallet-simple'
+import { useNetwork } from '@/lib/NetworkContext'
 import { Screen } from '@/components/Screen'
 import { Title } from '@/components/Screen'
 import { CopyButton } from '@/components/CopyButton'
@@ -13,6 +14,7 @@ export default function Receive() {
   const { authUser, profile, loading, walletAddress: sessionWallet } = useSession()
   const { address, isLoading: walletLoading } = useWallet()
   const { fundWallet } = useFundWallet()
+  const { activeChain } = useNetwork()
   const [fundLoading, setFundLoading] = useState(false)
   const [fundSuccess, setFundSuccess] = useState(false)
 
@@ -30,7 +32,7 @@ export default function Receive() {
     setFundLoading(true)
     setFundSuccess(false)
     try {
-      await fundWallet(walletAddress, { chain: { id: 8453 }, amount: '50' })
+      await fundWallet(walletAddress, { chain: { id: activeChain.id }, amount: '50' })
       setFundSuccess(true)
       setTimeout(() => setFundSuccess(false), 3000)
     } catch {
@@ -39,6 +41,11 @@ export default function Receive() {
       setFundLoading(false)
     }
   }
+
+  // Derive a network logo key from the chain name
+  const networkLogoKey = activeChain.name.toLowerCase().includes('base') ? 'base'
+    : activeChain.name.toLowerCase().includes('ethereum') || activeChain.name.toLowerCase().includes('sepolia') ? 'ethereum'
+    : 'base'
 
   return (
     <Screen back onBack={() => navigate('/home')}>
@@ -89,12 +96,21 @@ export default function Receive() {
           <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
             {/* Network + address row */}
             <div className="flex items-center gap-3 border-b border-gray-100 px-4 py-3.5">
-              <img src={getNetworkLogo('base')} alt="Base" className="h-8 w-8 shrink-0 rounded-full" />
+              <img
+                src={getNetworkLogo(networkLogoKey)}
+                alt={activeChain.name}
+                className="h-8 w-8 shrink-0 rounded-full"
+              />
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-gray-900">Base network</p>
-                <p className="text-xs text-gray-400">USDC only · ERC-20</p>
+                <p className="text-sm font-semibold text-gray-900">{activeChain.name} network</p>
+                <p className="text-xs text-gray-400">
+                  {activeChain.usdcAddress ? 'USDC · ERC-20' : 'Native ETH only'}
+                  {activeChain.isTestnet && ' · Testnet'}
+                </p>
               </div>
-              <img src={getTokenLogo('USDC')} alt="USDC" className="h-6 w-6 shrink-0 rounded-full" />
+              {activeChain.usdcAddress && (
+                <img src={getTokenLogo('USDC')} alt="USDC" className="h-6 w-6 shrink-0 rounded-full" />
+              )}
             </div>
 
             {/* Address */}
@@ -119,7 +135,9 @@ export default function Receive() {
             {/* Warning */}
             <div className="border-t border-amber-100 bg-amber-50 px-4 py-3">
               <p className="text-xs leading-relaxed text-amber-700">
-                <strong>Base network only.</strong> Only send USDC on Base to this address. Sending any other token or network will result in permanent loss.
+                <strong>{activeChain.name} network only.</strong>{' '}
+                Only send{activeChain.usdcAddress ? ' USDC' : ` ${activeChain.nativeSymbol}`} on{' '}
+                {activeChain.name} to this address. Sending any other token or network will result in permanent loss.
               </p>
             </div>
           </div>
@@ -151,10 +169,14 @@ export default function Receive() {
                 {fundSuccess ? 'Funds received!' : 'Fund with card'}
               </p>
               <p className="mt-0.5 text-xs text-emerald-600">
-                {fundSuccess ? 'Balance is updating…' : 'Apple Pay, Google Pay, debit or credit card'}
+                {fundSuccess
+                  ? 'Balance is updating…'
+                  : `Apple Pay, Google Pay, debit or credit card · ${activeChain.name}`}
               </p>
             </div>
-            <img src={getTokenLogo('USDC')} alt="USDC" className="h-6 w-6 shrink-0 rounded-full" />
+            {activeChain.usdcAddress && (
+              <img src={getTokenLogo('USDC')} alt="USDC" className="h-6 w-6 shrink-0 rounded-full" />
+            )}
           </button>
         </div>
       </div>

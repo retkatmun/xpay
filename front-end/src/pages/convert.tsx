@@ -54,7 +54,8 @@ function SummaryRow({ label, value, highlight }: { label: string; value: React.R
 export default function Convert() {
   const navigate = useNavigate()
   const { authUser, loading } = useSession()
-  const { balance, refresh: refreshBalance } = useUsdcBalance()
+  const { activeChain } = useNetwork()
+  const { balance, refresh: refreshBalance } = useUsdcBalance(activeChain)
 
   const [step, setStep] = useState<Step>("amount")
   const [liveRate, setLiveRate] = useState<number | null>(null)
@@ -654,10 +655,10 @@ export default function Convert() {
                     placeholder="Search banks…"
                     autoFocus
                     onClick={e => e.stopPropagation()}
-                    className="min-w-0 flex-1 bg-transparent text-sm text-gray-900 outline-none placeholder:text-gray-400"
+                    className="min-w-0 flex-1 bg-transparent text-base text-gray-900 outline-none placeholder:text-gray-400"
                   />
                 ) : (
-                  <span className={`flex-1 text-sm ${selectedBank ? "text-gray-900 font-medium" : "text-gray-400"}`}>
+                  <span className={`flex-1 text-base ${selectedBank ? "text-gray-900 font-medium" : "text-gray-400"}`}>
                     {selectedBank ? selectedBank.name : "Select your bank"}
                   </span>
                 )}

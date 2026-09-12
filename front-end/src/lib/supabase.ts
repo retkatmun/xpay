@@ -50,6 +50,46 @@ export async function fetchProfileById(userId: string) {
 }
 
 /**
+ * Search profiles by username prefix OR phone/account_number.
+ * Returns up to 8 matches with wallet_address included.
+ */
+export async function searchProfiles(query: string): Promise<{
+  username: string
+  display_name: string
+  wallet_address: string | null
+  phone: string
+  account_number: string | null
+  avatar_url: string | null
+}[]> {
+  const q = query.trim().toLowerCase().replace(/^@/, "").replace(/\.xpay$/, "")
+  if (!q || q.length < 2) return []
+
+  const isNumeric = /^\d+$/.test(q)
+
+  let queryBuilder = supabaseAdmin
+    .from("profiles")
+    .select("username, display_name, wallet_address, phone, account_number, avatar_url")
+    .limit(8)
+
+  if (isNumeric) {
+    queryBuilder = queryBuilder.or(`account_number.ilike.%${q}%,phone.ilike.%${q}%`)
+  } else {
+    queryBuilder = queryBuilder.or(`username.ilike.${q}%,display_name.ilike.${q}%`)
+  }
+
+  const { data, error } = await queryBuilder
+  if (error) return []
+  return (data ?? []) as {
+    username: string
+    display_name: string
+    wallet_address: string | null
+    phone: string
+    account_number: string | null
+    avatar_url: string | null
+  }[]
+}
+
+/**
  * Insert a new XPay profile row.
  * All new users get role = 'user' by default.
  * Role can only be changed from the Admin Panel inside the app.
@@ -103,6 +143,62 @@ export async function fetchAllProfiles() {
   return data ?? [];
 }
 
+/** Fetch ALL transactions across all users — admin panel only */
+export async function fetchAllTransactions(): Promise<SupabaseTransaction[]> {
+  const { data, error } = await supabaseAdmin
+    .from("transactions")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(500)
+  if (error) throw new Error(error.message)
+  return (data ?? []) as SupabaseTransaction[]
+}
+
+/** Aggregate platform stats — admin panel only */
+export async function fetchAdminStats(): Promise<{
+  totalTx: number
+  completedTx: number
+  pendingTx: number
+  failedTx: number
+  totalVolumeUsdc: bigint
+  totalVolumeNgn: bigint
+  totalFeesNgn: bigint
+  totalUsers: number
+}> {
+  const [txResult, profileResult] = await Promise.all([
+    supabaseAdmin.from("transactions").select("status, amount, ngn_amount, fee_ngn, direction"),
+    supabaseAdmin.from("profiles").select("id", { count: "exact", head: true }),
+  ])
+  if (txResult.error) throw new Error(txResult.error.message)
+
+  const txs = (txResult.data ?? []) as {
+    status: string; amount: string; ngn_amount: string; fee_ngn: string; direction: string
+  }[]
+
+  let totalVolumeUsdc = 0n, totalVolumeNgn = 0n, totalFeesNgn = 0n
+  let completedTx = 0, pendingTx = 0, failedTx = 0
+
+  const TERMINAL_OK   = ["completed"]
+  const TERMINAL_FAIL = ["blockchain_failed","payout_failed","cancelled","expired","rejected"]
+
+  for (const tx of txs) {
+    if (tx.direction === "out") {
+      totalVolumeUsdc += BigInt(tx.amount    || "0")
+      totalVolumeNgn  += BigInt(tx.ngn_amount|| "0")
+      totalFeesNgn    += BigInt(tx.fee_ngn   || "0")
+    }
+    if      (TERMINAL_OK.includes(tx.status))   completedTx++
+    else if (TERMINAL_FAIL.includes(tx.status)) failedTx++
+    else                                         pendingTx++
+  }
+
+  return {
+    totalTx: txs.length, completedTx, pendingTx, failedTx,
+    totalVolumeUsdc, totalVolumeNgn, totalFeesNgn,
+    totalUsers: profileResult.count ?? 0,
+  }
+}
+
 /** Update a user's role — admin panel only */
 export async function updateUserRole(userId: string, role: "user" | "admin") {
   const { error } = await supabaseAdmin
@@ -133,7 +229,45 @@ export async function updateProfile(userId: string, updates: {
   return data;
 }
 
-// ─── Transactions ─────────────────────────────────────────────────────────────
+// ─── Avatar / profile picture storage ────────────────────────────────────────
+
+const AVATAR_BUCKET = "avatars"
+
+/**
+ * Upload a profile picture for a user.
+ * File is stored at avatars/{userId}.{ext} — overwrites any previous upload.
+ * Returns the public URL.
+ */
+export async function uploadAvatar(userId: string, file: File): Promise<string> {
+  const ext  = file.name.split(".").pop()?.toLowerCase() ?? "jpg"
+  const path = `${userId}.${ext}`
+
+  // upsert: overwrite existing file without error
+  const { error } = await supabaseAdmin.storage
+    .from(AVATAR_BUCKET)
+    .upload(path, file, { upsert: true, contentType: file.type })
+
+  if (error) throw new Error(error.message)
+
+  const { data } = supabaseAdmin.storage.from(AVATAR_BUCKET).getPublicUrl(path)
+  // Bust cache with a timestamp so the browser re-fetches
+  return `${data.publicUrl}?t=${Date.now()}`
+}
+
+/** Delete a user's avatar from storage. */
+export async function deleteAvatar(userId: string): Promise<void> {
+  // Try both common extensions
+  const paths = ["jpg","jpeg","png","webp","gif"].map(e => `${userId}.${e}`)
+  await supabaseAdmin.storage.from(AVATAR_BUCKET).remove(paths)
+}
+
+/** Derive the public URL for a user's avatar (no existence check). */
+export function getAvatarUrl(userId: string, ext = "jpg"): string {
+  const { data } = supabaseAdmin.storage
+    .from(AVATAR_BUCKET)
+    .getPublicUrl(`${userId}.${ext}`)
+  return data.publicUrl
+}
 
 export type SupabaseTransaction = {
   id: string

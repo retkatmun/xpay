@@ -38,7 +38,7 @@ export function HandleField({
       <span
         className={[
           "flex h-13 items-center gap-1 rounded-md border bg-surface px-4",
-          "transition-colors duration-150 ease-out focus-within:border-green",
+          "transition-colors duration-150 ease-out",
           error ? "border-alert" : "border-line",
         ].join(" ")}
       >

@@ -19,6 +19,7 @@ export type XPayProfile = {
   pin_hash?: string | null;
   role: "user" | "admin";
   account_number?: string | null;
+  avatar_url?: string | null;
   created_at?: string;
   updated_at?: string;
 };

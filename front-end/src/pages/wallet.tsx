@@ -1,21 +1,27 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useFundWallet } from "@privy-io/react-auth";
 import { Screen } from "@/components/Screen";
 import { CopyButton } from "@/components/CopyButton";
 import { Avatar } from "@/components/Avatar";
+import { Spinner } from "@/components/icons";
 import { useSession } from "@/lib/session";
-import { getTokenLogo, getNetworkLogo } from "@/assets/logos";
-import { getSavedBeneficiaries, deleteBeneficiary } from "@/lib/supabase";
+import { useNetwork } from "@/lib/NetworkContext";
+import { getTokenLogo } from "@/assets/logos";
+import { getSavedBeneficiaries, deleteBeneficiary, uploadAvatar, deleteAvatar, updateProfile } from "@/lib/supabase";
 import type { SavedBeneficiary } from "@/lib/supabase";
 
 export default function Wallet() {
   const navigate = useNavigate();
-  const { authUser, profile, loading, walletAddress, signOut, isAdmin } = useSession();
+  const { authUser, profile, loading, walletAddress, signOut, isAdmin, setProfile } = useSession();
   const { fundWallet } = useFundWallet();
+  const { activeChain } = useNetwork();
   const [fundLoading, setFundLoading] = useState(false);
   const [beneficiaries, setBeneficiaries] = useState<SavedBeneficiary[]>([]);
   const [loadingBeneficiaries, setLoadingBeneficiaries] = useState(true);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!loading && !authUser) navigate("/login", { replace: true });
@@ -46,12 +52,53 @@ export default function Wallet() {
     ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
     : null;
 
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !authUser) return
+    if (file.size > 2 * 1024 * 1024) {
+      setAvatarError("Image must be under 2 MB.")
+      return
+    }
+    setAvatarUploading(true)
+    setAvatarError(null)
+    try {
+      const url = await uploadAvatar(authUser.id, file)
+      // Persist url in profile row so other users see it in search
+      await updateProfile(authUser.id, { avatar_url: url })
+      // Update local session profile
+      if (profile) {
+        setProfile({ ...profile, avatar_url: url })
+      }
+    } catch (err) {
+      setAvatarError(err instanceof Error ? err.message : "Upload failed. Try again.")
+    } finally {
+      setAvatarUploading(false)
+      // Reset input so same file can be re-selected
+      if (fileInputRef.current) fileInputRef.current.value = ""
+    }
+  }
+
+  async function handleRemoveAvatar() {
+    if (!authUser || !profile?.avatar_url) return
+    setAvatarUploading(true)
+    setAvatarError(null)
+    try {
+      await deleteAvatar(authUser.id)
+      await updateProfile(authUser.id, { avatar_url: null })
+      if (profile) setProfile({ ...profile, avatar_url: null })
+    } catch (err) {
+      setAvatarError(err instanceof Error ? err.message : "Could not remove photo.")
+    } finally {
+      setAvatarUploading(false)
+    }
+  }
+
   const handleFund = async () => {
     const addr = walletAddress || profile.wallet_address;
     if (!addr) { navigate("/receive"); return; }
     setFundLoading(true);
     try {
-      await fundWallet(addr, { chain: { id: 8453 }, amount: "50" });
+      await fundWallet(addr, { chain: { id: activeChain.id }, amount: "50" });
     } catch { /* user cancelled */ }
     finally { setFundLoading(false); }
   };
@@ -67,8 +114,11 @@ export default function Wallet() {
 
         {/* ── Profile hero ── */}
         <div className="mb-6 flex flex-col items-center pt-4 text-center">
+          {/* Avatar with camera button */}
           <div className="relative mb-4">
-            <Avatar name={displayName} size={80} />
+            <Avatar name={displayName} size={80} src={profile.avatar_url} />
+
+            {/* Admin star badge */}
             {isAdmin && (
               <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-purple-600 ring-2 ring-white">
                 <svg viewBox="0 0 12 12" width="8" height="8" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -76,7 +126,62 @@ export default function Wallet() {
                 </svg>
               </span>
             )}
+
+            {/* Camera / upload button */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={avatarUploading}
+              aria-label="Change profile photo"
+              className="absolute -bottom-1 left-0 flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 ring-2 ring-white transition hover:bg-blue-700 active:scale-95 disabled:opacity-60"
+            >
+              {avatarUploading ? (
+                <Spinner className="h-3 w-3 text-white" />
+              ) : (
+                <svg viewBox="0 0 14 14" width="10" height="10" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1 10V4a1 1 0 011-1h1.5L5 1.5h4L10.5 3H12a1 1 0 011 1v6a1 1 0 01-1 1H2a1 1 0 01-1-1z"/>
+                  <circle cx="7" cy="7" r="1.8"/>
+                </svg>
+              )}
+            </button>
+
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="hidden"
+              onChange={handleAvatarChange}
+            />
           </div>
+
+          {/* Upload error */}
+          {avatarError && (
+            <p className="mb-2 text-xs text-red-500">{avatarError}</p>
+          )}
+
+          {/* Photo action buttons */}
+          <div className="mb-3 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={avatarUploading}
+              className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-600 transition hover:bg-blue-100 disabled:opacity-50"
+            >
+              {profile.avatar_url ? "Change photo" : "Add photo"}
+            </button>
+            {profile.avatar_url && (
+              <button
+                type="button"
+                onClick={handleRemoveAvatar}
+                disabled={avatarUploading}
+                className="rounded-full border border-red-100 bg-red-50 px-3 py-1 text-xs font-semibold text-red-500 transition hover:bg-red-100 disabled:opacity-50"
+              >
+                Remove
+              </button>
+            )}
+          </div>
+
           <h1 className="text-xl font-bold text-gray-900">{displayName}</h1>
           {displayEmail && <p className="mt-0.5 text-sm text-gray-400">{displayEmail}</p>}
           <div className="mt-3 flex items-center gap-1.5 rounded-full border border-gray-100 bg-gray-50 px-3 py-1">
@@ -85,7 +190,6 @@ export default function Wallet() {
           </div>
         </div>
 
-        {/* ── Wallet ── */}
         <div className="mb-4">
           <p className="mb-2 text-[0.68rem] font-bold uppercase tracking-widest text-gray-400">Wallet</p>
           <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm divide-y divide-gray-100">
@@ -94,11 +198,14 @@ export default function Wallet() {
                 <div className="flex items-center justify-between px-4 py-3.5">
                   <div className="flex items-center gap-3">
                     <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-50">
-                      <img src={getNetworkLogo("base")} alt="Base" className="h-5 w-5 rounded-full" />
+                      <span
+                        className="h-4 w-4 rounded-full"
+                        style={{ backgroundColor: activeChain.color }}
+                      />
                     </div>
                     <div>
                       <p className="text-sm text-gray-700 font-medium">Embedded wallet</p>
-                      <p className="text-[10px] text-gray-400">Base · Privy</p>
+                      <p className="text-[10px] text-gray-400">{activeChain.name} · Privy</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5">
@@ -260,7 +367,7 @@ export default function Wallet() {
         </div>
 
         <p className="mt-4 text-center text-[10px] text-gray-300">
-          Secured by Privy · Embedded wallet on Base
+          Secured by Privy · Embedded wallet on {activeChain.name}
         </p>
       </div>
     </Screen>

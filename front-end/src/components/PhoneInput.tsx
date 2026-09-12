@@ -193,8 +193,8 @@ export function PhoneInput({
         className={[
           "relative flex h-12 items-center rounded-xl transition-all duration-150",
           error
-            ? "border border-red-400 ring-2 ring-red-100"
-            : "border border-gray-200 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100",
+            ? "border border-red-400"
+            : "border border-gray-200",
         ].join(" ")}
       >
         {/* Country selector button */}
@@ -234,7 +234,7 @@ export function PhoneInput({
           value={localNumber}
           onChange={(e) => handleNumberChange(e.target.value)}
           placeholder={placeholder ?? "800 123 4567"}
-          className="h-full flex-1 bg-transparent px-3 text-sm text-gray-900 outline-none placeholder:text-gray-400"
+          className="h-full flex-1 bg-transparent px-3 text-base text-gray-900 outline-none placeholder:text-gray-400"
         />
       </div>
 
@@ -267,7 +267,7 @@ export function PhoneInput({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search country..."
-                className="flex-1 bg-transparent text-xs text-gray-900 outline-none placeholder:text-gray-400"
+                className="flex-1 bg-transparent text-base text-gray-900 outline-none placeholder:text-gray-400"
               />
             </div>
           </div>

@@ -21,6 +21,9 @@ export type User = {
 export type PublicUser = {
   username: string
   displayName: string
+  walletAddress?: string | null
+  phone?: string | null
+  avatarUrl?: string | null
 }
 
 export type Balance = {

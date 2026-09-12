@@ -16,6 +16,10 @@ export type ChainConfig = {
   isTestnet: boolean
   blockExplorer: string
   explorerApiUrl: string
+  /** Native token symbol, e.g. "ETH", "ETH" (Base uses ETH too) */
+  nativeSymbol: string
+  /** Native token decimals (always 18 for EVM) */
+  nativeDecimals: number
 }
 
 export const CHAINS: ChainConfig[] = [
@@ -33,6 +37,8 @@ export const CHAINS: ChainConfig[] = [
     isTestnet: false,
     blockExplorer: "https://etherscan.io",
     explorerApiUrl: "https://api.etherscan.io/api",
+    nativeSymbol: "ETH",
+    nativeDecimals: 18,
   },
   {
     id: 11155111,
@@ -49,6 +55,8 @@ export const CHAINS: ChainConfig[] = [
     isTestnet: true,
     blockExplorer: "https://sepolia.etherscan.io",
     explorerApiUrl: "https://api-sepolia.etherscan.io/api",
+    nativeSymbol: "ETH",
+    nativeDecimals: 18,
   },
   {
     id: 8453,
@@ -64,6 +72,8 @@ export const CHAINS: ChainConfig[] = [
     isTestnet: false,
     blockExplorer: "https://basescan.org",
     explorerApiUrl: "https://api.basescan.org/api",
+    nativeSymbol: "ETH",
+    nativeDecimals: 18,
   },
   {
     id: 84532,
@@ -78,6 +88,8 @@ export const CHAINS: ChainConfig[] = [
     isTestnet: true,
     blockExplorer: "https://sepolia.basescan.org",
     explorerApiUrl: "https://api-sepolia.basescan.org/api",
+    nativeSymbol: "ETH",
+    nativeDecimals: 18,
   },
 ]
 

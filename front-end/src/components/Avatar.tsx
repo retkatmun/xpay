@@ -1,3 +1,4 @@
+import { useState } from "react";
 
 /** Four quiet tints. Avatars identify people; they shouldn't compete with money. */
 const TINTS = [
@@ -25,28 +26,41 @@ function tintFor(seed: string) {
 export function Avatar({
   name,
   size = 40,
+  src,
   external,
 }: {
   name: string;
   size?: number;
+  /** Profile picture URL — shown instead of initials when provided. */
+  src?: string | null;
   /** Money that arrived from outside XPay has no person behind it. */
   external?: boolean;
 }) {
   const tint = external ? { bg: "#EFF4F0", fg: "#1B5E3F" } : tintFor(name);
+  const [imgError, setImgError] = useState(false);
+
+  const showPhoto = !!src && !imgError;
 
   return (
     <span
-      className="flex shrink-0 items-center justify-center rounded-full font-medium select-none"
+      className="relative flex shrink-0 items-center justify-center overflow-hidden rounded-full font-medium select-none"
       style={{
         width: size,
         height: size,
-        backgroundColor: tint.bg,
+        backgroundColor: showPhoto ? "transparent" : tint.bg,
         color: tint.fg,
         fontSize: size * 0.36,
       }}
       aria-hidden
     >
-      {external ? (
+      {showPhoto ? (
+        <img
+          src={src!}
+          alt={name}
+          onError={() => setImgError(true)}
+          className="h-full w-full rounded-full object-cover"
+        />
+      ) : external ? (
         <svg viewBox="0 0 20 20" width={size * 0.45} height={size * 0.45} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M10 15V5M6 9l4-4 4 4" />
         </svg>
