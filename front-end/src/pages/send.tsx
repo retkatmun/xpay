@@ -32,7 +32,7 @@ import {
   ApiError,
   formatHandle, getQuote, getTransaction,
   getRecentRecipients, getBanks, resolveBankAccount,
-  resolveRecipient, sendToUser, sendToBank,
+  resolveRecipient,
 } from "@/lib/api"
 import { searchProfiles, supabaseAdmin } from "@/lib/supabase"
 import { formatUSD, parseAmount, toNGN } from "@/lib/money"
@@ -666,44 +666,111 @@ export default function Send() {
         return
       }
 
-      // ── USDC / backend sends (existing flow) ────────────────────────────
-      const idempotencyKey = `send_${quote!.id}`
+      // ── USDC send: verify PIN locally, execute ERC-20 transfer on-chain ──
+      if (!profile?.pin_hash || pinValue !== profile.pin_hash) {
+        setPinError("Incorrect PIN. Try again."); setPin(""); setStep("pin")
+        setSubmitting(false); return
+      }
 
-      let result
+      // Resolve recipient wallet address
+      let toAddress: string | null = null
+      let recipientLabel = ""
       if (xpayRecipient) {
-        result = await sendToUser({
-          recipient: xpayRecipient.username,
-          quoteId: quote!.id,
-          memo: memo || undefined,
-          pin: pinValue,
-          idempotencyKey,
-        })
+        toAddress = xpayRecipient.walletAddress ?? null
+        recipientLabel = xpayRecipient.displayName || xpayRecipient.username
+        if (!toAddress) {
+          setPinError("This user has no wallet address set up yet.")
+          setPin(""); setStep("pin"); setSubmitting(false); return
+        }
       } else if (walletRecipient) {
-        result = await sendToUser({
-          recipient: walletRecipient.address,
-          quoteId: quote!.id,
-          memo: memo || undefined,
-          pin: pinValue,
-          idempotencyKey,
-        })
+        toAddress = walletRecipient.address
+        recipientLabel = walletRecipient.label || walletRecipient.address
       } else if (verifiedAccount) {
-        result = await sendToBank({
-          bankCode: verifiedAccount.bankCode,
-          accountNumber: verifiedAccount.accountNumber,
-          accountName: verifiedAccount.accountName,
-          quoteId: quote!.id,
-          memo: memo || undefined,
-          pin: pinValue,
-          idempotencyKey,
-        })
+        // Bank sends still need the backend — re-throw as friendly error
+        setPinError("Bank payouts are not available right now. Please try again later.")
+        setPin(""); setStep("pin"); setSubmitting(false); return
       } else {
-        setPinError("Recipient missing. Please start again."); setPin(""); setStep("pin"); return
+        setPinError("Recipient missing. Please start again.")
+        setPin(""); setStep("pin"); setSubmitting(false); return
       }
 
-      if (!result.ok) {
-        setPinError(friendlyError(result.reason)); setPin(""); setStep("pin"); return
+      if (!embeddedWallet) {
+        setPinError("Wallet not ready. Please try again.")
+        setPin(""); setStep("pin"); setSubmitting(false); return
       }
-      setReceipt(result.transaction); setStep("done")
+
+      const usdcAddress = selectedChain.usdcAddress
+      if (!usdcAddress) {
+        setPinError("USDC is not supported on this network.")
+        setPin(""); setStep("pin"); setSubmitting(false); return
+      }
+
+      // Build ERC-20 transfer(address,uint256) calldata
+      // selector: a9059cbb
+      const paddedTo     = toAddress.slice(2).toLowerCase().padStart(64, "0")
+      const paddedAmount = usdcAmount!.toString(16).padStart(64, "0")
+      const transferData = `0xa9059cbb${paddedTo}${paddedAmount}`
+
+      const provider = await embeddedWallet.getEthereumProvider()
+      try {
+        await provider.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: `0x${selectedChain.id.toString(16)}` }],
+        })
+      } catch { /* already on correct chain */ }
+
+      const txHash = await provider.request({
+        method: "eth_sendTransaction",
+        params: [{
+          from:  embeddedWallet.address,
+          to:    usdcAddress,
+          data:  transferData,
+          value: "0x0",
+        }],
+      }) as string
+
+      // Record in Supabase
+      const now = new Date().toISOString()
+      await supabaseAdmin.from("transactions").insert({
+        user_id:                         authUser!.id,
+        direction:                       "out",
+        recipient_type:                  "xpay_user",
+        recipient_display_name:          recipientLabel,
+        recipient_bank_name:             null,
+        recipient_account_number_last4:  null,
+        asset:                           "USDC",
+        amount:                          usdcAmount!.toString(),
+        chain_id:                        selectedChain.id,
+        tx_hash:                         txHash,
+        status:                          "completed",
+        fee_ngn:                         "0",
+        fx_rate:                         0,
+        ngn_amount:                      "0",
+        memo:                            memo || null,
+        created_at:                      now,
+        updated_at:                      now,
+      })
+
+      const receipt: Transaction = {
+        id:                          txHash,
+        status:                      "completed",
+        amount:                      usdcAmount!.toString(),
+        ngnAmount:                   "0",
+        feeNgn:                      "0",
+        fxRate:                      0,
+        asset:                       "USDC",
+        direction:                   "out",
+        recipientType:               "xpay_user",
+        recipientDisplayName:        recipientLabel,
+        recipientBankName:           null,
+        recipientAccountNumberLast4: null,
+        memo:                        memo || null,
+        txHash,
+        chainId:                     selectedChain.id,
+        createdAt:                   now,
+        updatedAt:                   now,
+      }
+      setReceipt(receipt); setStep("done")
     } catch (err) {
       console.error("[XPay] submitTransfer:", err)
       const msg = err instanceof Error ? err.message : ""
