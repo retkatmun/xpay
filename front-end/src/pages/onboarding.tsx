@@ -398,16 +398,31 @@ export default function Onboarding() {
 
               {/* Trust signals */}
               <div className="mt-8 grid grid-cols-3 gap-3">
-                {[
-                  { icon: "🔒", label: "Secured by Privy" },
-                  { icon: "⚡", label: "Instant transfers" },
-                  { icon: "🌍", label: "Send to any bank" },
-                ].map((item) => (
-                  <div key={item.label} className="flex flex-col items-center gap-1.5 rounded-xl bg-gray-50 px-2 py-3 text-center">
-                    <span className="text-lg">{item.icon}</span>
-                    <span className="text-[10px] font-medium leading-tight text-gray-500">{item.label}</span>
+                <div className="flex flex-col items-center gap-2 rounded-xl bg-gray-50 px-2 py-3.5 text-center">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
+                    <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="#2563eb" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M10 2l6 2.5V10c0 3.5-2.5 6-6 8-3.5-2-6-4.5-6-8V4.5L10 2z"/>
+                    </svg>
                   </div>
-                ))}
+                  <span className="text-[10px] font-medium leading-tight text-gray-500">Secured by Privy</span>
+                </div>
+                <div className="flex flex-col items-center gap-2 rounded-xl bg-gray-50 px-2 py-3.5 text-center">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100">
+                    <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="#d97706" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M11 3L4 12h7l-2 5 7-9h-7l2-5z"/>
+                    </svg>
+                  </div>
+                  <span className="text-[10px] font-medium leading-tight text-gray-500">Instant transfers</span>
+                </div>
+                <div className="flex flex-col items-center gap-2 rounded-xl bg-gray-50 px-2 py-3.5 text-center">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-100">
+                    <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="#16a34a" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="10" cy="10" r="8"/>
+                      <path d="M2 10h16M10 2a14 14 0 010 16M10 2a14 14 0 000 16"/>
+                    </svg>
+                  </div>
+                  <span className="text-[10px] font-medium leading-tight text-gray-500">Send to any bank</span>
+                </div>
               </div>
 
               {error && <ErrorBox message={error} />}
@@ -478,7 +493,7 @@ export default function Onboarding() {
                     placeholder="Bola Adeyemi"
                     autoComplete="name"
                     autoFocus
-                    className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-base text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   />
                 </div>
 
@@ -517,7 +532,7 @@ export default function Onboarding() {
                           setError(null);
                         }}
                         placeholder="yourhandle"
-                        className="h-full flex-1 bg-transparent px-2 text-sm text-gray-900 outline-none placeholder:text-gray-400"
+                        className="h-full flex-1 bg-transparent px-2 text-base text-gray-900 outline-none placeholder:text-gray-400"
                       />
                       <span className="pr-3.5">
                         {usernameState === "checking" && <Spinner className="h-4 w-4 text-gray-400" />}
