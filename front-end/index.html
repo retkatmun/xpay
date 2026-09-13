@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+
+    <!-- ── Favicon / App Icons ─────────────────────────────────────── -->
+    <!-- SVG favicon (modern browsers) -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- PNG fallback (older browsers, bookmarks) -->
+    <link rel="icon" type="image/png" sizes="192x192" href="/favicon.png" />
+    <!-- Apple touch icon (iOS home screen) -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <!-- Web app manifest (Android, PWA) -->
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <!-- ── Viewport & Theme ────────────────────────────────────────── -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#2563eb" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="XPay" />
+
+    <!-- ── SEO ────────────────────────────────────────────────────── -->
+    <title>XPay — Receive USDC &amp; USDT. Convert to Naira. Instantly.</title>
+    <meta name="description" content="Deposit USDC or USDT from Ethereum, Base, Tron, Polygon or BNB Chain — XPay converts it to Nigerian naira and pays out to any bank account in seconds. No crypto knowledge required." />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="XPay — Receive crypto. Convert to Naira instantly." />
+    <meta property="og:description" content="Deposit USDC or USDT from any major chain. XPay converts it and pays naira to any Nigerian bank in seconds." />
+    <meta property="og:image" content="/favicon.png" />
+
+    <!-- ── Fonts ──────────────────────────────────────────────────── -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+    <style>
+      :root {
+        --font-instrument-serif: 'Instrument Serif', Georgia, 'Times New Roman', serif;
+        --font-public-sans: 'Public Sans', ui-sans-serif, system-ui, sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
