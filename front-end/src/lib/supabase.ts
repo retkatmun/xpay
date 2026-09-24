@@ -384,3 +384,372 @@ export async function deleteBeneficiary(id: string): Promise<void> {
     .eq("id", id);
   if (error) throw new Error(error.message);
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  ENROLLMENT SYSTEM — types + helpers
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export type EnrollmentStatus = "pending" | "active" | "suspended" | "completed" | "cancelled"
+export type PaymentStatus    = "pending" | "approved" | "rejected" | "refunded" | "failed"
+
+export type Enrollment = {
+  id:           string
+  user_id:      string
+  course_name:  string
+  program_type: string
+  status:       EnrollmentStatus
+  enrolled_at:  string
+  activated_at: string | null
+  completed_at: string | null
+  notes:        string | null
+  created_at:   string
+  updated_at:   string
+  // joined
+  profile?:     { display_name: string; email: string | null; phone: string; username: string; avatar_url: string | null }
+  payments?:    EnrollmentPayment[]
+  progress?:    UserProgress | null
+}
+
+export type EnrollmentPayment = {
+  id:                 string
+  enrollment_id:      string
+  user_id:            string
+  amount:             number
+  currency:           string
+  payment_method:     string | null
+  payment_reference:  string | null
+  proof_url:          string | null
+  status:             PaymentStatus
+  admin_id:           string | null
+  admin_note:         string | null
+  reviewed_at:        string | null
+  created_at:         string
+  updated_at:         string
+}
+
+export type AdminNotification = {
+  id:            string
+  type:          string
+  title:         string
+  message:       string
+  user_id:       string | null
+  enrollment_id: string | null
+  payment_id:    string | null
+  is_read:       boolean
+  read_at:       string | null
+  created_at:    string
+}
+
+export type UserProgress = {
+  id:                string
+  user_id:           string
+  enrollment_id:     string
+  total_lessons:     number
+  completed_lessons: number
+  last_activity_at:  string | null
+  notes:             string | null
+  created_at:        string
+  updated_at:        string
+}
+
+// ── Enrollments ───────────────────────────────────────────────────────────────
+
+/** Create a new enrollment record for a user */
+export async function createEnrollment(data: {
+  user_id:      string
+  course_name:  string
+  program_type?: string
+  notes?:       string
+}): Promise<Enrollment> {
+  const { data: row, error } = await supabaseAdmin
+    .from("enrollments")
+    .insert({
+      user_id:      data.user_id,
+      course_name:  data.course_name,
+      program_type: data.program_type ?? "standard",
+      notes:        data.notes ?? null,
+      status:       "pending",
+    })
+    .select()
+    .single()
+  if (error) throw new Error(error.message)
+  return row as Enrollment
+}
+
+/** Fetch a single enrollment by ID (with joined profile + payments + progress) */
+export async function fetchEnrollmentById(id: string): Promise<Enrollment | null> {
+  const { data, error } = await supabaseAdmin
+    .from("enrollments")
+    .select(`*, profile:profiles(display_name,email,phone,username,avatar_url), payments:enrollment_payments(*), progress:user_progress(*)`)
+    .eq("id", id)
+    .maybeSingle()
+  if (error) throw new Error(error.message)
+  if (!data) return null
+  return {
+    ...data,
+    progress: Array.isArray(data.progress) ? (data.progress[0] ?? null) : data.progress,
+  } as Enrollment
+}
+
+/** Fetch all enrollments for a user */
+export async function fetchEnrollmentsByUser(userId: string): Promise<Enrollment[]> {
+  const { data, error } = await supabaseAdmin
+    .from("enrollments")
+    .select(`*, payments:enrollment_payments(*), progress:user_progress(*)`)
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+  if (error) throw new Error(error.message)
+  return ((data ?? []) as Enrollment[]).map(e => ({
+    ...e,
+    progress: Array.isArray(e.progress) ? (e.progress[0] ?? null) : e.progress,
+  }))
+}
+
+/** Fetch ALL enrollments (admin) with joined profile, payments, progress */
+export async function fetchAllEnrollments(): Promise<Enrollment[]> {
+  const { data, error } = await supabaseAdmin
+    .from("enrollments")
+    .select(`*, profile:profiles(display_name,email,phone,username,avatar_url), payments:enrollment_payments(*), progress:user_progress(*)`)
+    .order("created_at", { ascending: false })
+  if (error) throw new Error(error.message)
+  return ((data ?? []) as Enrollment[]).map(e => ({
+    ...e,
+    progress: Array.isArray(e.progress) ? (e.progress[0] ?? null) : e.progress,
+  }))
+}
+
+/** Update enrollment status */
+export async function updateEnrollmentStatus(
+  id: string,
+  status: EnrollmentStatus,
+  extra?: { activated_at?: string; completed_at?: string }
+): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("enrollments")
+    .update({ status, ...extra, updated_at: new Date().toISOString() })
+    .eq("id", id)
+  if (error) throw new Error(error.message)
+}
+
+// ── Enrollment Payments ───────────────────────────────────────────────────────
+
+/** Create a payment record linked to an enrollment */
+export async function createEnrollmentPayment(data: {
+  enrollment_id:     string
+  user_id:           string
+  amount:            number
+  currency?:         string
+  payment_method?:   string
+  payment_reference?: string
+  proof_url?:        string
+}): Promise<EnrollmentPayment> {
+  const { data: row, error } = await supabaseAdmin
+    .from("enrollment_payments")
+    .insert({
+      enrollment_id:     data.enrollment_id,
+      user_id:           data.user_id,
+      amount:            data.amount,
+      currency:          data.currency ?? "NGN",
+      payment_method:    data.payment_method ?? null,
+      payment_reference: data.payment_reference ?? null,
+      proof_url:         data.proof_url ?? null,
+      status:            "pending",
+    })
+    .select()
+    .single()
+  if (error) throw new Error(error.message)
+  return row as EnrollmentPayment
+}
+
+/** Fetch all payments for an enrollment */
+export async function fetchPaymentsByEnrollment(enrollmentId: string): Promise<EnrollmentPayment[]> {
+  const { data, error } = await supabaseAdmin
+    .from("enrollment_payments")
+    .select("*")
+    .eq("enrollment_id", enrollmentId)
+    .order("created_at", { ascending: false })
+  if (error) throw new Error(error.message)
+  return (data ?? []) as EnrollmentPayment[]
+}
+
+/** Fetch ALL pending payments (admin review queue) */
+export async function fetchAllEnrollmentPayments(): Promise<EnrollmentPayment[]> {
+  const { data, error } = await supabaseAdmin
+    .from("enrollment_payments")
+    .select("*")
+    .order("created_at", { ascending: false })
+  if (error) throw new Error(error.message)
+  return (data ?? []) as EnrollmentPayment[]
+}
+
+/**
+ * Admin approves or rejects a payment.
+ * Also updates the linked enrollment status:
+ *   approved → enrollment becomes active
+ *   rejected → enrollment stays pending (admin may re-review)
+ */
+export async function reviewEnrollmentPayment(
+  paymentId:   string,
+  adminId:     string,
+  decision:    "approved" | "rejected",
+  adminNote?:  string
+): Promise<void> {
+  const now = new Date().toISOString()
+
+  // 1. Update payment
+  const { data: payment, error: pe } = await supabaseAdmin
+    .from("enrollment_payments")
+    .update({
+      status:      decision,
+      admin_id:    adminId,
+      admin_note:  adminNote ?? null,
+      reviewed_at: now,
+      updated_at:  now,
+    })
+    .eq("id", paymentId)
+    .select("enrollment_id, user_id")
+    .single()
+  if (pe) throw new Error(pe.message)
+
+  // 2. Update enrollment status accordingly
+  if (decision === "approved") {
+    await supabaseAdmin
+      .from("enrollments")
+      .update({ status: "active", activated_at: now, updated_at: now })
+      .eq("id", payment.enrollment_id)
+
+    // 3. Create user_progress row (idempotent)
+    await supabaseAdmin
+      .from("user_progress")
+      .upsert(
+        { user_id: payment.user_id, enrollment_id: payment.enrollment_id },
+        { onConflict: "user_id,enrollment_id", ignoreDuplicates: true }
+      )
+  }
+
+  // 4. Notify admin of the outcome
+  await createAdminNotification({
+    type:          decision === "approved" ? "payment_approved" : "payment_rejected",
+    title:         decision === "approved" ? "Payment Approved" : "Payment Rejected",
+    message:       `Payment ${paymentId.slice(0, 8)} has been ${decision}${adminNote ? `: ${adminNote}` : "."} `,
+    user_id:       payment.user_id,
+    enrollment_id: payment.enrollment_id,
+    payment_id:    paymentId,
+  })
+}
+
+// ── Admin Notifications ───────────────────────────────────────────────────────
+
+export async function createAdminNotification(data: {
+  type:           string
+  title:          string
+  message:        string
+  user_id?:       string | null
+  enrollment_id?: string | null
+  payment_id?:    string | null
+}): Promise<AdminNotification> {
+  const { data: row, error } = await supabaseAdmin
+    .from("admin_notifications")
+    .insert({
+      type:          data.type,
+      title:         data.title,
+      message:       data.message,
+      user_id:       data.user_id ?? null,
+      enrollment_id: data.enrollment_id ?? null,
+      payment_id:    data.payment_id ?? null,
+      is_read:       false,
+    })
+    .select()
+    .single()
+  if (error) throw new Error(error.message)
+  return row as AdminNotification
+}
+
+/** Fetch all notifications, newest first */
+export async function fetchAdminNotifications(): Promise<AdminNotification[]> {
+  const { data, error } = await supabaseAdmin
+    .from("admin_notifications")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(100)
+  if (error) throw new Error(error.message)
+  return (data ?? []) as AdminNotification[]
+}
+
+/** Count unread notifications */
+export async function countUnreadNotifications(): Promise<number> {
+  const { count, error } = await supabaseAdmin
+    .from("admin_notifications")
+    .select("id", { count: "exact", head: true })
+    .eq("is_read", false)
+  if (error) return 0
+  return count ?? 0
+}
+
+/** Mark a single notification as read */
+export async function markNotificationRead(id: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("admin_notifications")
+    .update({ is_read: true, read_at: new Date().toISOString() })
+    .eq("id", id)
+  if (error) throw new Error(error.message)
+}
+
+/** Mark ALL notifications as read */
+export async function markAllNotificationsRead(): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("admin_notifications")
+    .update({ is_read: true, read_at: new Date().toISOString() })
+    .eq("is_read", false)
+  if (error) throw new Error(error.message)
+}
+
+// ── User Progress ─────────────────────────────────────────────────────────────
+
+/** Get progress for one (user, enrollment) pair */
+export async function fetchUserProgress(userId: string, enrollmentId: string): Promise<UserProgress | null> {
+  const { data, error } = await supabaseAdmin
+    .from("user_progress")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("enrollment_id", enrollmentId)
+    .maybeSingle()
+  if (error) throw new Error(error.message)
+  return data as UserProgress | null
+}
+
+/** Fetch all progress rows for a user */
+export async function fetchAllProgressForUser(userId: string): Promise<UserProgress[]> {
+  const { data, error } = await supabaseAdmin
+    .from("user_progress")
+    .select("*")
+    .eq("user_id", userId)
+    .order("updated_at", { ascending: false })
+  if (error) throw new Error(error.message)
+  return (data ?? []) as UserProgress[]
+}
+
+/** Admin updates lesson counts for a user's enrollment */
+export async function updateUserProgress(
+  userId:           string,
+  enrollmentId:     string,
+  completedLessons: number,
+  totalLessons:     number,
+  notes?:           string
+): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("user_progress")
+    .upsert(
+      {
+        user_id:           userId,
+        enrollment_id:     enrollmentId,
+        completed_lessons: completedLessons,
+        total_lessons:     totalLessons,
+        notes:             notes ?? null,
+        last_activity_at:  new Date().toISOString(),
+        updated_at:        new Date().toISOString(),
+      },
+      { onConflict: "user_id,enrollment_id" }
+    )
+  if (error) throw new Error(error.message)
+}

@@ -12,23 +12,23 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const base =
-  "inline-flex items-center justify-center gap-2 font-medium tracking-[-0.01em] transition-all duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:pointer-events-none";
+  "inline-flex items-center justify-center gap-2 font-medium tracking-[-0.01em] transition-all duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#111113] disabled:pointer-events-none";
 
 const variants: Record<Variant, string> = {
   primary:
-    "bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 disabled:bg-gray-100 disabled:text-gray-400",
+    "bg-emerald-500 text-white hover:bg-emerald-400 active:bg-emerald-600 disabled:bg-white/[0.07] disabled:text-white/30",
   secondary:
-    "bg-white text-gray-800 border border-gray-200 hover:bg-gray-50 hover:border-gray-300 active:bg-gray-100 disabled:text-gray-400 disabled:border-gray-100",
+    "bg-white/[0.06] text-white/80 border border-white/[0.08] hover:bg-white/[0.10] hover:border-white/20 active:bg-white/[0.12] disabled:text-white/30 disabled:border-white/[0.05]",
   ghost:
-    "bg-transparent text-gray-500 hover:text-gray-900 hover:bg-gray-50 active:bg-gray-100 disabled:text-gray-300",
+    "bg-transparent text-white/50 hover:text-white/90 hover:bg-white/[0.06] active:bg-white/[0.10] disabled:text-white/25",
   danger:
-    "bg-red-600 text-white hover:bg-red-700 active:bg-red-800 disabled:bg-gray-100 disabled:text-gray-400",
+    "bg-red-600 text-white hover:bg-red-500 active:bg-red-700 disabled:bg-white/[0.07] disabled:text-white/30",
 };
 
 const sizes: Record<Size, string> = {
-  sm: "h-9 px-4 text-sm rounded-lg",
+  sm: "h-9 px-4 text-sm rounded-xl",
   md: "h-11 px-5 text-[0.95rem] rounded-xl",
-  lg: "h-13 px-6 text-base rounded-xl",
+  lg: "h-13 px-6 text-base rounded-2xl",
 };
 
 export function Button({
@@ -45,13 +45,7 @@ export function Button({
     <button
       {...rest}
       disabled={disabled || loading}
-      className={[
-        base,
-        variants[variant],
-        sizes[size],
-        full ? "w-full" : "",
-        className,
-      ].join(" ")}
+      className={[base, variants[variant], sizes[size], full ? "w-full" : "", className].join(" ")}
     >
       {loading && <Spinner className="shrink-0" />}
       {children}

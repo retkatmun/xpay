@@ -15,6 +15,7 @@ import Activity from '@/pages/activity'
 import ActivityDetail from '@/pages/activity-detail'
 import Wallet from '@/pages/wallet'
 import Admin from '@/pages/admin'
+import Dashboard from '@/pages/dashboard'
 
 export default function App() {
   return (
@@ -33,6 +34,7 @@ export default function App() {
             <Route path="/swap" element={<Swap />} />
             <Route path="/activity" element={<Activity />} />
             <Route path="/activity/:id" element={<ActivityDetail />} />
+            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/admin" element={<Admin />} />
           </Routes>
         </NetworkProvider>

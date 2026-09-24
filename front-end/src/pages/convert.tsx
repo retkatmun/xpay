@@ -44,9 +44,9 @@ function friendlyError(reason: string): string {
 
 function SummaryRow({ label, value, highlight }: { label: string; value: React.ReactNode; highlight?: boolean }) {
   return (
-    <div className={`flex items-center justify-between px-4 py-3 ${highlight ? "bg-blue-50 rounded-b-xl" : "border-t border-gray-100"}`}>
-      <span className={`text-sm ${highlight ? "font-semibold text-gray-900" : "text-gray-500"}`}>{label}</span>
-      <span className={`text-sm tabular-nums ${highlight ? "font-bold text-blue-600 text-base" : "font-medium text-gray-900"}`}>{value}</span>
+    <div className={`flex items-center justify-between px-4 py-3 ${highlight ? "bg-emerald-500/10 rounded-b-xl" : "border-t border-white/[0.06]"}`}>
+      <span className={`text-sm ${highlight ? "font-semibold text-white/90" : "text-white/50"}`}>{label}</span>
+      <span className={`text-sm tabular-nums ${highlight ? "font-bold text-emerald-400 text-base" : "font-medium text-white/90"}`}>{value}</span>
     </div>
   )
 }
@@ -402,54 +402,54 @@ export default function Convert() {
     }
   }
 
-  if (!authUser) return <div className="min-h-dvh bg-white" />
+  if (!authUser) return <div className="min-h-dvh bg-[#1a1a1c]" />
 
   // ══════════════════════════════════════════════════════════════════════════
   // DONE
   // ══════════════════════════════════════════════════════════════════════════
   if (step === "done") {
     const tx = polledTx ?? receipt
-    if (!tx) return <div className="min-h-dvh bg-white" />
+    if (!tx) return <div className="min-h-dvh bg-[#1a1a1c]" />
     const usd = BigInt(tx.amount); const ngn = BigInt(tx.ngnAmount)
     const pending = !isTerminal(tx.status)
     const failed = tx.status === "blockchain_failed" || tx.status === "payout_failed" || tx.status === "cancelled"
-    const iconBg = pending ? "bg-blue-50 ring-blue-50/50" : failed ? "bg-red-50 ring-red-50/50" : "bg-green-50 ring-green-50/50"
+    const iconBg = pending ? "bg-emerald-500/10 ring-blue-50/50" : failed ? "bg-red-50 ring-red-50/50" : "bg-green-50 ring-green-50/50"
     const iconColor = pending ? "#2563eb" : failed ? "#dc2626" : "#16a34a"
     return (
       <Screen bare>
         <div className="flex flex-1 flex-col items-center justify-center px-5 py-16 text-center">
           <div className={`flex h-20 w-20 items-center justify-center rounded-full ring-8 ${iconBg}`}>
-            {pending ? <Spinner className="h-8 w-8 text-blue-600" />
+            {pending ? <Spinner className="h-8 w-8 text-emerald-400" />
               : failed
                 ? <svg viewBox="0 0 32 32" width="36" height="36" fill="none" stroke={iconColor} strokeWidth="2.5" strokeLinecap="round"><path d="M8 8l16 16M24 8L8 24"/></svg>
                 : <svg viewBox="0 0 32 32" width="36" height="36" fill="none" stroke={iconColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 16l8 8 12-14"/></svg>}
           </div>
-          <h1 className="mt-6 text-2xl font-bold tracking-tight text-gray-900">
+          <h1 className="mt-6 text-2xl font-bold tracking-tight text-white/90">
             {pending ? "Converting…" : failed ? "Conversion failed" : "Converted!"}
           </h1>
           {!failed && (
-            <div className="mt-5 rounded-2xl border border-gray-100 bg-gray-50 px-8 py-5 text-center">
-              <p className="text-3xl font-bold tabular-nums text-gray-900">₦{ngn.toLocaleString("en-NG")}</p>
-              <p className="mt-1 text-sm text-gray-400 tabular-nums">from {formatUSD(usd)} USDC</p>
+            <div className="mt-5 rounded-2xl border border-white/[0.06] bg-[#161618] px-8 py-5 text-center">
+              <p className="text-3xl font-bold tabular-nums text-white/90">₦{ngn.toLocaleString("en-NG")}</p>
+              <p className="mt-1 text-sm text-white/40 tabular-nums">from {formatUSD(usd)} USDC</p>
             </div>
           )}
-          <div className="mt-5 flex w-full max-w-sm items-center gap-3 rounded-2xl border border-gray-100 bg-white px-5 py-4 shadow-sm text-left">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50">
+          <div className="mt-5 flex w-full max-w-sm items-center gap-3 rounded-2xl border border-white/[0.06] bg-black px-5 py-4 shadow-sm text-left">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/10">
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#2563eb" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"/>
               </svg>
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-gray-900 truncate">{tx.recipientDisplayName}</p>
+              <p className="text-sm font-semibold text-white/90 truncate">{tx.recipientDisplayName}</p>
               {tx.recipientBankName && (
-                <p className="text-xs text-gray-500 truncate">{tx.recipientBankName} · ****{tx.recipientAccountNumberLast4}</p>
+                <p className="text-xs text-white/50 truncate">{tx.recipientBankName} · ****{tx.recipientAccountNumberLast4}</p>
               )}
               <div className="mt-1">
                 <Badge variant={pending ? "blue" : failed ? "red" : "green"}>{statusLabel(tx.status)}</Badge>
               </div>
             </div>
           </div>
-          {pending && <p className="mt-4 max-w-xs text-xs leading-relaxed text-gray-400">Naira is being sent to your bank account. This usually takes a few minutes.</p>}
+          {pending && <p className="mt-4 max-w-xs text-xs leading-relaxed text-white/40">Naira is being sent to your bank account. This usually takes a few minutes.</p>}
         </div>
         <div className="shrink-0 px-5 pb-10">
           <Button full size="lg" onClick={() => navigate("/home", { replace: true })}>Back to home</Button>
@@ -465,10 +465,10 @@ export default function Convert() {
     return (
       <Screen bare>
         <div className="flex flex-1 flex-col items-center justify-center gap-4">
-          <Spinner className="h-7 w-7 text-blue-600" />
+          <Spinner className="h-7 w-7 text-emerald-400" />
           <div className="text-center">
-            <p className="text-sm font-semibold text-gray-800">Converting to Naira…</p>
-            <p className="mt-1 text-xs text-gray-400">Do not close this screen.</p>
+            <p className="text-sm font-semibold text-white/80">Converting to Naira…</p>
+            <p className="mt-1 text-xs text-white/40">Do not close this screen.</p>
           </div>
         </div>
       </Screen>
@@ -485,26 +485,26 @@ export default function Convert() {
           <Title sub="Enter your 4-digit PIN to authorise this conversion.">Confirm conversion</Title>
 
           {/* Summary card */}
-          <div className="mt-6 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+          <div className="mt-6 overflow-hidden rounded-2xl border border-white/[0.06] bg-black shadow-sm">
             <div className="flex items-center gap-3 px-4 py-4">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/10">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#2563eb" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"/>
                 </svg>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900 truncate">{verifiedAccount.accountName}</p>
-                <p className="text-xs text-gray-500">{verifiedAccount.bankName} · ****{verifiedAccount.accountNumber.slice(-4)}</p>
+                <p className="text-sm font-semibold text-white/90 truncate">{verifiedAccount.accountName}</p>
+                <p className="text-xs text-white/50">{verifiedAccount.bankName} · ****{verifiedAccount.accountNumber.slice(-4)}</p>
               </div>
               {quote && (
                 <div className="text-right shrink-0">
-                  <p className="text-sm font-bold tabular-nums text-gray-900">₦{BigInt(quote.ngnAmount).toLocaleString("en-NG")}</p>
-                  <p className="text-xs text-gray-400 tabular-nums">{formatUSD(usdcAmount)} USDC</p>
+                  <p className="text-sm font-bold tabular-nums text-white/90">₦{BigInt(quote.ngnAmount).toLocaleString("en-NG")}</p>
+                  <p className="text-xs text-white/40 tabular-nums">{formatUSD(usdcAmount)} USDC</p>
                 </div>
               )}
             </div>
             {quote && (
-              <div className="border-t border-gray-100">
+              <div className="border-t border-white/[0.06]">
                 <SummaryRow label="Rate" value={`$1 = ₦${quote.fxRate.toLocaleString()}`} />
                 <SummaryRow label="Fee" value={BigInt(quote.feeNgn) === 0n ? "Free 🎉" : `₦${BigInt(quote.feeNgn).toLocaleString()}`} />
                 <SummaryRow label="You receive" value={`₦${BigInt(quote.ngnAmount).toLocaleString()}`} highlight />
@@ -516,8 +516,8 @@ export default function Convert() {
             <CodeInput label="4-digit PIN" length={4} value={pin} onChange={handlePin} secret autoFocus error={!!pinError} />
             {pinError && <p className="mt-2 text-sm text-red-600">{pinError}</p>}
             {submitting
-              ? <p className="mt-3 flex items-center justify-center gap-2 text-xs text-gray-400"><Spinner className="h-3 w-3" /> Processing…</p>
-              : <p className="mt-3 text-xs text-gray-400">Your PIN securely authorises this conversion.</p>
+              ? <p className="mt-3 flex items-center justify-center gap-2 text-xs text-white/40"><Spinner className="h-3 w-3" /> Processing…</p>
+              : <p className="mt-3 text-xs text-white/40">Your PIN securely authorises this conversion.</p>
             }
           </div>
         </div>
@@ -533,33 +533,33 @@ export default function Convert() {
       <Screen back onBack={() => setStep("bank_confirm")}>
         <div className="flex flex-1 flex-col pt-4 pb-10">
           <Title sub="Check the details before continuing.">Review conversion</Title>
-          <div className="mt-6 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+          <div className="mt-6 overflow-hidden rounded-2xl border border-white/[0.06] bg-black shadow-sm">
             {/* Recipient */}
             <div className="p-4">
-              <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-gray-400">Receiving account</p>
+              <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-white/40">Receiving account</p>
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/10">
                   <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#2563eb" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"/>
                   </svg>
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-900">{verifiedAccount.accountName}</p>
-                  <p className="text-sm text-gray-500">{verifiedAccount.bankName} · ****{verifiedAccount.accountNumber.slice(-4)}</p>
+                  <p className="font-semibold text-white/90">{verifiedAccount.accountName}</p>
+                  <p className="text-sm text-white/50">{verifiedAccount.bankName} · ****{verifiedAccount.accountNumber.slice(-4)}</p>
                 </div>
               </div>
             </div>
 
             {/* Quote breakdown */}
-            <div className="border-t border-gray-100">
+            <div className="border-t border-white/[0.06]">
               {quoteLoading ? (
-                <div className="flex items-center justify-center gap-2 px-4 py-6 text-sm text-gray-400">
+                <div className="flex items-center justify-center gap-2 px-4 py-6 text-sm text-white/40">
                   <Spinner className="h-4 w-4 text-blue-500" />Getting your rate…
                 </div>
               ) : quoteError ? (
                 <div className="px-4 py-4">
                   <p className="text-sm text-red-600">{quoteError}</p>
-                  <button type="button" className="mt-2 text-xs font-semibold text-blue-600 underline"
+                  <button type="button" className="mt-2 text-xs font-semibold text-emerald-400 underline"
                     onClick={() => usdcAmount && void getQuote(usdcAmount).then(setQuote).catch(() => setQuoteError("Could not get rate. Please try again."))}>
                     Retry
                   </button>
@@ -575,7 +575,7 @@ export default function Convert() {
             </div>
           </div>
           {quote && (
-            <p className="mt-2 text-center text-xs text-gray-400">
+            <p className="mt-2 text-center text-xs text-white/40">
               Rate valid until {new Date(quote.expiresAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
             </p>
           )}
@@ -597,7 +597,7 @@ export default function Convert() {
       <Screen back onBack={() => { setStep("bank_account"); setVerifiedAccount(null) }}>
         <div className="flex flex-1 flex-col pt-4 pb-10">
           <Title sub="Make sure this is your account.">Confirm account</Title>
-          <div className="mt-6 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+          <div className="mt-6 overflow-hidden rounded-2xl border border-white/[0.06] bg-black shadow-sm">
             <div className="flex items-center justify-center py-6">
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-50 ring-8 ring-green-50/60">
                 <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -605,10 +605,10 @@ export default function Convert() {
                 </svg>
               </div>
             </div>
-            <div className="divide-y divide-gray-100 border-t border-gray-100">
-              <div className="flex justify-between px-5 py-3.5"><span className="text-sm text-gray-500">Bank</span><span className="text-sm font-semibold text-gray-900">{verifiedAccount.bankName}</span></div>
-              <div className="flex justify-between px-5 py-3.5"><span className="text-sm text-gray-500">Account number</span><span className="text-sm font-semibold tabular-nums text-gray-900">****{verifiedAccount.accountNumber.slice(-4)}</span></div>
-              <div className="flex justify-between bg-gray-50 px-5 py-4"><span className="text-sm text-gray-500">Account name</span><span className="text-sm font-bold uppercase tracking-wide text-gray-900">{verifiedAccount.accountName}</span></div>
+            <div className="divide-y divide-white/[0.06] border-t border-white/[0.06]">
+              <div className="flex justify-between px-5 py-3.5"><span className="text-sm text-white/50">Bank</span><span className="text-sm font-semibold text-white/90">{verifiedAccount.bankName}</span></div>
+              <div className="flex justify-between px-5 py-3.5"><span className="text-sm text-white/50">Account number</span><span className="text-sm font-semibold tabular-nums text-white/90">****{verifiedAccount.accountNumber.slice(-4)}</span></div>
+              <div className="flex justify-between bg-[#161618] px-5 py-4"><span className="text-sm text-white/50">Account name</span><span className="text-sm font-bold uppercase tracking-wide text-white/90">{verifiedAccount.accountName}</span></div>
             </div>
           </div>
           <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
@@ -637,7 +637,7 @@ export default function Convert() {
           <div className="mt-6 space-y-4">
             {/* Bank selector */}
             <div ref={bankDropdownRef} className="relative">
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">Bank</label>
+              <label className="mb-1.5 block text-sm font-medium text-white/70">Bank</label>
               <div
                 role="combobox"
                 aria-expanded={bankOpen}
@@ -649,8 +649,8 @@ export default function Convert() {
                   if (e.key === "Escape") { setBankOpen(false); setBankSearch("") }
                 }}
                 className={[
-                  "flex h-12 cursor-pointer select-none items-center gap-2 rounded-xl border bg-white px-4 transition-colors focus:outline-none",
-                  bankOpen ? "border-blue-500 ring-2 ring-blue-100" : "border-gray-200 hover:border-gray-300",
+                  "flex h-12 cursor-pointer select-none items-center gap-2 rounded-xl border bg-black px-4 transition-colors focus:outline-none",
+                  bankOpen ? "border-blue-500 ring-2 ring-blue-100" : "border-white/[0.08] hover:border-gray-300",
                 ].join(" ")}
               >
                 {bankOpen ? (
@@ -660,10 +660,10 @@ export default function Convert() {
                     placeholder="Search banks…"
                     autoFocus
                     onClick={e => e.stopPropagation()}
-                    className="min-w-0 flex-1 bg-transparent text-base text-gray-900 outline-none placeholder:text-gray-400"
+                    className="min-w-0 flex-1 bg-transparent text-base text-white/90 outline-none placeholder:text-white/40"
                   />
                 ) : (
-                  <span className={`flex-1 text-base ${selectedBank ? "text-gray-900 font-medium" : "text-gray-400"}`}>
+                  <span className={`flex-1 text-base ${selectedBank ? "text-white/90 font-medium" : "text-white/40"}`}>
                     {selectedBank ? selectedBank.name : "Select your bank"}
                   </span>
                 )}
@@ -674,16 +674,16 @@ export default function Convert() {
               </div>
               {bankOpen && (
                 <ul role="listbox" aria-label="Banks"
-                  className="absolute z-50 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg">
+                  className="absolute z-50 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-white/[0.08] bg-black shadow-lg">
                   {filteredBanks.length === 0
-                    ? <li className="px-4 py-3 text-sm text-gray-400">No banks found.</li>
+                    ? <li className="px-4 py-3 text-sm text-white/40">No banks found.</li>
                     : filteredBanks.map((bank, i) => (
                       <li key={bank.code} role="option" aria-selected={selectedBank?.code === bank.code}
                         onMouseDown={e => { e.preventDefault(); setSelectedBank(bank); setBankSearch(""); setBankOpen(false); setVerifyError(null) }}
                         className={[
-                          "flex cursor-pointer items-center px-4 py-3 text-sm transition hover:bg-blue-50",
-                          selectedBank?.code === bank.code ? "bg-blue-50 font-semibold text-blue-700" : "text-gray-900",
-                          i > 0 ? "border-t border-gray-100" : "",
+                          "flex cursor-pointer items-center px-4 py-3 text-sm transition hover:bg-emerald-500/10",
+                          selectedBank?.code === bank.code ? "bg-emerald-500/10 font-semibold text-emerald-400" : "text-white/90",
+                          i > 0 ? "border-t border-white/[0.06]" : "",
                         ].join(" ")}>
                         {bank.name}
                       </li>
@@ -705,7 +705,7 @@ export default function Convert() {
               suffix={
                 accountNumber.length === 10
                   ? <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 10l5 5 7-9"/></svg>
-                  : <span className="text-xs font-medium tabular-nums text-gray-400">{accountNumber.length}/10</span>
+                  : <span className="text-xs font-medium tabular-nums text-white/40">{accountNumber.length}/10</span>
               }
             />
           </div>
@@ -737,16 +737,16 @@ export default function Convert() {
                 <path d="M10 3v14M6 6l4-3 4 3M6 14l4 3 4-3"/>
               </svg>
             </div>
-            <h1 className="text-lg font-bold text-gray-900">Convert to Naira</h1>
+            <h1 className="text-lg font-bold text-white/90">Convert to Naira</h1>
           </div>
-          <p className="text-sm text-gray-400 pl-[2.625rem]">Sell USDC and receive Naira directly to your bank.</p>
+          <p className="text-sm text-white/40 pl-[2.625rem]">Sell USDC and receive Naira directly to your bank.</p>
         </div>
 
         {/* Live rate pill */}
-        <div className={`mb-4 flex items-center justify-between rounded-xl px-4 py-2.5 border ${rateError ? "border-red-100 bg-red-50" : "border-blue-100 bg-blue-50"}`}>
+        <div className={`mb-4 flex items-center justify-between rounded-xl px-4 py-2.5 border ${rateError ? "border-red-100 bg-red-50" : "border-blue-100 bg-emerald-500/10"}`}>
           <div className="flex items-center gap-2">
             <img src={getTokenLogo("USDC")} alt="USDC" className="h-4 w-4 rounded-full" />
-            <span className={`text-xs font-semibold ${rateError ? "text-red-600" : "text-blue-700"}`}>Live rate</span>
+            <span className={`text-xs font-semibold ${rateError ? "text-red-600" : "text-emerald-400"}`}>Live rate</span>
           </div>
           {rateLoading ? (
             <span className="flex items-center gap-1.5 text-xs text-blue-500">
@@ -757,22 +757,22 @@ export default function Convert() {
               Failed · Retry
             </button>
           ) : (
-            <span className="text-xs font-bold tabular-nums text-blue-700">
+            <span className="text-xs font-bold tabular-nums text-emerald-400">
               $1 = ₦{liveRate?.toLocaleString() ?? "…"}
             </span>
           )}
         </div>
 
         {/* Conversion card */}
-        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-black shadow-sm">
 
           {/* USDC row */}
-          <div className={`flex items-center gap-3 px-4 py-4 transition-colors ${inputMode === "usdc" ? "bg-blue-50/70" : "bg-white"}`}>
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-blue-100 bg-white shadow-sm">
+          <div className={`flex items-center gap-3 px-4 py-4 transition-colors ${inputMode === "usdc" ? "bg-emerald-500/10/70" : "bg-white"}`}>
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-blue-100 bg-black shadow-sm">
               <img src={getTokenLogo("USDC")} alt="USDC" className="h-5 w-5 rounded-full" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="mb-0.5 text-[10px] font-bold uppercase tracking-widest text-gray-400">You sell</p>
+              <p className="mb-0.5 text-[10px] font-bold uppercase tracking-widest text-white/40">You sell</p>
               {inputMode === "usdc" ? (
                 <input
                   value={usdcRaw}
@@ -780,25 +780,25 @@ export default function Convert() {
                   inputMode="decimal"
                   placeholder="0.00"
                   autoFocus={inputMode === "usdc"}
-                  className="w-full bg-transparent text-2xl font-bold tabular-nums text-gray-900 outline-none placeholder:text-gray-200"
+                  className="w-full bg-transparent text-2xl font-bold tabular-nums text-white/90 outline-none placeholder:text-gray-200"
                 />
               ) : (
-                <p className="text-2xl font-bold tabular-nums text-gray-400 leading-none">
+                <p className="text-2xl font-bold tabular-nums text-white/40 leading-none">
                   {quoteLoading
-                    ? <span className="inline-block h-6 w-24 animate-pulse rounded-lg bg-gray-100 align-middle" />
+                    ? <span className="inline-block h-6 w-24 animate-pulse rounded-lg bg-white/[0.07] align-middle" />
                     : derivedUsdcDisplay || <span className="text-gray-200">0.00</span>}
                 </p>
               )}
             </div>
-            <span className="shrink-0 rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-500">USDC</span>
+            <span className="shrink-0 rounded-lg bg-white/[0.07] px-2.5 py-1 text-xs font-bold text-white/50">USDC</span>
           </div>
 
           {/* Swap divider */}
-          <div className="relative flex items-center justify-center border-y border-gray-100 bg-gray-50 py-1.5">
+          <div className="relative flex items-center justify-center border-y border-white/[0.06] bg-[#161618] py-1.5">
             <button
               type="button"
               onClick={handleSwap}
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm transition hover:border-blue-300 hover:bg-blue-50 active:scale-90"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.08] bg-black shadow-sm transition hover:border-blue-300 hover:bg-emerald-500/10 active:scale-90"
               aria-label="Swap input direction"
             >
               <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="#6b7280" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -813,7 +813,7 @@ export default function Convert() {
               <span className="text-sm font-bold text-white">₦</span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="mb-0.5 text-[10px] font-bold uppercase tracking-widest text-gray-400">You receive</p>
+              <p className="mb-0.5 text-[10px] font-bold uppercase tracking-widest text-white/40">You receive</p>
               {inputMode === "ngn" ? (
                 <input
                   value={displayNgn}
@@ -821,32 +821,32 @@ export default function Convert() {
                   inputMode="numeric"
                   placeholder="0"
                   autoFocus={inputMode === "ngn"}
-                  className="w-full bg-transparent text-2xl font-bold tabular-nums text-gray-900 outline-none placeholder:text-gray-200"
+                  className="w-full bg-transparent text-2xl font-bold tabular-nums text-white/90 outline-none placeholder:text-gray-200"
                 />
               ) : (
-                <p className="text-2xl font-bold tabular-nums text-gray-400 leading-none">
+                <p className="text-2xl font-bold tabular-nums text-white/40 leading-none">
                   {quoteLoading
-                    ? <span className="inline-block h-6 w-24 animate-pulse rounded-lg bg-gray-100 align-middle" />
+                    ? <span className="inline-block h-6 w-24 animate-pulse rounded-lg bg-white/[0.07] align-middle" />
                     : derivedNgnDisplay || <span className="text-gray-200">0</span>}
                 </p>
               )}
             </div>
-            <span className="shrink-0 rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-500">NGN</span>
+            <span className="shrink-0 rounded-lg bg-white/[0.07] px-2.5 py-1 text-xs font-bold text-white/50">NGN</span>
           </div>
         </div>
 
         {/* Quote details */}
         {quote && !quoteError && (
-          <div className="mt-3 overflow-hidden rounded-xl border border-gray-100 bg-gray-50">
-            <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
-              <span className="text-xs text-gray-500">Fee</span>
-              <span className="text-xs font-semibold text-gray-700">
+          <div className="mt-3 overflow-hidden rounded-xl border border-white/[0.06] bg-[#161618]">
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.06]">
+              <span className="text-xs text-white/50">Fee</span>
+              <span className="text-xs font-semibold text-white/70">
                 {BigInt(quote.feeNgn) === 0n ? "Free 🎉" : `₦${BigInt(quote.feeNgn).toLocaleString()}`}
               </span>
             </div>
             <div className="flex items-center justify-between px-4 py-2.5">
-              <span className="text-xs font-semibold text-gray-600">You receive</span>
-              <span className="text-sm font-bold tabular-nums text-blue-600">₦{BigInt(quote.ngnAmount).toLocaleString()}</span>
+              <span className="text-xs font-semibold text-white/60">You receive</span>
+              <span className="text-sm font-bold tabular-nums text-emerald-400">₦{BigInt(quote.ngnAmount).toLocaleString()}</span>
             </div>
           </div>
         )}
@@ -879,7 +879,7 @@ export default function Convert() {
             </div>
           )}
           {balance !== null && !overBalance && (
-            <p className="text-center text-xs text-gray-300 tabular-nums">
+            <p className="text-center text-xs text-white/30 tabular-nums">
               Available: {formatUSD(balance)} USDC
             </p>
           )}
