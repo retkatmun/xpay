@@ -236,34 +236,34 @@ function TokenSelector({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-[26.25rem] overflow-hidden rounded-t-3xl bg-white pb-10 shadow-2xl"
+        className="w-full max-w-[26.25rem] overflow-hidden rounded-t-3xl bg-black pb-10 shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-5 pt-5 pb-4">
-          <p className="text-base font-bold text-gray-900">Select token</p>
+          <p className="text-base font-bold text-white/90">Select token</p>
           <button
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 transition"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-white/[0.07] text-white/50 hover:bg-gray-200 transition"
           >
             <svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
               <path d="M1 1l12 12M13 1L1 13" />
             </svg>
           </button>
         </div>
-        <div className="divide-y divide-gray-100 px-3">
+        <div className="divide-y divide-white/[0.06] px-3">
           {tokens.filter(t => t.symbol !== exclude.symbol).map(token => (
             <button
               key={token.symbol}
               onClick={() => { onSelect(token); onClose() }}
               className={[
-                "flex w-full items-center gap-3 rounded-xl px-3 py-3.5 text-left transition hover:bg-gray-50",
-                selected.symbol === token.symbol ? "bg-blue-50" : "",
+                "flex w-full items-center gap-3 rounded-xl px-3 py-3.5 text-left transition hover:bg-[#161618]",
+                selected.symbol === token.symbol ? "bg-emerald-500/10" : "",
               ].join(" ")}
             >
               <TokenIcon token={token} size={38} />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900">{token.symbol}</p>
-                <p className="text-xs text-gray-400">{token.name}</p>
+                <p className="text-sm font-semibold text-white/90">{token.symbol}</p>
+                <p className="text-xs text-white/40">{token.name}</p>
               </div>
               {selected.symbol === token.symbol && (
                 <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="#2563eb" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -504,7 +504,7 @@ export default function Swap() {
     }
   }
 
-  if (!profile) return <div className="min-h-dvh bg-white" />
+  if (!profile) return <div className="min-h-dvh bg-[#1a1a1c]" />
 
   // Derived values
   const parsedAmount        = parseTokenAmount(amountIn, fromToken.decimals)
@@ -525,8 +525,8 @@ export default function Swap() {
             </svg>
           </div>
           <div>
-            <p className="text-xl font-bold text-gray-900">Swap submitted!</p>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="text-xl font-bold text-white/90">Swap submitted!</p>
+            <p className="mt-1 text-sm text-white/50">
               {amountIn} {fromToken.symbol} → ≈{outputAmount} {toToken.symbol}
             </p>
           </div>
@@ -535,7 +535,7 @@ export default function Swap() {
               href={`${activeChain.blockExplorer}/tx/${txHash}`}
               target="_blank"
               rel="noreferrer"
-              className="flex items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-xs font-semibold text-blue-600 transition hover:bg-blue-100"
+              className="flex items-center gap-1.5 rounded-full border border-blue-100 bg-emerald-500/10 px-4 py-2 text-xs font-semibold text-emerald-400 transition hover:bg-blue-100"
             >
               View on explorer
               <svg viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -545,11 +545,11 @@ export default function Swap() {
           )}
           <button
             onClick={() => { setStep("idle"); setAmountIn(""); setQuote(null); setTxHash(null) }}
-            className="mt-2 rounded-2xl bg-blue-600 px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+            className="mt-2 rounded-2xl bg-emerald-500 px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-emerald-400"
           >
             Swap again
           </button>
-          <button onClick={() => navigate("/home")} className="text-sm text-gray-400 hover:text-gray-600">
+          <button onClick={() => navigate("/home")} className="text-sm text-white/40 hover:text-white/60">
             Back to home
           </button>
         </div>
@@ -568,11 +568,11 @@ export default function Swap() {
               <path d="M14 14l12 12M26 14L14 26" stroke="#ef4444" strokeWidth="3" strokeLinecap="round" />
             </svg>
           </div>
-          <p className="text-lg font-bold text-gray-900">Swap failed</p>
-          <p className="text-sm text-gray-500 max-w-[280px]">{execError}</p>
+          <p className="text-lg font-bold text-white/90">Swap failed</p>
+          <p className="text-sm text-white/50 max-w-[280px]">{execError}</p>
           <button
             onClick={() => setStep("idle")}
-            className="mt-2 rounded-2xl bg-blue-600 px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+            className="mt-2 rounded-2xl bg-emerald-500 px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-emerald-400"
           >
             Try again
           </button>
@@ -588,16 +588,16 @@ export default function Swap() {
         <Title sub={`Swap tokens on ${activeChain.name} via Uniswap`}>Swap</Title>
 
         {/* ── Swap card ─────────────────────────────────────────────────── */}
-        <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-black shadow-sm">
 
           {/* You pay */}
           <div className="px-4 pt-5 pb-4">
             <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">You pay</p>
+              <p className="text-xs font-semibold uppercase tracking-widest text-white/40">You pay</p>
               {maxBalanceLabel !== null && (
                 <button
                   onClick={setMax}
-                  className="rounded-lg bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-600 hover:bg-blue-100 transition"
+                  className="rounded-lg bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-400 hover:bg-blue-100 transition"
                 >
                   Max: {maxBalanceLabel} {fromToken.symbol}
                 </button>
@@ -610,14 +610,14 @@ export default function Swap() {
                 placeholder="0.00"
                 value={amountIn}
                 onChange={e => { if (/^\d*\.?\d*$/.test(e.target.value)) setAmountIn(e.target.value) }}
-                className="min-w-0 flex-1 bg-transparent text-3xl font-bold text-gray-900 outline-none placeholder-gray-200"
+                className="min-w-0 flex-1 bg-transparent text-3xl font-bold text-white/90 outline-none placeholder-gray-200"
               />
               <button
                 onClick={() => setShowFromPicker(true)}
-                className="flex shrink-0 items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 transition hover:bg-gray-100 active:scale-95"
+                className="flex shrink-0 items-center gap-2 rounded-xl border border-white/[0.08] bg-[#161618] px-3 py-2.5 transition hover:bg-white/[0.07] active:scale-95"
               >
                 <TokenIcon token={fromToken} size={24} />
-                <span className="text-sm font-bold text-gray-900">{fromToken.symbol}</span>
+                <span className="text-sm font-bold text-white/90">{fromToken.symbol}</span>
                 <svg viewBox="0 0 10 10" width="8" height="8" fill="none" stroke="#9ca3af" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M2 3.5l3 3 3-3" />
                 </svg>
@@ -630,10 +630,10 @@ export default function Swap() {
 
           {/* Flip divider */}
           <div className="relative flex items-center justify-center">
-            <div className="absolute inset-x-0 top-1/2 border-t border-gray-100" />
+            <div className="absolute inset-x-0 top-1/2 border-t border-white/[0.06]" />
             <button
               onClick={flipTokens}
-              className="relative z-10 flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm transition hover:border-blue-300 hover:bg-blue-50 active:scale-90"
+              className="relative z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/[0.08] bg-black shadow-sm transition hover:border-blue-300 hover:bg-emerald-500/10 active:scale-90"
               aria-label="Flip tokens"
             >
               {/* Simple up/down arrows — clear swap icon */}
@@ -646,22 +646,22 @@ export default function Swap() {
 
           {/* You receive */}
           <div className="px-4 pt-4 pb-5">
-            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">You receive</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-white/40 mb-3">You receive</p>
             <div className="flex items-center gap-3">
               <div className="min-w-0 flex-1">
                 {quoteLoading
-                  ? <div className="h-9 w-36 animate-pulse rounded-xl bg-gray-100" />
+                  ? <div className="h-9 w-36 animate-pulse rounded-xl bg-white/[0.07]" />
                   : outputAmount
-                    ? <p className="text-3xl font-bold text-gray-900">≈{outputAmount}</p>
+                    ? <p className="text-3xl font-bold text-white/90">≈{outputAmount}</p>
                     : <p className="text-3xl font-bold text-gray-200">0.00</p>
                 }
               </div>
               <button
                 onClick={() => setShowToPicker(true)}
-                className="flex shrink-0 items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 transition hover:bg-gray-100 active:scale-95"
+                className="flex shrink-0 items-center gap-2 rounded-xl border border-white/[0.08] bg-[#161618] px-3 py-2.5 transition hover:bg-white/[0.07] active:scale-95"
               >
                 <TokenIcon token={toToken} size={24} />
-                <span className="text-sm font-bold text-gray-900">{toToken.symbol}</span>
+                <span className="text-sm font-bold text-white/90">{toToken.symbol}</span>
                 <svg viewBox="0 0 10 10" width="8" height="8" fill="none" stroke="#9ca3af" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M2 3.5l3 3 3-3" />
                 </svg>
@@ -672,21 +672,21 @@ export default function Swap() {
 
         {/* ── Quote details ─────────────────────────────────────────────── */}
         {quote && !quoteLoading && (
-          <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-            <div className="divide-y divide-gray-100">
+          <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-black shadow-sm">
+            <div className="divide-y divide-white/[0.06]">
               <div className="flex items-center justify-between px-4 py-3">
-                <p className="text-xs text-gray-500">Route</p>
-                <p className="text-xs font-semibold text-gray-900">{quote.routeLabel}</p>
+                <p className="text-xs text-white/50">Route</p>
+                <p className="text-xs font-semibold text-white/90">{quote.routeLabel}</p>
               </div>
               <div className="flex items-center justify-between px-4 py-3">
-                <p className="text-xs text-gray-500">Price impact</p>
-                <p className={`text-xs font-semibold ${parseFloat(quote.priceImpact) > 1 ? "text-amber-600" : "text-gray-900"}`}>
+                <p className="text-xs text-white/50">Price impact</p>
+                <p className={`text-xs font-semibold ${parseFloat(quote.priceImpact) > 1 ? "text-amber-600" : "text-white/90"}`}>
                   {quote.priceImpact}
                 </p>
               </div>
               <div className="flex items-center justify-between px-4 py-3">
-                <p className="text-xs text-gray-500">Slippage</p>
-                <p className="text-xs font-semibold text-gray-900">0.5%</p>
+                <p className="text-xs text-white/50">Slippage</p>
+                <p className="text-xs font-semibold text-white/90">0.5%</p>
               </div>
             </div>
           </div>
@@ -718,7 +718,7 @@ export default function Swap() {
         <button
           disabled={!canSwap}
           onClick={executeSwap}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 py-4 text-sm font-bold text-white shadow-sm shadow-blue-200 transition hover:bg-blue-700 active:scale-[.98] disabled:opacity-40 disabled:cursor-not-allowed"
+          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 py-4 text-sm font-bold text-white shadow-sm shadow-blue-200 transition hover:bg-emerald-400 active:scale-[.98] disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {step === "signing" ? (
             <>
@@ -741,7 +741,7 @@ export default function Swap() {
           )}
         </button>
 
-        <p className="text-center text-[10px] text-gray-300">
+        <p className="text-center text-[10px] text-white/30">
           Powered by 0x
         </p>
       </div>

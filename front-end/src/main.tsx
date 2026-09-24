@@ -20,8 +20,8 @@ createRoot(document.getElementById('root')!).render(
           appId={privyAppId}
           config={{
             appearance: {
-              theme: 'light',
-              accentColor: '#2563eb',
+              theme: 'dark',
+              accentColor: '#10b981',
               logo: '/xpay_logo.png',
             },
             loginMethods: ['email', 'google'],

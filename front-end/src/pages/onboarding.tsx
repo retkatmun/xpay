@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePrivy, useWallets, useCreateWallet } from "@privy-io/react-auth";
-import { isUsernameTaken, createProfile } from "@/lib/supabase";
+import { isUsernameTaken, createProfile, createEnrollment, createEnrollmentPayment, createAdminNotification } from "@/lib/supabase";
 import { useSession } from "@/lib/session";
 import { Spinner } from "@/components/icons";
 import { PhoneInput } from "@/components/PhoneInput";
@@ -9,26 +9,37 @@ import xpayLogo from "@/assets/xpay_logo.png";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Step = "auth" | "profile" | "pin" | "done";
+type Step = "auth" | "profile" | "pin" | "enroll" | "done";
 
 type Draft = {
-  phone: string;       // E.164 format
+  phone: string;
   phoneValid: boolean;
   displayName: string;
   username: string;
+  // enrollment
+  courseName: string;
+  programType: string;
+  paymentAmount: string;
+  paymentMethod: string;
+  paymentReference: string;
 };
 
-const EMPTY: Draft = { phone: "", phoneValid: false, displayName: "", username: "" };
+const EMPTY: Draft = {
+  phone: "", phoneValid: false, displayName: "", username: "",
+  courseName: "", programType: "standard", paymentAmount: "",
+  paymentMethod: "", paymentReference: "",
+};
 const USERNAME_RE = /^[a-z][a-z0-9_]{2,15}$/;
-const VISIBLE_STEPS: Step[] = ["auth", "profile", "pin"];
+const VISIBLE_STEPS: Step[] = ["auth", "profile", "pin", "enroll"];
 
 // ─── Step progress bar ────────────────────────────────────────────────────────
 
 const STEP_LABELS: Record<Step, string> = {
-  auth: "Account",
+  auth:    "Account",
   profile: "Profile",
-  pin: "Security",
-  done: "Done",
+  pin:     "Security",
+  enroll:  "Enroll",
+  done:    "Done",
 };
 
 function StepBar({ current }: { current: Step }) {
@@ -45,10 +56,10 @@ function StepBar({ current }: { current: Step }) {
                 className={[
                   "flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all duration-300",
                   done
-                    ? "bg-blue-600 text-white"
+                    ? "bg-emerald-500 text-white"
                     : active
-                    ? "bg-blue-600 text-white ring-4 ring-blue-100"
-                    : "bg-gray-100 text-gray-400",
+                    ? "bg-emerald-500 text-white ring-4 ring-emerald-900/30"
+                    : "bg-white/[0.07] text-white/40",
                 ].join(" ")}
               >
                 {done ? (
@@ -62,7 +73,7 @@ function StepBar({ current }: { current: Step }) {
               <span
                 className={[
                   "text-[10px] font-semibold tracking-wide",
-                  active ? "text-blue-600" : done ? "text-blue-400" : "text-gray-400",
+                  active ? "text-emerald-400" : done ? "text-emerald-500" : "text-white/40",
                 ].join(" ")}
               >
                 {STEP_LABELS[s]}
@@ -72,7 +83,7 @@ function StepBar({ current }: { current: Step }) {
               <div
                 className={[
                   "mx-2 mb-5 h-px flex-1 transition-all duration-500",
-                  i < idx ? "bg-blue-500" : "bg-gray-200",
+                  i < idx ? "bg-emerald-500/100" : "bg-gray-200",
                 ].join(" ")}
               />
             )}
@@ -106,25 +117,23 @@ function PinPad({
 
   return (
     <div>
-      <p className="mb-1 text-sm font-semibold text-gray-700">{label}</p>
-      {hint && <p className="mb-4 text-xs text-gray-400">{hint}</p>}
+      <p className="mb-1 text-sm font-semibold text-white/70">{label}</p>
+      {hint && <p className="mb-4 text-xs text-white/40">{hint}</p>}
 
-      {/* Dots */}
-      <div className="mb-6 flex justify-center gap-3" onClick={() => inputRef.current?.focus()}>
+      {/* Simple dots — no boxes */}
+      <div className="mb-8 flex justify-center gap-4" onClick={() => inputRef.current?.focus()}>
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}
             className={[
-              "h-14 w-14 rounded-2xl border-2 flex items-center justify-center transition-all duration-150",
-              i === value.length
-                ? "border-blue-500 bg-blue-50 ring-4 ring-blue-100 scale-105"
-                : value[i]
-                ? "border-blue-300 bg-white"
-                : "border-gray-200 bg-gray-50",
+              "h-4 w-4 rounded-full transition-all duration-150",
+              value[i]
+                ? "bg-emerald-500 scale-110"
+                : i === value.length
+                ? "bg-white/30 ring-2 ring-emerald-500 ring-offset-2 ring-offset-[#111113]"
+                : "bg-white/15",
             ].join(" ")}
-          >
-            {value[i] && <div className="h-3 w-3 rounded-full bg-blue-600" />}
-          </div>
+          />
         ))}
       </div>
 
@@ -157,8 +166,8 @@ function PinPad({
               k === ""
                 ? "pointer-events-none"
                 : k === "⌫"
-                ? "bg-gray-100 hover:bg-gray-200 text-gray-600"
-                : "bg-white hover:bg-blue-50 text-gray-900 border border-gray-200 shadow-sm",
+                ? "bg-white/[0.07] hover:bg-white/[0.12] text-white/60"
+                : "bg-[#1c1c1e] hover:bg-[#252528] text-white/90 border border-white/[0.08]",
             ].join(" ")}
           >
             {k}
@@ -177,12 +186,12 @@ function PinPad({
 
 function ErrorBox({ message }: { message: string }) {
   return (
-    <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
-      <svg className="mt-0.5 shrink-0" viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="#dc2626" strokeWidth="2" strokeLinecap="round">
+    <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-red-500/30 bg-red-950/40 px-4 py-3">
+      <svg className="mt-0.5 shrink-0" viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="#f87171" strokeWidth="2" strokeLinecap="round">
         <circle cx="8" cy="8" r="7" />
         <path d="M8 5v3.5M8 11h.01" />
       </svg>
-      <p className="text-sm text-red-700">{message}</p>
+      <p className="text-sm text-red-400">{message}</p>
     </div>
   );
 }
@@ -261,7 +270,7 @@ export default function Onboarding() {
 
   if (!privyReady) {
     return (
-      <div className="flex min-h-dvh items-center justify-center bg-white">
+      <div className="flex min-h-dvh items-center justify-center bg-[#1a1a1c]">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
         <span className="ml-3">Loading authentication...</span>
       </div>
@@ -270,7 +279,7 @@ export default function Onboarding() {
 
   if (loading) {
     return (
-      <div className="flex min-h-dvh items-center justify-center bg-white">
+      <div className="flex min-h-dvh items-center justify-center bg-[#1a1a1c]">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
         <span className="ml-3">Loading profile...</span>
       </div>
@@ -332,16 +341,12 @@ export default function Onboarding() {
         (privyUser.google as { email?: string } | null)?.email ??
         null;
 
-      // Ensure the embedded wallet exists before saving the profile.
-      // createWallet() is idempotent — if the wallet already exists it returns it.
       let resolvedWalletAddress = walletAddress;
       if (!resolvedWalletAddress) {
         try {
           const newWallet = await createWallet();
           resolvedWalletAddress = newWallet.address ?? null;
         } catch {
-          // Wallet creation failed (e.g. already exists but not loaded yet)
-          // The session will sync it later via the auto-sync effect
           resolvedWalletAddress = null;
         }
       }
@@ -357,31 +362,82 @@ export default function Onboarding() {
       });
 
       setProfile(created as never);
-      setStep("done");
-      setTimeout(() => navigate("/home", { replace: true }), 2200);
+      // Go to enrollment step — profile is now created
+      setStep("enroll");
     } catch (e: unknown) {
       setBusy(false);
       setConfirmPin(""); setFirstPin(""); setPinStage("choose");
 
       const msg = e instanceof Error ? e.message : "";
       if (msg.toLowerCase().includes("username")) {
-        setError(msg);
-        setStep("profile");
+        setError(msg); setStep("profile");
       } else if (msg.toLowerCase().includes("authenticated")) {
-        setError(msg);
-        setStep("auth");
+        setError(msg); setStep("auth");
       } else {
         setError(msg || "Account creation failed. Please try again.");
         setStep("profile");
       }
+    } finally {
+      setBusy(false);
     }
+  }
+
+  // ── Enrollment submission ──────────────────────────────────────────────────
+  async function handleEnrollSubmit() {
+    if (!draft.courseName.trim()) { setError("Please select or enter a course name."); return; }
+    setBusy(true); setError(null);
+    try {
+      const userId = privyUser?.id;
+      if (!userId) throw new Error("Not authenticated.");
+
+      // Create enrollment record
+      const enrollment = await createEnrollment({
+        user_id:      userId,
+        course_name:  draft.courseName.trim(),
+        program_type: draft.programType,
+      });
+
+      // Create payment record if amount was provided
+      if (draft.paymentAmount && Number(draft.paymentAmount) > 0) {
+        await createEnrollmentPayment({
+          enrollment_id:     enrollment.id,
+          user_id:           userId,
+          amount:            Number(draft.paymentAmount),
+          currency:          "NGN",
+          payment_method:    draft.paymentMethod || undefined,
+          payment_reference: draft.paymentReference || undefined,
+        });
+      }
+
+      // Notify admin
+      await createAdminNotification({
+        type:          "new_enrollment",
+        title:         "New Enrollment",
+        message:       `${draft.displayName} enrolled in ${draft.courseName}${draft.paymentAmount ? ` — ₦${Number(draft.paymentAmount).toLocaleString()} payment submitted` : ""}`,
+        user_id:       userId,
+        enrollment_id: enrollment.id,
+      });
+
+      setStep("done");
+      setTimeout(() => navigate("/dashboard", { replace: true }), 2200);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Enrollment failed. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // ── Skip enrollment ────────────────────────────────────────────────────────
+  function handleSkipEnroll() {
+    setStep("done");
+    setTimeout(() => navigate("/home", { replace: true }), 2200);
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="relative flex min-h-dvh flex-col bg-white">
+    <div className="relative flex min-h-dvh flex-col bg-[#111113]">
       {/* Top gradient accent */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-gradient-to-b from-blue-50/70 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-gradient-to-b from-emerald-950/30 to-transparent" />
 
       <div className="relative flex flex-1 flex-col items-center justify-center px-5 py-10">
         <div className="w-full max-w-sm">
@@ -393,17 +449,17 @@ export default function Onboarding() {
           {/* ── STEP: auth ─────────────────────────────────────────────── */}
           {step === "auth" && (
             <div className="animate-[fadeSlideUp_0.3s_ease-out]">
-              <h1 className="text-2xl font-bold tracking-tight text-gray-900">
+              <h1 className="text-2xl font-bold tracking-tight text-white/90">
                 Create your account
               </h1>
-              <p className="mt-2 text-sm leading-relaxed text-gray-500">
+              <p className="mt-2 text-sm leading-relaxed text-white/50">
                 Join XPay to send and receive money instantly.
               </p>
 
               <button
                 onClick={() => login()}
                 disabled={busy}
-                className="mt-8 flex h-14 w-full items-center justify-center gap-3 rounded-2xl bg-blue-600 text-base font-semibold text-white shadow-lg shadow-blue-200 transition hover:bg-blue-700 active:scale-[.98] disabled:opacity-60"
+                className="mt-8 flex h-14 w-full items-center justify-center gap-3 rounded-2xl bg-emerald-500 text-base font-semibold text-white shadow-lg shadow-emerald-900/30 transition hover:bg-emerald-400 active:scale-[.98] disabled:opacity-60"
               >
                 Get started
                 <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -413,41 +469,41 @@ export default function Onboarding() {
 
               {/* Trust signals */}
               <div className="mt-8 grid grid-cols-3 gap-3">
-                <div className="flex flex-col items-center gap-2 rounded-xl bg-gray-50 px-2 py-3.5 text-center">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
+                <div className="flex flex-col items-center gap-2 rounded-xl bg-[#161618] px-2 py-3.5 text-center">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/20">
                     <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="#2563eb" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M10 2l6 2.5V10c0 3.5-2.5 6-6 8-3.5-2-6-4.5-6-8V4.5L10 2z"/>
                     </svg>
                   </div>
-                  <span className="text-[10px] font-medium leading-tight text-gray-500">Secured by Privy</span>
+                  <span className="text-[10px] font-medium leading-tight text-white/50">Secured by Privy</span>
                 </div>
-                <div className="flex flex-col items-center gap-2 rounded-xl bg-gray-50 px-2 py-3.5 text-center">
+                <div className="flex flex-col items-center gap-2 rounded-xl bg-[#161618] px-2 py-3.5 text-center">
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100">
                     <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="#d97706" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M11 3L4 12h7l-2 5 7-9h-7l2-5z"/>
                     </svg>
                   </div>
-                  <span className="text-[10px] font-medium leading-tight text-gray-500">Instant transfers</span>
+                  <span className="text-[10px] font-medium leading-tight text-white/50">Instant transfers</span>
                 </div>
-                <div className="flex flex-col items-center gap-2 rounded-xl bg-gray-50 px-2 py-3.5 text-center">
+                <div className="flex flex-col items-center gap-2 rounded-xl bg-[#161618] px-2 py-3.5 text-center">
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-100">
                     <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="#16a34a" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                       <circle cx="10" cy="10" r="8"/>
                       <path d="M2 10h16M10 2a14 14 0 010 16M10 2a14 14 0 000 16"/>
                     </svg>
                   </div>
-                  <span className="text-[10px] font-medium leading-tight text-gray-500">Send to any bank</span>
+                  <span className="text-[10px] font-medium leading-tight text-white/50">Send to any bank</span>
                 </div>
               </div>
 
               {error && <ErrorBox message={error} />}
 
-              <p className="mt-6 text-center text-xs text-gray-400">
+              <p className="mt-6 text-center text-xs text-white/40">
                 Already have an account?{" "}
                 <button
                   type="button"
                   onClick={() => navigate("/login")}
-                  className="font-semibold text-blue-600 hover:underline"
+                  className="font-semibold text-emerald-400 hover:underline"
                 >
                   Sign in
                 </button>
@@ -455,7 +511,7 @@ export default function Onboarding() {
 
               {/* Show option to sign out if already authenticated */}
               {privyAuthed && (
-                <p className="mt-3 text-center text-xs text-gray-400">
+                <p className="mt-3 text-center text-xs text-white/40">
                   Want to use a different account?{" "}
                   <button
                     type="button"
@@ -463,7 +519,7 @@ export default function Onboarding() {
                       await logout();
                       setStep("auth");
                     }}
-                    className="font-semibold text-blue-600 hover:underline"
+                    className="font-semibold text-emerald-400 hover:underline"
                   >
                     Sign out
                   </button>
@@ -475,24 +531,24 @@ export default function Onboarding() {
           {/* ── STEP: profile ──────────────────────────────────────────── */}
           {step === "profile" && (
             <div className="animate-[fadeSlideUp_0.3s_ease-out]">
-              <h1 className="text-2xl font-bold tracking-tight text-gray-900">
+              <h1 className="text-2xl font-bold tracking-tight text-white/90">
                 Set up your profile
               </h1>
-              <p className="mt-2 text-sm text-gray-500">
+              <p className="mt-2 text-sm text-white/50">
                 Almost done. Fill in a few details.
               </p>
 
               {/* Info callout */}
-              <div className="mt-5 flex gap-3 rounded-xl border border-blue-100 bg-blue-50 p-4">
-                <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-100">
+              <div className="mt-5 flex gap-3 rounded-xl border border-emerald-900/30 bg-emerald-500/10 p-4">
+                <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-500/20">
                   <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="8" cy="8" r="7" />
                     <path d="M8 7v5M8 5h.01" />
                   </svg>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-blue-800">How people pay you</p>
-                  <p className="mt-0.5 text-xs leading-relaxed text-blue-700">
+                  <p className="text-xs font-semibold text-emerald-300">How people pay you</p>
+                  <p className="mt-0.5 text-xs leading-relaxed text-emerald-400">
                     Your <strong>phone number</strong> and <strong>@username</strong> are your payment addresses.
                   </p>
                 </div>
@@ -501,14 +557,14 @@ export default function Onboarding() {
               <div className="mt-5 space-y-4">
                 {/* Full name */}
                 <div>
-                  <label className="mb-1.5 block text-sm font-semibold text-gray-700">Full name</label>
+                  <label className="mb-1.5 block text-sm font-semibold text-white/70">Full name</label>
                   <input
                     value={draft.displayName}
                     onChange={(e) => { patch({ displayName: e.target.value }); setError(null); }}
                     placeholder="Bola Adeyemi"
                     autoComplete="name"
                     autoFocus
-                    className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-base text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    className="h-12 w-full rounded-xl border border-white/[0.08] bg-black px-4 text-base text-white/90 outline-none transition placeholder:text-white/40 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
                   />
                 </div>
 
@@ -526,19 +582,19 @@ export default function Onboarding() {
 
                 {/* Username */}
                 <div>
-                  <label className="mb-1.5 block text-sm font-semibold text-gray-700">Username</label>
+                  <label className="mb-1.5 block text-sm font-semibold text-white/70">Username</label>
                   <div className="relative">
                     <div
                       className={[
-                        "flex h-12 items-center rounded-xl border bg-white transition-all duration-150",
+                        "flex h-12 items-center rounded-xl border bg-black transition-all duration-150",
                         usernameState === "taken"
                           ? "border-red-400 ring-2 ring-red-100"
                           : usernameState === "ok"
                           ? "border-green-400 ring-2 ring-green-100"
-                          : "border-gray-200 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100",
+                          : "border-white/[0.08] focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-900/30",
                       ].join(" ")}
                     >
-                      <span className="pl-4 text-sm font-medium text-gray-400">@</span>
+                      <span className="pl-4 text-sm font-medium text-white/40">@</span>
                       <input
                         value={draft.username}
                         onChange={(e) => {
@@ -547,10 +603,10 @@ export default function Onboarding() {
                           setError(null);
                         }}
                         placeholder="yourhandle"
-                        className="h-full flex-1 bg-transparent px-2 text-base text-gray-900 outline-none placeholder:text-gray-400"
+                        className="h-full flex-1 bg-transparent px-2 text-base text-white/90 outline-none placeholder:text-white/40"
                       />
                       <span className="pr-3.5">
-                        {usernameState === "checking" && <Spinner className="h-4 w-4 text-gray-400" />}
+                        {usernameState === "checking" && <Spinner className="h-4 w-4 text-white/40" />}
                         {usernameState === "ok" && (
                           <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M3 8l3.5 3.5 6.5-7" />
@@ -568,7 +624,7 @@ export default function Onboarding() {
                     "mt-1.5 text-xs",
                     usernameState === "ok" ? "text-green-600"
                     : usernameState === "taken" ? "text-red-500"
-                    : "text-gray-400",
+                    : "text-white/40",
                   ].join(" ")}>
                     {usernameState === "ok"
                       ? `✓ @${draft.username} is available`
@@ -590,7 +646,7 @@ export default function Onboarding() {
                   !draft.phoneValid ||
                   usernameState !== "ok"
                 }
-                className="mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 text-sm font-semibold text-white shadow-sm shadow-blue-200 transition hover:bg-blue-700 active:scale-[.98] disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 disabled:shadow-none"
+                className="mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 text-sm font-semibold text-white shadow-sm shadow-emerald-900/30 transition hover:bg-emerald-400 active:scale-[.98] disabled:cursor-not-allowed disabled:bg-white/[0.07] disabled:text-white/40 disabled:shadow-none"
               >
                 {busy && <Spinner className="h-4 w-4" />}
                 Continue
@@ -601,10 +657,10 @@ export default function Onboarding() {
           {/* ── STEP: pin ──────────────────────────────────────────────── */}
           {step === "pin" && (
             <div className="animate-[fadeSlideUp_0.3s_ease-out]">
-              <h1 className="text-2xl font-bold tracking-tight text-gray-900">
+              <h1 className="text-2xl font-bold tracking-tight text-white/90">
                 {pinStage === "choose" ? "Choose a PIN" : "Confirm your PIN"}
               </h1>
-              <p className="mt-2 mb-7 text-sm text-gray-500">
+              <p className="mt-2 mb-7 text-sm text-white/50">
                 {pinStage === "choose"
                   ? "You'll use this 4-digit PIN to approve every payment."
                   : "Enter it again to confirm."}
@@ -630,17 +686,136 @@ export default function Onboarding() {
               )}
 
               {busy && (
-                <div className="mt-6 flex items-center justify-center gap-2 text-sm text-gray-500">
-                  <Spinner className="h-4 w-4 text-blue-600" />
+                <div className="mt-6 flex items-center justify-center gap-2 text-sm text-white/50">
+                  <Spinner className="h-4 w-4 text-emerald-400" />
                   Creating your account…
                 </div>
               )}
 
               {error && <ErrorBox message={error} />}
 
-              <p className="mt-6 text-center text-xs text-gray-400">
+              <p className="mt-6 text-center text-xs text-white/40">
                 Never share your PIN. Not even with XPay support.
               </p>
+            </div>
+          )}
+
+          {/* ── STEP: enroll ───────────────────────────────────────────── */}
+          {step === "enroll" && (
+            <div className="animate-[fadeSlideUp_0.3s_ease-out]">
+              <h1 className="text-2xl font-bold tracking-tight text-white/90">
+                Course Enrollment
+              </h1>
+              <p className="mt-2 text-sm text-white/50">
+                Select your course and submit payment details for review.
+              </p>
+
+              <div className="mt-6 space-y-4">
+                {/* Course selection */}
+                <div>
+                  <label className="mb-1.5 block text-sm font-semibold text-white/70">Course / Program *</label>
+                  <select
+                    value={draft.courseName}
+                    onChange={e => { patch({ courseName: e.target.value }); setError(null); }}
+                    className="h-12 w-full rounded-xl border border-white/[0.08] bg-black px-4 text-sm text-white/90 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                  >
+                    <option value="">Select a course…</option>
+                    <option value="Web3 Fundamentals">Web3 Fundamentals</option>
+                    <option value="DeFi & Blockchain Development">DeFi &amp; Blockchain Development</option>
+                    <option value="Smart Contract Engineering">Smart Contract Engineering</option>
+                    <option value="Crypto Trading & Investment">Crypto Trading &amp; Investment</option>
+                    <option value="NFT Creation & Monetisation">NFT Creation &amp; Monetisation</option>
+                    <option value="other">Other (type below)</option>
+                  </select>
+                  {draft.courseName === "other" && (
+                    <input
+                      className="mt-2 h-12 w-full rounded-xl border border-white/[0.08] bg-black px-4 text-sm text-white/90 outline-none transition placeholder:text-white/40 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                      placeholder="Enter course name"
+                      onChange={e => patch({ courseName: e.target.value })}
+                    />
+                  )}
+                </div>
+
+                {/* Program type */}
+                <div>
+                  <label className="mb-1.5 block text-sm font-semibold text-white/70">Program Type</label>
+                  <div className="flex gap-2">
+                    {["standard", "premium", "scholarship"].map(t => (
+                      <button key={t} type="button"
+                        onClick={() => patch({ programType: t })}
+                        className={["flex-1 rounded-xl border py-2.5 text-xs font-semibold capitalize transition",
+                          draft.programType === t
+                            ? "border-emerald-500 bg-emerald-500/10 text-emerald-400"
+                            : "border-white/[0.08] bg-black text-white/60 hover:bg-[#1c1c1e]",
+                        ].join(" ")}>
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Payment */}
+                <div>
+                  <label className="mb-1.5 block text-sm font-semibold text-white/70">Payment Amount (₦)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={draft.paymentAmount}
+                    onChange={e => { patch({ paymentAmount: e.target.value }); setError(null); }}
+                    placeholder="e.g. 50000"
+                    className="h-12 w-full rounded-xl border border-white/[0.08] bg-black px-4 text-sm text-white/90 outline-none transition placeholder:text-white/40 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-sm font-semibold text-white/70">Payment Method</label>
+                  <select
+                    value={draft.paymentMethod}
+                    onChange={e => patch({ paymentMethod: e.target.value })}
+                    className="h-12 w-full rounded-xl border border-white/[0.08] bg-black px-4 text-sm text-white/90 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                  >
+                    <option value="">Select…</option>
+                    <option value="bank_transfer">Bank Transfer</option>
+                    <option value="card">Card Payment</option>
+                    <option value="crypto">Crypto (USDC)</option>
+                    <option value="cash">Cash</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-sm font-semibold text-white/70">Payment Reference / Teller No.</label>
+                  <input
+                    value={draft.paymentReference}
+                    onChange={e => patch({ paymentReference: e.target.value })}
+                    placeholder="Bank teller number or transaction ref"
+                    className="h-12 w-full rounded-xl border border-white/[0.08] bg-black px-4 text-sm text-white/90 outline-none transition placeholder:text-white/40 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                  />
+                </div>
+
+                <div className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3">
+                  <p className="text-xs text-amber-700">
+                    Your enrollment will be reviewed and activated by an admin once your payment is confirmed.
+                  </p>
+                </div>
+              </div>
+
+              {error && <ErrorBox message={error} />}
+
+              <button
+                onClick={handleEnrollSubmit}
+                disabled={busy || !draft.courseName || draft.courseName === "other"}
+                className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 text-sm font-semibold text-white shadow-sm shadow-emerald-900/30 transition hover:bg-emerald-400 active:scale-[.98] disabled:cursor-not-allowed disabled:bg-white/[0.07] disabled:text-white/40 disabled:shadow-none"
+              >
+                {busy && <Spinner className="h-4 w-4" />}
+                Submit Enrollment
+              </button>
+
+              <button
+                onClick={handleSkipEnroll}
+                className="mt-3 w-full text-center text-xs text-white/40 hover:text-white/60 hover:underline"
+              >
+                Skip for now — enroll later
+              </button>
             </div>
           )}
 
@@ -656,22 +831,22 @@ export default function Onboarding() {
                 </div>
               </div>
 
-              <h1 className="mt-6 text-2xl font-bold tracking-tight text-gray-900">You're all set!</h1>
-              <p className="mt-2 text-sm leading-relaxed text-gray-500">
+              <h1 className="mt-6 text-2xl font-bold tracking-tight text-white/90">You're all set!</h1>
+              <p className="mt-2 text-sm leading-relaxed text-white/50">
                 Welcome to XPay,{" "}
-                <span className="font-semibold text-gray-900">{draft.displayName}</span>.
+                <span className="font-semibold text-white/90">{draft.displayName}</span>.
                 Your wallet is ready.
               </p>
 
-              <div className="mt-5 flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-4 py-2">
-                <span className="text-sm text-gray-500">Your handle:</span>
-                <span className="font-mono text-sm font-semibold text-blue-600">@{draft.username}</span>
+              <div className="mt-5 flex items-center gap-2 rounded-full border border-white/[0.08] bg-[#161618] px-4 py-2">
+                <span className="text-sm text-white/50">Your handle:</span>
+                <span className="font-mono text-sm font-semibold text-emerald-400">@{draft.username}</span>
               </div>
 
-              <div className="mt-8 h-1.5 w-48 overflow-hidden rounded-full bg-gray-100">
-                <div className="h-full w-full origin-left animate-[grow_2.2s_ease-in-out_forwards] rounded-full bg-blue-600" />
+              <div className="mt-8 h-1.5 w-48 overflow-hidden rounded-full bg-white/[0.07]">
+                <div className="h-full w-full origin-left animate-[grow_2.2s_ease-in-out_forwards] rounded-full bg-emerald-500" />
               </div>
-              <p className="mt-3 text-xs text-gray-400">Opening your wallet…</p>
+              <p className="mt-3 text-xs text-white/40">Opening your wallet…</p>
             </div>
           )}
 

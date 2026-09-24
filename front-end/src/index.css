@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* Dark theme base */
+html, body, #root {
+  background-color: #111113;
+  color: #ffffff;
+}
+
 @theme {
   --color-*: initial;
   --color-transparent: transparent;

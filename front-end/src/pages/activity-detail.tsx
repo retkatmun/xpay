@@ -38,7 +38,7 @@ export default function ActivityDetail() {
     return () => clearInterval(interval)
   }, [profile, tx, id])
 
-  if (!authUser || !profile) return <div className="min-h-dvh bg-white" />
+  if (!authUser || !profile) return <div className="min-h-dvh bg-[#111113]" />
 
   if (tx === undefined) {
     return (
@@ -54,13 +54,13 @@ export default function ActivityDetail() {
     return (
       <Screen back onBack={() => navigate(-1)}>
         <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center px-6">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gray-50">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#161618]">
             <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10" /><path d="M12 8v4m0 4h.01" />
             </svg>
           </div>
-          <p className="text-sm font-medium text-gray-700">Transaction not found</p>
-          <button onClick={() => navigate(-1)} className="text-xs text-blue-600">Go back</button>
+          <p className="text-sm font-medium text-white/70">Transaction not found</p>
+          <button onClick={() => navigate(-1)} className="text-xs text-emerald-400">Go back</button>
         </div>
       </Screen>
     )
@@ -87,10 +87,10 @@ export default function ActivityDetail() {
       <div className="flex-1 pb-10">
 
         {/* ── Hero ── */}
-        <section className="mt-2 flex flex-col items-center gap-3 pb-6 border-b border-gray-100">
+        <section className="mt-2 flex flex-col items-center gap-3 pb-6 border-b border-white/[0.06]">
           <div className="relative">
             {tx.recipientType === "bank_account" ? (
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-50">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10">
                 <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#2563eb" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
                 </svg>
@@ -98,15 +98,15 @@ export default function ActivityDetail() {
             ) : (
               <Avatar name={tx.recipientDisplayName} size={64} />
             )}
-            <span className={`absolute -right-1 -bottom-1 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white shadow ${out ? "bg-gray-400" : "bg-blue-500"}`}>
+            <span className={`absolute -right-1 -bottom-1 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white shadow ${out ? "bg-gray-400" : "bg-emerald-500/100"}`}>
               {out ? "↑" : "↓"}
             </span>
           </div>
 
           <div className="text-center">
-            <p className="text-base font-semibold text-gray-900">{tx.recipientDisplayName}</p>
+            <p className="text-base font-semibold text-white/90">{tx.recipientDisplayName}</p>
             {tx.recipientType === "bank_account" && tx.recipientBankName && (
-              <p className="text-xs text-gray-500 mt-0.5">
+              <p className="text-xs text-white/50 mt-0.5">
                 {tx.recipientBankName}
                 {tx.recipientAccountNumberLast4 ? ` ••••${tx.recipientAccountNumberLast4}` : ""}
               </p>
@@ -114,11 +114,11 @@ export default function ActivityDetail() {
           </div>
 
           <div className="text-center">
-            <p className={`text-3xl font-bold tabular-nums tracking-tight ${out ? "text-gray-900" : "text-blue-600"}`}>
+            <p className={`text-3xl font-bold tabular-nums tracking-tight ${out ? "text-white/90" : "text-emerald-400"}`}>
               {out ? "−" : "+"}{formatUSD(usd)}
             </p>
             {ngn > 0n && (
-              <p className="mt-1 text-sm text-gray-500 tabular-nums">
+              <p className="mt-1 text-sm text-white/50 tabular-nums">
                 ₦{ngn.toLocaleString("en-NG")} NGN
               </p>
             )}
@@ -128,7 +128,7 @@ export default function ActivityDetail() {
         </section>
 
         {/* ── Details ── */}
-        <section className="mt-5 rounded-2xl border border-gray-100 bg-white shadow-sm divide-y divide-gray-100 overflow-hidden">
+        <section className="mt-5 rounded-2xl border border-white/[0.06] bg-[#1a1a1c] shadow-sm divide-y divide-white/[0.06] overflow-hidden">
           <DetailRow label="Date" value={fullTime(tx.createdAt)} />
           <DetailRow label="Status" value={<span className={color}>{statusLabel(tx.status)}</span>} />
           {tx.recipientType === "bank_account" && tx.recipientBankName && (
@@ -155,11 +155,11 @@ export default function ActivityDetail() {
 
         {/* ── Blockchain ── */}
         {tx.txHash && (
-          <section className="mt-4 rounded-2xl border border-gray-100 bg-white shadow-sm divide-y divide-gray-100 overflow-hidden">
+          <section className="mt-4 rounded-2xl border border-white/[0.06] bg-[#1a1a1c] shadow-sm divide-y divide-white/[0.06] overflow-hidden">
             <div className="px-4 py-3">
-              <p className="text-[0.7rem] font-semibold uppercase tracking-widest text-gray-400 mb-2">Blockchain</p>
-              <p className="text-xs text-gray-500 font-medium mb-1">Transaction Hash</p>
-              <p className="font-mono text-[0.65rem] text-gray-700 break-all leading-relaxed">
+              <p className="text-[0.7rem] font-semibold uppercase tracking-widest text-white/40 mb-2">Blockchain</p>
+              <p className="text-xs text-white/50 font-medium mb-1">Transaction Hash</p>
+              <p className="font-mono text-[0.65rem] text-white/70 break-all leading-relaxed">
                 {tx.txHash}
               </p>
               {explorerUrl && (
@@ -167,7 +167,7 @@ export default function ActivityDetail() {
                   href={explorerUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700"
+                  className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-emerald-400 hover:text-emerald-400"
                 >
                   View on BaseScan
                   <svg viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -183,10 +183,10 @@ export default function ActivityDetail() {
 
         {/* ── Timeline ── */}
         <section className="mt-4">
-          <p className="mb-3 text-[0.7rem] font-semibold uppercase tracking-widest text-gray-400 px-1">
+          <p className="mb-3 text-[0.7rem] font-semibold uppercase tracking-widest text-white/40 px-1">
             Timeline
           </p>
-          <div className="rounded-2xl border border-gray-100 bg-white shadow-sm px-4 py-4">
+          <div className="rounded-2xl border border-white/[0.06] bg-[#1a1a1c] shadow-sm px-4 py-4">
             <ol className="space-y-4">
               {steps.map((step, i) => (
                 <TimelineStep
@@ -205,9 +205,9 @@ export default function ActivityDetail() {
 
         {/* ── Payout details ── */}
         {tx.payout && (
-          <section className="mt-4 rounded-2xl border border-gray-100 bg-white shadow-sm divide-y divide-gray-100 overflow-hidden">
+          <section className="mt-4 rounded-2xl border border-white/[0.06] bg-[#1a1a1c] shadow-sm divide-y divide-white/[0.06] overflow-hidden">
             <div className="px-4 pt-3 pb-1">
-              <p className="text-[0.7rem] font-semibold uppercase tracking-widest text-gray-400">Bank Payout</p>
+              <p className="text-[0.7rem] font-semibold uppercase tracking-widest text-white/40">Bank Payout</p>
             </div>
             <DetailRow label="Provider" value={tx.payout.provider} />
             <DetailRow label="Amount" value={`₦${BigInt(tx.payout.amountNgn).toLocaleString("en-NG")}`} />
@@ -229,8 +229,8 @@ export default function ActivityDetail() {
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-3 px-4 py-3">
-      <span className="text-xs text-gray-500 shrink-0">{label}</span>
-      <span className="text-xs font-medium text-gray-900 text-right">{value}</span>
+      <span className="text-xs text-white/50 shrink-0">{label}</span>
+      <span className="text-xs font-medium text-white/90 text-right">{value}</span>
     </div>
   )
 }
@@ -261,21 +261,21 @@ function TimelineStep({
               : done
               ? "bg-green-100 text-green-600"
               : active
-              ? "bg-blue-100 text-blue-600 animate-pulse"
-              : "bg-gray-100 text-gray-400",
+              ? "bg-blue-100 text-emerald-400 animate-pulse"
+              : "bg-white/[0.07] text-white/40",
           ].join(" ")}
         >
           {failed ? "✕" : done ? "✓" : active ? "◉" : "○"}
         </div>
         {!isLast && (
-          <div className={`mt-1 w-px flex-1 ${done ? "bg-green-200" : "bg-gray-100"}`} style={{ minHeight: 16 }} />
+          <div className={`mt-1 w-px flex-1 ${done ? "bg-green-200" : "bg-white/[0.07]"}`} style={{ minHeight: 16 }} />
         )}
       </div>
       <div className="pb-3">
-        <p className={`text-xs font-semibold ${failed ? "text-red-600" : done ? "text-gray-900" : active ? "text-blue-600" : "text-gray-400"}`}>
+        <p className={`text-xs font-semibold ${failed ? "text-red-600" : done ? "text-white/90" : active ? "text-emerald-400" : "text-white/40"}`}>
           {label}
         </p>
-        {description && <p className="mt-0.5 text-[0.68rem] text-gray-400">{description}</p>}
+        {description && <p className="mt-0.5 text-[0.68rem] text-white/40">{description}</p>}
       </div>
     </li>
   )

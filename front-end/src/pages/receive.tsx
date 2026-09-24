@@ -23,7 +23,7 @@ export default function Receive() {
     if (!loading && authUser && !profile) navigate('/onboarding', { replace: true })
   }, [loading, authUser, profile, navigate])
 
-  if (!profile) return <div className="min-h-dvh bg-white" />
+  if (!profile) return <div className="min-h-dvh bg-[#111113]" />
 
   const walletAddress = address || sessionWallet || profile.wallet_address
 
@@ -55,11 +55,11 @@ export default function Receive() {
         </Title>
 
         {/* ── XPay handle ── */}
-        <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#1a1a1c] shadow-sm">
           <div className="flex items-center justify-between px-5 py-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">XPay handle</p>
-              <p className="mt-1 text-2xl font-bold leading-none tracking-tight text-gray-900">
+              <p className="text-xs font-semibold uppercase tracking-widest text-white/40">XPay handle</p>
+              <p className="mt-1 text-2xl font-bold leading-none tracking-tight text-white/90">
                 {profile.username}.xpay
               </p>
             </div>
@@ -68,11 +68,11 @@ export default function Receive() {
         </div>
 
         {/* ── Phone address ── */}
-        <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#1a1a1c] shadow-sm">
           <div className="flex items-center justify-between px-5 py-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Phone address</p>
-              <p className="mt-1 text-2xl font-bold tabular-nums tracking-tight text-gray-900">
+              <p className="text-xs font-semibold uppercase tracking-widest text-white/40">Phone address</p>
+              <p className="mt-1 text-2xl font-bold tabular-nums tracking-tight text-white/90">
                 {profile.account_number ?? profile.phone.replace(/^\+\d{1,4}/, "")}
               </p>
             </div>
@@ -81,8 +81,8 @@ export default function Receive() {
               label="Copy"
             />
           </div>
-          <div className="border-t border-blue-50 bg-blue-50 px-5 py-3">
-            <p className="text-xs leading-relaxed text-blue-700">
+          <div className="border-t border-blue-50 bg-emerald-500/10 px-5 py-3">
+            <p className="text-xs leading-relaxed text-emerald-400">
               Share this 10-digit number. Anyone on XPay can send you money using it — no country code needed.
             </p>
           </div>
@@ -90,20 +90,20 @@ export default function Receive() {
 
         {/* ── USDC deposit address — always visible ── */}
         <div>
-          <p className="mb-3 text-[0.68rem] font-bold uppercase tracking-widest text-gray-400">
+          <p className="mb-3 text-[0.68rem] font-bold uppercase tracking-widest text-white/40">
             Receive USDC from outside XPay
           </p>
-          <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+          <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#1a1a1c] shadow-sm">
             {/* Network + address row */}
-            <div className="flex items-center gap-3 border-b border-gray-100 px-4 py-3.5">
+            <div className="flex items-center gap-3 border-b border-white/[0.06] px-4 py-3.5">
               <img
                 src={getNetworkLogo(networkLogoKey)}
                 alt={activeChain.name}
                 className="h-8 w-8 shrink-0 rounded-full"
               />
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-gray-900">{activeChain.name} network</p>
-                <p className="text-xs text-gray-400">
+                <p className="text-sm font-semibold text-white/90">{activeChain.name} network</p>
+                <p className="text-xs text-white/40">
                   {activeChain.usdcAddress ? 'USDC · ERC-20' : 'Native ETH only'}
                   {activeChain.isTestnet && ' · Testnet'}
                 </p>
@@ -118,17 +118,17 @@ export default function Receive() {
               {walletLoading ? (
                 <div className="flex items-center gap-2">
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-                  <span className="text-sm text-gray-400">Loading address…</span>
+                  <span className="text-sm text-white/40">Loading address…</span>
                 </div>
               ) : walletAddress ? (
                 <div className="flex items-center justify-between gap-3">
-                  <p className="break-all font-mono text-xs leading-relaxed text-gray-700">
+                  <p className="break-all font-mono text-xs leading-relaxed text-white/70">
                     {walletAddress}
                   </p>
                   <CopyButton value={walletAddress} label="Copy" />
                 </div>
               ) : (
-                <p className="text-sm text-gray-400">No wallet address found.</p>
+                <p className="text-sm text-white/40">No wallet address found.</p>
               )}
             </div>
 
@@ -145,7 +145,7 @@ export default function Receive() {
 
         {/* ── Fund with card ── */}
         <div>
-          <p className="mb-3 text-[0.68rem] font-bold uppercase tracking-widest text-gray-400">Add funds</p>
+          <p className="mb-3 text-[0.68rem] font-bold uppercase tracking-widest text-white/40">Add funds</p>
           <button
             onClick={handleFund}
             disabled={fundLoading || !walletAddress}

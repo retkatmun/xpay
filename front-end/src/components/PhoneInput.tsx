@@ -153,7 +153,12 @@ export function PhoneInput({
 
     // Build E.164 for parent
     const dialCode = getCountryCallingCode(selectedCountry);
-    const digits = cleaned.replace(/\D/g, "");
+    // Strip the trunk prefix (leading 0) before prepending the country code.
+    // e.g. Nigerian users type "0813 693 1853"; the "0" is a local trunk prefix,
+    // not part of the international number. Without stripping it we'd produce
+    // "+23408136931853" (invalid) instead of "+2348136931853" (correct E.164).
+    const rawDigits = cleaned.replace(/\D/g, "");
+    const digits = rawDigits.replace(/^0+/, "");
     if (!digits) {
       onChange("", false);
       return;
@@ -170,7 +175,9 @@ export function PhoneInput({
 
     // Re-emit with new country code
     const dialCode = getCountryCallingCode(code);
-    const digits = localNumber.replace(/\D/g, "");
+    // Strip trunk prefix here too for consistency
+    const rawDigits = localNumber.replace(/\D/g, "");
+    const digits = rawDigits.replace(/^0+/, "");
     if (digits) {
       const e164 = "+" + dialCode + digits;
       const valid = isValidPhoneNumber(e164, code);
@@ -183,44 +190,30 @@ export function PhoneInput({
   return (
     <div className={`relative ${className}`}>
       {label && (
-        <label className="mb-1.5 block text-sm font-semibold text-gray-700">
+        <label className="mb-1.5 block text-sm font-semibold text-white/70">
           {label}
         </label>
       )}
 
-      {/* Input wrapper — double border: outer ring + inner border */}
-      <div
-        className={[
-          "relative flex h-12 items-center rounded-xl transition-all duration-150",
-          error
-            ? "border border-red-400"
-            : "border border-gray-200",
-        ].join(" ")}
-      >
+      <div className={[
+        "relative flex h-12 items-center rounded-xl transition-all duration-150",
+        error ? "border border-red-500/60" : "border border-white/[0.08] focus-within:border-emerald-500",
+      ].join(" ")}>
         {/* Country selector button */}
         <button
           type="button"
           onClick={() => setDropdownOpen((v) => !v)}
-          className="flex h-full items-center gap-1.5 rounded-l-xl border-r border-gray-200 bg-gray-50 px-3 transition hover:bg-gray-100 focus:outline-none"
+          className="flex h-full items-center gap-1.5 rounded-l-xl border-r border-white/[0.08] bg-black px-3 transition hover:bg-white/[0.06] focus:outline-none"
           aria-label="Select country"
           aria-haspopup="listbox"
           aria-expanded={dropdownOpen}
         >
           <span className="text-lg leading-none">{country?.flag ?? "🌍"}</span>
-          <span className="text-sm font-medium text-gray-600">
+          <span className="text-sm font-medium text-white/60">
             {country?.dialCode ?? "+234"}
           </span>
-          <svg
-            viewBox="0 0 12 12"
-            width="10"
-            height="10"
-            fill="none"
-            stroke="#9ca3af"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className={`transition-transform duration-150 ${dropdownOpen ? "rotate-180" : ""}`}
-          >
+          <svg viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2" strokeLinecap="round"
+            className={`transition-transform duration-150 ${dropdownOpen ? "rotate-180" : ""}`}>
             <path d="M2 4l4 4 4-4" />
           </svg>
         </button>
@@ -234,7 +227,7 @@ export function PhoneInput({
           value={localNumber}
           onChange={(e) => handleNumberChange(e.target.value)}
           placeholder={placeholder ?? "800 123 4567"}
-          className="h-full flex-1 bg-transparent px-3 text-base text-gray-900 outline-none placeholder:text-gray-400"
+          className="h-full flex-1 bg-black px-3 text-base text-white/90 outline-none placeholder:text-white/30"
         />
       </div>
 
@@ -242,24 +235,15 @@ export function PhoneInput({
       {dropdownOpen && (
         <div
           ref={dropdownRef}
-          className="absolute left-0 top-full z-50 mt-1.5 w-72 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl"
+          className="absolute left-0 top-full z-50 mt-1.5 w-72 overflow-hidden rounded-xl border border-white/[0.08] bg-[#1a1a1c] shadow-2xl shadow-black/60"
           role="listbox"
           aria-label="Country selector"
         >
           {/* Search */}
-          <div className="border-b border-gray-100 p-2">
-            <div className="flex h-9 items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3">
-              <svg
-                viewBox="0 0 16 16"
-                width="13"
-                height="13"
-                fill="none"
-                stroke="#9ca3af"
-                strokeWidth="2"
-                strokeLinecap="round"
-              >
-                <circle cx="6.5" cy="6.5" r="4" />
-                <path d="M11 11l3 3" />
+          <div className="border-b border-white/[0.06] p-2">
+            <div className="flex h-9 items-center gap-2 rounded-lg border border-white/[0.08] bg-black px-3">
+              <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2" strokeLinecap="round">
+                <circle cx="6.5" cy="6.5" r="4" /><path d="M11 11l3 3" />
               </svg>
               <input
                 ref={searchRef}
@@ -267,7 +251,7 @@ export function PhoneInput({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search country..."
-                className="flex-1 bg-transparent text-base text-gray-900 outline-none placeholder:text-gray-400"
+                className="flex-1 bg-transparent text-base text-white/90 outline-none placeholder:text-white/30"
               />
             </div>
           </div>
@@ -275,7 +259,7 @@ export function PhoneInput({
           {/* Country list */}
           <ul className="max-h-52 overflow-y-auto">
             {filtered.length === 0 && (
-              <li className="px-4 py-3 text-xs text-gray-400">No countries found</li>
+              <li className="px-4 py-3 text-xs text-white/40">No countries found</li>
             )}
             {filtered.map((c) => (
               <li key={c.code}>
@@ -283,17 +267,15 @@ export function PhoneInput({
                   type="button"
                   onClick={() => handleCountrySelect(c.code)}
                   className={[
-                    "flex w-full items-center gap-3 px-4 py-2.5 text-left transition hover:bg-blue-50",
-                    c.code === selectedCountry ? "bg-blue-50" : "",
+                    "flex w-full items-center gap-3 px-4 py-2.5 text-left transition hover:bg-emerald-500/10",
+                    c.code === selectedCountry ? "bg-emerald-500/10" : "",
                   ].join(" ")}
                   role="option"
                   aria-selected={c.code === selectedCountry}
                 >
                   <span className="text-base leading-none">{c.flag}</span>
-                  <span className="flex-1 truncate text-sm text-gray-900">{c.name}</span>
-                  <span className="shrink-0 text-xs font-medium text-gray-400">
-                    {c.dialCode}
-                  </span>
+                  <span className="flex-1 truncate text-sm text-white/80">{c.name}</span>
+                  <span className="shrink-0 text-xs font-medium text-white/40">{c.dialCode}</span>
                 </button>
               </li>
             ))}
@@ -302,9 +284,9 @@ export function PhoneInput({
       )}
 
       {error ? (
-        <p className="mt-1.5 text-xs text-red-600">{error}</p>
+        <p className="mt-1.5 text-xs text-red-400">{error}</p>
       ) : hint ? (
-        <p className="mt-1.5 text-xs text-gray-400">{hint}</p>
+        <p className="mt-1.5 text-xs text-white/40">{hint}</p>
       ) : null}
     </div>
   );

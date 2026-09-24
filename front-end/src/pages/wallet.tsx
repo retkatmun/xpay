@@ -40,7 +40,7 @@ export default function Wallet() {
 
   if (loading || !authUser || !profile) {
     return (
-      <div className="flex min-h-dvh items-center justify-center bg-white">
+      <div className="flex min-h-dvh items-center justify-center bg-[#1a1a1c]">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
       </div>
     );
@@ -133,7 +133,7 @@ export default function Wallet() {
               onClick={() => fileInputRef.current?.click()}
               disabled={avatarUploading}
               aria-label="Change profile photo"
-              className="absolute -bottom-1 left-0 flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 ring-2 ring-white transition hover:bg-blue-700 active:scale-95 disabled:opacity-60"
+              className="absolute -bottom-1 left-0 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 ring-2 ring-white transition hover:bg-emerald-400 active:scale-95 disabled:opacity-60"
             >
               {avatarUploading ? (
                 <Spinner className="h-3 w-3 text-white" />
@@ -166,7 +166,7 @@ export default function Wallet() {
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={avatarUploading}
-              className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-600 transition hover:bg-blue-100 disabled:opacity-50"
+              className="rounded-full border border-blue-200 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-400 transition hover:bg-blue-100 disabled:opacity-50"
             >
               {profile.avatar_url ? "Change photo" : "Add photo"}
             </button>
@@ -182,17 +182,17 @@ export default function Wallet() {
             )}
           </div>
 
-          <h1 className="text-xl font-bold text-gray-900">{displayName}</h1>
-          {displayEmail && <p className="mt-0.5 text-sm text-gray-400">{displayEmail}</p>}
-          <div className="mt-3 flex items-center gap-1.5 rounded-full border border-gray-100 bg-gray-50 px-3 py-1">
-            <span className="font-mono text-xs font-semibold text-gray-600">{profile.username}.xpay</span>
+          <h1 className="text-xl font-bold text-white/90">{displayName}</h1>
+          {displayEmail && <p className="mt-0.5 text-sm text-white/40">{displayEmail}</p>}
+          <div className="mt-3 flex items-center gap-1.5 rounded-full border border-white/[0.06] bg-[#161618] px-3 py-1">
+            <span className="font-mono text-xs font-semibold text-white/60">{profile.username}.xpay</span>
             <CopyButton value={`${profile.username}.xpay`} label="Copy" />
           </div>
         </div>
 
         <div className="mb-4">
-          <p className="mb-2 text-[0.68rem] font-bold uppercase tracking-widest text-gray-400">Wallet</p>
-          <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm divide-y divide-gray-100">
+          <p className="mb-2 text-[0.68rem] font-bold uppercase tracking-widest text-white/40">Wallet</p>
+          <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#1a1a1c] shadow-sm divide-y divide-white/[0.06]">
             {walletAddress ? (
               <>
                 <div className="flex items-center justify-between px-4 py-3.5">
@@ -204,17 +204,17 @@ export default function Wallet() {
                       />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-700 font-medium">Embedded wallet</p>
-                      <p className="text-[10px] text-gray-400">{activeChain.name} · Privy</p>
+                      <p className="text-sm text-white/70 font-medium">Embedded wallet</p>
+                      <p className="text-[10px] text-white/40">{activeChain.name} · Privy</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="font-mono text-xs font-semibold text-gray-600">{shortAddress}</span>
+                    <span className="font-mono text-xs font-semibold text-white/60">{shortAddress}</span>
                     <CopyButton value={walletAddress} label="Copy" />
                   </div>
                 </div>
                 <div className="flex items-center justify-between px-4 py-3">
-                  <span className="text-xs text-gray-400">Status</span>
+                  <span className="text-xs text-white/40">Status</span>
                   <span className="flex items-center gap-1.5 text-xs font-semibold text-green-600">
                     <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />Active
                   </span>
@@ -222,12 +222,12 @@ export default function Wallet() {
               </>
             ) : (
               <div className="flex items-center gap-3 px-4 py-4">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-50">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#161618]">
                   <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="#9ca3af" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="1" y="4" width="14" height="9" rx="1.5"/><path d="M1 7h14"/>
                   </svg>
                 </div>
-                <p className="text-sm text-gray-500">No wallet yet. Send or receive funds to create one.</p>
+                <p className="text-sm text-white/50">No wallet yet. Send or receive funds to create one.</p>
               </div>
             )}
           </div>
@@ -235,18 +235,18 @@ export default function Wallet() {
 
         {/* ── Account details ── */}
         <div className="mb-4">
-          <p className="mb-2 text-[0.68rem] font-bold uppercase tracking-widest text-gray-400">Account</p>
-          <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm divide-y divide-gray-100">
+          <p className="mb-2 text-[0.68rem] font-bold uppercase tracking-widest text-white/40">Account</p>
+          <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#1a1a1c] shadow-sm divide-y divide-white/[0.06]">
             <Row icon={<UserIcon />} label="Display name" value={displayName} />
             <Row icon={<PhoneIcon />} label="Phone" value={profile.phone} copyable />
             {displayEmail && <Row icon={<EmailIcon />} label="Email" value={displayEmail} truncate />}
             <div className="flex items-center justify-between px-4 py-3.5">
               <div className="flex items-center gap-3">
                 <IconBox><RoleIcon /></IconBox>
-                <span className="text-sm text-gray-500">Role</span>
+                <span className="text-sm text-white/50">Role</span>
               </div>
               <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
-                isAdmin ? "bg-purple-50 text-purple-700 border border-purple-100" : "bg-gray-100 text-gray-600"
+                isAdmin ? "bg-purple-50 text-purple-700 border border-purple-100" : "bg-white/[0.07] text-white/60"
               }`}>
                 {isAdmin ? "Admin" : "User"}
               </span>
@@ -256,7 +256,7 @@ export default function Wallet() {
 
         {/* ── Fund wallet ── */}
         <div className="mb-4">
-          <p className="mb-2 text-[0.68rem] font-bold uppercase tracking-widest text-gray-400">Add funds</p>
+          <p className="mb-2 text-[0.68rem] font-bold uppercase tracking-widest text-white/40">Add funds</p>
           <button
             onClick={handleFund}
             disabled={fundLoading}
@@ -283,29 +283,29 @@ export default function Wallet() {
 
         {/* ── Saved beneficiaries ── */}
         <div className="mb-4">
-          <p className="mb-2 text-[0.68rem] font-bold uppercase tracking-widest text-gray-400">
+          <p className="mb-2 text-[0.68rem] font-bold uppercase tracking-widest text-white/40">
             Saved recipients
           </p>
           {loadingBeneficiaries ? (
             <div className="space-y-2">
               {[1, 2].map(i => (
-                <div key={i} className="h-14 rounded-2xl bg-gray-100 animate-pulse" />
+                <div key={i} className="h-14 rounded-2xl bg-white/[0.07] animate-pulse" />
               ))}
             </div>
           ) : beneficiaries.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-gray-200 py-8 text-center">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-50">
+            <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-white/[0.08] py-8 text-center">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#161618]">
                 <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="#9ca3af" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM6 13s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1H6z"/>
                 </svg>
               </div>
-              <p className="text-xs text-gray-400">No saved recipients yet.<br />They appear here after you send money.</p>
+              <p className="text-xs text-white/40">No saved recipients yet.<br />They appear here after you send money.</p>
             </div>
           ) : (
-            <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm divide-y divide-gray-100">
+            <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#1a1a1c] shadow-sm divide-y divide-white/[0.06]">
               {beneficiaries.map((b) => (
                 <div key={b.id} className="flex items-center gap-3 px-4 py-3.5">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-50">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-500/10">
                     {b.type === "bank_account" ? (
                       <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="#2563eb" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M2 14h12M2 7h12M2 4l6-2.5L14 4M3 7v7M7 7v7M10 7v7M13 7v7"/>
@@ -317,8 +317,8 @@ export default function Wallet() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">{b.label}</p>
-                    <p className="text-xs text-gray-400 truncate">
+                    <p className="text-sm font-semibold text-white/90 truncate">{b.label}</p>
+                    <p className="text-xs text-white/40 truncate">
                       {b.type === "bank_account"
                         ? `${b.bank_name} · ${b.account_number}`
                         : `${b.xpay_username}.xpay`}
@@ -326,7 +326,7 @@ export default function Wallet() {
                   </div>
                   <button
                     onClick={() => navigate(`/send?to=${b.type === "xpay_user" ? "@" + b.xpay_username : b.account_number}`)}
-                    className="shrink-0 rounded-lg bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-600 transition hover:bg-blue-100"
+                    className="shrink-0 rounded-lg bg-emerald-500/10 px-2.5 py-1.5 text-xs font-semibold text-emerald-400 transition hover:bg-blue-100"
                   >
                     Send
                   </button>
@@ -346,8 +346,8 @@ export default function Wallet() {
 
         {/* ── Quick actions ── */}
         <div className="mb-4">
-          <p className="mb-2 text-[0.68rem] font-bold uppercase tracking-widest text-gray-400">Actions</p>
-          <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm divide-y divide-gray-100">
+          <p className="mb-2 text-[0.68rem] font-bold uppercase tracking-widest text-white/40">Actions</p>
+          <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#1a1a1c] shadow-sm divide-y divide-white/[0.06]">
             <NavRow label="Transaction history" icon={<HistoryIcon />} onClick={() => navigate("/activity")} />
             {isAdmin && <NavRow label="Admin Panel" icon={<AdminIcon />} onClick={() => navigate("/admin")} purple />}
           </div>
@@ -366,7 +366,7 @@ export default function Wallet() {
           </button>
         </div>
 
-        <p className="mt-4 text-center text-[10px] text-gray-300">
+        <p className="mt-4 text-center text-[10px] text-white/30">
           Secured by Privy · Embedded wallet on {activeChain.name}
         </p>
       </div>
@@ -377,7 +377,7 @@ export default function Wallet() {
 // ─── Small helper sub-components ─────────────────────────────────────────────
 
 function IconBox({ children }: { children: React.ReactNode }) {
-  return <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-50">{children}</div>;
+  return <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/10">{children}</div>;
 }
 
 function Row({ icon, label, value, copyable, truncate }: {
@@ -387,10 +387,10 @@ function Row({ icon, label, value, copyable, truncate }: {
     <div className="flex items-center justify-between px-4 py-3.5">
       <div className="flex items-center gap-3">
         <IconBox>{icon}</IconBox>
-        <span className="text-sm text-gray-500">{label}</span>
+        <span className="text-sm text-white/50">{label}</span>
       </div>
       <div className="flex items-center gap-2 min-w-0 max-w-[55%]">
-        <span className={`text-sm font-semibold text-gray-900 ${truncate ? "truncate" : ""}`}>{value}</span>
+        <span className={`text-sm font-semibold text-white/90 ${truncate ? "truncate" : ""}`}>{value}</span>
         {copyable && <CopyButton value={value} label="Copy" />}
       </div>
     </div>
@@ -401,12 +401,12 @@ function NavRow({ label, icon, onClick, purple }: {
   label: string; icon: React.ReactNode; onClick: () => void; purple?: boolean;
 }) {
   return (
-    <button onClick={onClick} className={`flex w-full items-center justify-between px-4 py-3.5 text-left transition hover:bg-gray-50 ${purple ? "bg-purple-50 hover:bg-purple-100" : ""}`}>
+    <button onClick={onClick} className={`flex w-full items-center justify-between px-4 py-3.5 text-left transition hover:bg-[#161618] ${purple ? "bg-purple-50 hover:bg-purple-100" : ""}`}>
       <div className="flex items-center gap-3">
-        <div className={`flex h-8 w-8 items-center justify-center rounded-full ${purple ? "bg-purple-100" : "bg-gray-50"}`}>
+        <div className={`flex h-8 w-8 items-center justify-center rounded-full ${purple ? "bg-purple-100" : "bg-[#161618]"}`}>
           {icon}
         </div>
-        <span className={`text-sm font-medium ${purple ? "text-purple-900" : "text-gray-700"}`}>{label}</span>
+        <span className={`text-sm font-medium ${purple ? "text-purple-900" : "text-white/70"}`}>{label}</span>
       </div>
       <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke={purple ? "#9333ea" : "#9ca3af"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M6 4l4 4-4 4"/>
