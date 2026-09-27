@@ -241,7 +241,9 @@ export default function Home() {
       {/* ── Nav ── */}
       <nav className="sticky top-0 z-40 border-b border-white/[0.06] bg-[#111113]/95 backdrop-blur-xl">
         <div className="mx-auto flex h-14 max-w-[430px] items-center justify-between px-5">
-          <img src={xpayLogo} alt="XPay" className="h-6 w-auto object-contain brightness-0 invert opacity-90" />
+          <Link to="/">
+            <img src={xpayLogo} alt="XPay" className="h-6 w-auto object-contain brightness-0 invert opacity-90" />
+          </Link>
           <div className="flex items-center gap-2.5">
             <NetworkSwitcher />
             <Link
