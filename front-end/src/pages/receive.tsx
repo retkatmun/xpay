@@ -117,7 +117,7 @@ export default function Receive() {
             <div className="px-4 py-3.5">
               {walletLoading ? (
                 <div className="flex items-center gap-2">
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent" />
                   <span className="text-sm text-white/40">Loading address…</span>
                 </div>
               ) : walletAddress ? (
@@ -133,8 +133,8 @@ export default function Receive() {
             </div>
 
             {/* Warning */}
-            <div className="border-t border-amber-100 bg-amber-50 px-4 py-3">
-              <p className="text-xs leading-relaxed text-amber-700">
+            <div className="border-t border-amber-500/20 bg-amber-500/10 px-4 py-3">
+              <p className="text-xs leading-relaxed text-amber-400">
                 <strong>{activeChain.name} network only.</strong>{' '}
                 Only send{activeChain.usdcAddress ? ' USDC' : ` ${activeChain.nativeSymbol}`} on{' '}
                 {activeChain.name} to this address. Sending any other token or network will result in permanent loss.
