@@ -24,19 +24,19 @@ export function NetworkSwitcher() {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(v => !v)}
-        className="flex items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 transition hover:bg-blue-100"
+        className="flex items-center gap-1.5 rounded-full border border-white/[0.1] bg-white/[0.06] px-2.5 py-1 transition hover:border-white/20 hover:bg-white/[0.1]"
       >
         <span
           className="h-2 w-2 rounded-full shrink-0"
           style={{ backgroundColor: activeChain.color }}
         />
-        <span className="text-[10px] font-bold text-blue-700">{activeChain.shortName}</span>
+        <span className="text-[10px] font-bold text-white/70">{activeChain.shortName}</span>
         <svg
           viewBox="0 0 12 12"
           width="8"
           height="8"
           fill="none"
-          stroke="#1d4ed8"
+          stroke="rgba(255,255,255,0.4)"
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -47,7 +47,7 @@ export function NetworkSwitcher() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-1.5 w-44 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg">
+        <div className="absolute right-0 top-full z-50 mt-1.5 w-48 overflow-hidden rounded-xl border border-white/[0.08] bg-[#1a1a1c] shadow-2xl shadow-black/50">
           {chains.map((chain: ChainConfig) => (
             <button
               key={chain.id}
@@ -56,10 +56,10 @@ export function NetworkSwitcher() {
                 setOpen(false);
               }}
               className={[
-                "flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm transition hover:bg-gray-50",
+                "flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm transition hover:bg-white/[0.05]",
                 chain.id === activeChain.id
-                  ? "bg-blue-50 font-semibold text-blue-700"
-                  : "text-gray-700",
+                  ? "bg-white/[0.06] font-semibold text-white/90"
+                  : "text-white/60",
               ].join(" ")}
             >
               <span
@@ -68,7 +68,7 @@ export function NetworkSwitcher() {
               />
               <span className="flex-1">{chain.name}</span>
               {chain.isTestnet && (
-                <span className="rounded bg-amber-50 px-1 py-0.5 text-[9px] font-bold uppercase text-amber-600">
+                <span className="rounded bg-amber-500/20 px-1 py-0.5 text-[9px] font-bold uppercase text-amber-400">
                   test
                 </span>
               )}
@@ -78,7 +78,7 @@ export function NetworkSwitcher() {
                   width="10"
                   height="10"
                   fill="none"
-                  stroke="#2563eb"
+                  stroke="#34d399"
                   strokeWidth="2.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
