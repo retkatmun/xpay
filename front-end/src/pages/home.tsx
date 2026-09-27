@@ -52,6 +52,18 @@ function Action({ icon, label, onClick }: {
 function TxRow({ tx, last }: { tx: Transaction; last: boolean }) {
   const navigate = useNavigate();
   const out = tx.direction === "out";
+
+  // How was it sent?
+  const methodLabel =
+    tx.recipientType === "bank_account"
+      ? "Bank transfer"
+      : tx.recipientDisplayName?.startsWith("+") || /^\d{10,}$/.test(tx.recipientDisplayName ?? "")
+      ? "Phone"
+      : "Username";
+
+  // Asset badge colour
+  const assetColor = "text-sky-400/70";
+
   return (
     <button
       onClick={() => navigate(`/activity/${tx.id}`)}
@@ -74,10 +86,23 @@ function TxRow({ tx, last }: { tx: Transaction; last: boolean }) {
           {out ? "↑" : "↓"}
         </span>
       </div>
+
       <div className="min-w-0 flex-1">
         <p className="truncate text-[14px] font-medium text-white/80">{tx.recipientDisplayName}</p>
-        <p className="mt-0.5 text-[12px] text-white/30">{statusLabel(tx.status)}</p>
+        <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
+          {/* Asset badge */}
+          <span className={`text-[10px] font-semibold uppercase tracking-wide ${assetColor}`}>
+            {tx.asset ?? "USDC"}
+          </span>
+          <span className="text-white/15 text-[9px]">·</span>
+          {/* Method badge */}
+          <span className="text-[10px] text-white/25">{methodLabel}</span>
+          <span className="text-white/15 text-[9px]">·</span>
+          {/* Status */}
+          <span className="text-[10px] text-white/25">{statusLabel(tx.status)}</span>
+        </div>
       </div>
+
       <div className="shrink-0 text-right">
         <p className={`text-[14px] font-semibold tabular-nums ${out ? "text-white/60" : "text-emerald-400"}`}>
           {out ? "−" : "+"}{formatUSD(BigInt(tx.amount))}
@@ -216,7 +241,9 @@ export default function Home() {
       {/* ── Nav ── */}
       <nav className="sticky top-0 z-40 border-b border-white/[0.06] bg-[#111113]/95 backdrop-blur-xl">
         <div className="mx-auto flex h-14 max-w-[430px] items-center justify-between px-5">
-          <img src={xpayLogo} alt="XPay" className="h-6 w-auto object-contain brightness-0 invert opacity-90" />
+          <Link to="/">
+            <img src={xpayLogo} alt="XPay" className="h-6 w-auto object-contain brightness-0 invert opacity-90" />
+          </Link>
           <div className="flex items-center gap-2.5">
             <NetworkSwitcher />
             <Link

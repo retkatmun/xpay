@@ -19,9 +19,20 @@ export function TransferRow({
 
   const when =
     stamp === "clock" ? clockTime(transfer.createdAt) : relativeTime(transfer.createdAt)
-  const meta = [when, transfer.memo].filter(Boolean).join(" · ")
 
   const name = transfer.recipientDisplayName
+
+  // How was it sent?
+  const methodLabel =
+    transfer.recipientType === "bank_account"
+      ? "Bank transfer"
+      : name?.startsWith("+") || /^\d{10,}$/.test(name ?? "")
+      ? "Phone"
+      : "Username"
+
+  const asset = transfer.asset ?? "USDC"
+
+  const meta = [when, transfer.memo].filter(Boolean).join(" · ")
 
   return (
     <Link
@@ -50,7 +61,13 @@ export function TransferRow({
 
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm text-gray-900">{name}</span>
-        <span className="mt-0.5 block truncate text-xs text-gray-500">{meta}</span>
+        <span className="mt-0.5 flex items-center gap-1 truncate text-xs text-gray-400">
+          <span className="font-semibold text-sky-500 uppercase tracking-wide text-[10px]">{asset}</span>
+          <span className="text-gray-300">·</span>
+          <span>{methodLabel}</span>
+          <span className="text-gray-300">·</span>
+          <span>{meta}</span>
+        </span>
       </span>
 
       <span className={`shrink-0 tabular-nums text-sm font-medium ${tone}`}>
