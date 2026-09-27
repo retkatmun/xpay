@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { useSession } from "@/lib/session";
+import { Link } from "react-router-dom";
 import xpayLogo from "@/assets/xpay_logo.png";
 
 // ── Smooth-scroll helper ──────────────────────────────────────────────────────
@@ -84,15 +83,9 @@ function ProductVisual() {
 
 // ── Main Landing Page ─────────────────────────────────────────────────────────
 export default function Landing() {
-  const navigate = useNavigate();
-  const { authUser, profile, loading } = useSession();
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("");
   const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    // Don't auto-redirect — logged-in users can still visit the landing page
-  }, []);
 
   // Close menu on outside click
   useEffect(() => {
