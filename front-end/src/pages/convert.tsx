@@ -413,7 +413,7 @@ export default function Convert() {
     const usd = BigInt(tx.amount); const ngn = BigInt(tx.ngnAmount)
     const pending = !isTerminal(tx.status)
     const failed = tx.status === "blockchain_failed" || tx.status === "payout_failed" || tx.status === "cancelled"
-    const iconBg = pending ? "bg-emerald-500/10 ring-blue-50/50" : failed ? "bg-red-50 ring-red-50/50" : "bg-green-50 ring-green-50/50"
+    const iconBg = pending ? "bg-emerald-500/10 ring-blue-50/50" : failed ? "bg-red-500/10 ring-red-500/20" : "bg-emerald-500/10 ring-emerald-500/20"
     const iconColor = pending ? "#2563eb" : failed ? "#dc2626" : "#16a34a"
     return (
       <Screen bare>
@@ -433,7 +433,7 @@ export default function Convert() {
               <p className="mt-1 text-sm text-white/40 tabular-nums">from {formatUSD(usd)} USDC</p>
             </div>
           )}
-          <div className="mt-5 flex w-full max-w-sm items-center gap-3 rounded-2xl border border-white/[0.06] bg-black px-5 py-4 shadow-sm text-left">
+          <div className="mt-5 flex w-full max-w-sm items-center gap-3 rounded-2xl border border-white/[0.06] bg-[#111113] px-5 py-4 shadow-sm text-left">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/10">
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#2563eb" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"/>
@@ -485,7 +485,7 @@ export default function Convert() {
           <Title sub="Enter your 4-digit PIN to authorise this conversion.">Confirm conversion</Title>
 
           {/* Summary card */}
-          <div className="mt-6 overflow-hidden rounded-2xl border border-white/[0.06] bg-black shadow-sm">
+          <div className="mt-6 overflow-hidden rounded-2xl border border-white/[0.06] bg-[#111113] shadow-sm">
             <div className="flex items-center gap-3 px-4 py-4">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/10">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#2563eb" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
@@ -514,7 +514,7 @@ export default function Convert() {
 
           <div className="mt-8 text-center">
             <CodeInput label="4-digit PIN" length={4} value={pin} onChange={handlePin} secret autoFocus error={!!pinError} />
-            {pinError && <p className="mt-2 text-sm text-red-600">{pinError}</p>}
+            {pinError && <p className="mt-2 text-sm text-red-400">{pinError}</p>}
             {submitting
               ? <p className="mt-3 flex items-center justify-center gap-2 text-xs text-white/40"><Spinner className="h-3 w-3" /> Processing…</p>
               : <p className="mt-3 text-xs text-white/40">Your PIN securely authorises this conversion.</p>
@@ -533,7 +533,7 @@ export default function Convert() {
       <Screen back onBack={() => setStep("bank_confirm")}>
         <div className="flex flex-1 flex-col pt-4 pb-10">
           <Title sub="Check the details before continuing.">Review conversion</Title>
-          <div className="mt-6 overflow-hidden rounded-2xl border border-white/[0.06] bg-black shadow-sm">
+          <div className="mt-6 overflow-hidden rounded-2xl border border-white/[0.06] bg-[#111113] shadow-sm">
             {/* Recipient */}
             <div className="p-4">
               <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-white/40">Receiving account</p>
@@ -554,11 +554,11 @@ export default function Convert() {
             <div className="border-t border-white/[0.06]">
               {quoteLoading ? (
                 <div className="flex items-center justify-center gap-2 px-4 py-6 text-sm text-white/40">
-                  <Spinner className="h-4 w-4 text-blue-500" />Getting your rate…
+                  <Spinner className="h-4 w-4 text-sky-400" />Getting your rate…
                 </div>
               ) : quoteError ? (
                 <div className="px-4 py-4">
-                  <p className="text-sm text-red-600">{quoteError}</p>
+                  <p className="text-sm text-red-400">{quoteError}</p>
                   <button type="button" className="mt-2 text-xs font-semibold text-emerald-400 underline"
                     onClick={() => usdcAmount && void getQuote(usdcAmount).then(setQuote).catch(() => setQuoteError("Could not get rate. Please try again."))}>
                     Retry
@@ -597,9 +597,9 @@ export default function Convert() {
       <Screen back onBack={() => { setStep("bank_account"); setVerifiedAccount(null) }}>
         <div className="flex flex-1 flex-col pt-4 pb-10">
           <Title sub="Make sure this is your account.">Confirm account</Title>
-          <div className="mt-6 overflow-hidden rounded-2xl border border-white/[0.06] bg-black shadow-sm">
+          <div className="mt-6 overflow-hidden rounded-2xl border border-white/[0.06] bg-[#111113] shadow-sm">
             <div className="flex items-center justify-center py-6">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-50 ring-8 ring-green-50/60">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/10 ring-8 ring-emerald-500/20">
                 <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M5 13l4 4L19 7"/>
                 </svg>
@@ -649,8 +649,8 @@ export default function Convert() {
                   if (e.key === "Escape") { setBankOpen(false); setBankSearch("") }
                 }}
                 className={[
-                  "flex h-12 cursor-pointer select-none items-center gap-2 rounded-xl border bg-black px-4 transition-colors focus:outline-none",
-                  bankOpen ? "border-blue-500 ring-2 ring-blue-100" : "border-white/[0.08] hover:border-gray-300",
+                  "flex h-12 cursor-pointer select-none items-center gap-2 rounded-xl border bg-[#111113] px-4 transition-colors focus:outline-none",
+                  bankOpen ? "border-blue-500 ring-2 ring-emerald-500/20" : "border-white/[0.08] hover:border-white/20",
                 ].join(" ")}
               >
                 {bankOpen ? (
@@ -674,7 +674,7 @@ export default function Convert() {
               </div>
               {bankOpen && (
                 <ul role="listbox" aria-label="Banks"
-                  className="absolute z-50 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-white/[0.08] bg-black shadow-lg">
+                  className="absolute z-50 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-white/[0.08] bg-[#111113] shadow-lg">
                   {filteredBanks.length === 0
                     ? <li className="px-4 py-3 text-sm text-white/40">No banks found.</li>
                     : filteredBanks.map((bank, i) => (
@@ -743,17 +743,17 @@ export default function Convert() {
         </div>
 
         {/* Live rate pill */}
-        <div className={`mb-4 flex items-center justify-between rounded-xl px-4 py-2.5 border ${rateError ? "border-red-100 bg-red-50" : "border-blue-100 bg-emerald-500/10"}`}>
+        <div className={`mb-4 flex items-center justify-between rounded-xl px-4 py-2.5 border ${rateError ? "border-red-500/20 bg-red-500/10" : "border-emerald-500/20 bg-emerald-500/10"}`}>
           <div className="flex items-center gap-2">
             <img src={getTokenLogo("USDC")} alt="USDC" className="h-4 w-4 rounded-full" />
-            <span className={`text-xs font-semibold ${rateError ? "text-red-600" : "text-emerald-400"}`}>Live rate</span>
+            <span className={`text-xs font-semibold ${rateError ? "text-red-400" : "text-emerald-400"}`}>Live rate</span>
           </div>
           {rateLoading ? (
-            <span className="flex items-center gap-1.5 text-xs text-blue-500">
+            <span className="flex items-center gap-1.5 text-xs text-sky-400">
               <Spinner className="h-3 w-3" /> Fetching…
             </span>
           ) : rateError ? (
-            <button onClick={retryRate} className="flex items-center gap-1.5 text-xs font-semibold text-red-600 underline">
+            <button onClick={retryRate} className="flex items-center gap-1.5 text-xs font-semibold text-red-400 underline">
               Failed · Retry
             </button>
           ) : (
@@ -764,11 +764,11 @@ export default function Convert() {
         </div>
 
         {/* Conversion card */}
-        <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-black shadow-sm">
+        <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#111113] shadow-sm">
 
           {/* USDC row */}
-          <div className={`flex items-center gap-3 px-4 py-4 transition-colors ${inputMode === "usdc" ? "bg-emerald-500/10/70" : "bg-white"}`}>
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-blue-100 bg-black shadow-sm">
+          <div className={`flex items-center gap-3 px-4 py-4 transition-colors ${inputMode === "usdc" ? "bg-emerald-500/10/70" : "bg-[#1a1a1c]"}`}>
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-blue-100 bg-[#111113] shadow-sm">
               <img src={getTokenLogo("USDC")} alt="USDC" className="h-5 w-5 rounded-full" />
             </div>
             <div className="flex-1 min-w-0">
@@ -798,7 +798,7 @@ export default function Convert() {
             <button
               type="button"
               onClick={handleSwap}
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.08] bg-black shadow-sm transition hover:border-blue-300 hover:bg-emerald-500/10 active:scale-90"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.08] bg-[#111113] shadow-sm transition hover:border-blue-300 hover:bg-emerald-500/10 active:scale-90"
               aria-label="Swap input direction"
             >
               <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="#6b7280" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -808,7 +808,7 @@ export default function Convert() {
           </div>
 
           {/* NGN row */}
-          <div className={`flex items-center gap-3 px-4 py-4 transition-colors ${inputMode === "ngn" ? "bg-orange-50/60" : "bg-white"}`}>
+          <div className={`flex items-center gap-3 px-4 py-4 transition-colors ${inputMode === "ngn" ? "bg-orange-50/60" : "bg-[#1a1a1c]"}`}>
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-green-600 shadow-sm">
               <span className="text-sm font-bold text-white">₦</span>
             </div>
@@ -854,16 +854,16 @@ export default function Convert() {
         {/* Errors & warnings */}
         <div className="mt-2 space-y-1.5">
           {overBalance && (
-            <div className="flex items-center gap-2 rounded-xl border border-red-100 bg-red-50 px-4 py-2.5">
+            <div className="flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2.5">
               <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="#dc2626" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="8" cy="8" r="7"/><path d="M8 5v3M8 10.5v.5"/>
               </svg>
-              <p className="text-xs font-medium text-red-600">Exceeds your available USDC balance</p>
+              <p className="text-xs font-medium text-red-400">Exceeds your available USDC balance</p>
             </div>
           )}
           {quoteError && !quoteLoading && (
-            <div className="flex items-center justify-between rounded-xl border border-red-100 bg-red-50 px-4 py-2.5">
-              <p className="text-xs text-red-600">{quoteError}</p>
+            <div className="flex items-center justify-between rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2.5">
+              <p className="text-xs text-red-400">{quoteError}</p>
               <button
                 onClick={() => {
                   setQuoteError(null)
@@ -872,7 +872,7 @@ export default function Convert() {
                     else if (inputMode === "ngn" && ngnRaw) handleNgnChange(ngnRaw)
                   }
                 }}
-                className="ml-2 shrink-0 text-xs font-semibold text-red-700 underline"
+                className="ml-2 shrink-0 text-xs font-semibold text-red-400 underline"
               >
                 Retry
               </button>

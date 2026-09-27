@@ -39,25 +39,25 @@ export default function PinStep() {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center bg-white px-5 py-12">
+    <div className="flex min-h-dvh flex-col items-center justify-center bg-[#111113] px-5 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <span className="font-[var(--font-instrument-serif)] text-3xl text-blue-600">XPay</span>
+          <span className="font-[var(--font-instrument-serif)] text-3xl text-emerald-400">XPay</span>
         </div>
 
         {stage === "choose" ? (
           <>
-            <h1 className="font-[var(--font-instrument-serif)] text-[1.75rem] tracking-[-0.02em] text-gray-900">
+            <h1 className="font-[var(--font-instrument-serif)] text-[1.75rem] tracking-[-0.02em] text-white/90">
               Choose a PIN
             </h1>
-            <p className="mt-2 text-sm text-gray-500">You&rsquo;ll enter this to approve every payment.</p>
+            <p className="mt-2 text-sm text-white/50">You&rsquo;ll enter this to approve every payment.</p>
           </>
         ) : (
           <>
-            <h1 className="font-[var(--font-instrument-serif)] text-[1.75rem] tracking-[-0.02em] text-gray-900">
+            <h1 className="font-[var(--font-instrument-serif)] text-[1.75rem] tracking-[-0.02em] text-white/90">
               Confirm your PIN
             </h1>
-            <p className="mt-2 text-sm text-gray-500">Enter it once more to make sure it&rsquo;s right.</p>
+            <p className="mt-2 text-sm text-white/50">Enter it once more to make sure it&rsquo;s right.</p>
           </>
         )}
 
@@ -65,8 +65,8 @@ export default function PinStep() {
           <CodeInput key={stage} label={stage === "choose" ? "Choose PIN" : "Confirm PIN"}
             length={4} value={entry} onChange={handleEntry} secret autoFocus error={!!error} />
           {error
-            ? <p className="mt-2 text-sm text-red-600">{error}</p>
-            : <p className="mt-2 text-xs text-gray-400">Don&rsquo;t use your birth year. Never share it.</p>}
+            ? <p className="mt-2 text-sm text-red-400">{error}</p>
+            : <p className="mt-2 text-xs text-white/40">Don&rsquo;t use your birth year. Never share it.</p>}
         </div>
       </div>
     </div>

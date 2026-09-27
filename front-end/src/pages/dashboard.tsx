@@ -13,19 +13,19 @@ import xpayLogo from "@/assets/xpay_logo.png"
 // ── Status colours ────────────────────────────────────────────────────────────
 
 const ENROLL_BADGE: Record<string, string> = {
-  pending:   "bg-yellow-100 text-yellow-700",
-  active:    "bg-green-100 text-emerald-400",
-  suspended: "bg-orange-100 text-orange-700",
+  pending:   "bg-yellow-500/20 text-yellow-400",
+  active:    "bg-emerald-500/20 text-emerald-400",
+  suspended: "bg-orange-500/20 text-orange-400",
   completed: "bg-emerald-500/20 text-emerald-400",
-  cancelled: "bg-red-100 text-red-600",
+  cancelled: "bg-red-500/20 text-red-400",
 }
 
 const PAY_BADGE: Record<string, string> = {
-  pending:  "bg-yellow-100 text-yellow-700",
-  approved: "bg-green-100 text-emerald-400",
-  rejected: "bg-red-100 text-red-400",
-  refunded: "bg-purple-100 text-purple-700",
-  failed:   "bg-red-100 text-red-600",
+  pending:  "bg-yellow-500/20 text-yellow-400",
+  approved: "bg-emerald-500/20 text-emerald-400",
+  rejected: "bg-red-500/20 text-red-400",
+  refunded: "bg-purple-500/20 text-purple-400",
+  failed:   "bg-red-500/20 text-red-400",
 }
 
 const ENROLL_LABEL: Record<string, string> = {
@@ -129,7 +129,7 @@ function EnrollmentCard({ enrollment }: { enrollment: Enrollment }) {
               <p className="text-xs text-emerald-400">✓ Payment confirmed.</p>
             )}
             {latestPay.status === "rejected" && (
-              <p className="text-xs text-red-600">Payment rejected.{latestPay.admin_note ? ` Reason: ${latestPay.admin_note}` : " Please contact support."}</p>
+              <p className="text-xs text-red-400">Payment rejected.{latestPay.admin_note ? ` Reason: ${latestPay.admin_note}` : " Please contact support."}</p>
             )}
           </div>
         ) : (
@@ -310,7 +310,7 @@ export default function Dashboard() {
         <button
           onClick={handleLogout}
           disabled={loggingOut}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-red-900/30 bg-red-950/30 py-3.5 text-sm font-semibold text-red-400 transition hover:bg-red-100 disabled:opacity-50"
+          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-red-900/30 bg-red-950/30 py-3.5 text-sm font-semibold text-red-400 transition hover:bg-red-500/20 disabled:opacity-50"
         >
           {loggingOut ? <Spinner className="h-4 w-4" /> : (
             <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
