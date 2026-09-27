@@ -263,8 +263,8 @@ export default function Landing() {
   const [activeSection, setActiveSection] = useState("");
 
   useEffect(() => {
-    if (!loading && authUser && profile) navigate("/home", { replace: true });
-  }, [loading, authUser, profile, navigate]);
+    // Don't auto-redirect — logged-in users can still visit the landing page
+  }, []);
 
   // Close mobile menu on outside click
   useEffect(() => {
