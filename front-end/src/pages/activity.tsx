@@ -113,7 +113,7 @@ export default function Activity() {
 
   // On-chain txs from block explorer, respects active chain
   const effectiveWallet = walletAddress || profile?.wallet_address || null
-  const { txs: onChainTxs, loading: onChainLoading } = useOnChainTxs(effectiveWallet, activeChain)
+  const { txs: onChainTxs, loading: onChainLoading, error: onChainError, refresh: refreshOnChain } = useOnChainTxs(effectiveWallet, activeChain)
 
   useEffect(() => {
     if (!loading && !authUser) navigate('/', { replace: true })
@@ -161,7 +161,7 @@ export default function Activity() {
   const isLoading = transactions === null && onChainLoading
 
   return (
-    <Screen back onBack={() => navigate('/home')} action={<NetworkSwitcher />}>
+    <Screen back onBack={() => navigate(-1)} action={<NetworkSwitcher />}>
       <div className="flex-1 pt-4 pb-12">
         <Title>Transactions</Title>
 
@@ -184,6 +184,29 @@ export default function Activity() {
                 <div className="h-3 w-14 rounded-full bg-white/[0.07] animate-pulse" />
               </div>
             ))}
+          </div>
+        )}
+
+        {/* On-chain fetch error */}
+        {onChainError && (
+          <div className="mt-6 flex items-start gap-3 rounded-xl border border-red-900/30 bg-red-950/30 px-4 py-3.5">
+            <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="#f87171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 shrink-0">
+              <circle cx="8" cy="8" r="6" /><path d="M8 5v3M8 10.5v.5" />
+            </svg>
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] text-red-400 leading-relaxed">
+                Could not load on-chain transactions from {activeChain.name}.
+              </p>
+              <p className="mt-0.5 text-[11px] text-red-400/60 leading-relaxed break-all">
+                {onChainError}
+              </p>
+            </div>
+            <button
+              onClick={() => refreshOnChain()}
+              className="shrink-0 rounded-lg border border-red-900/40 px-2.5 py-1 text-[12px] font-semibold text-red-400 transition hover:bg-red-900/30"
+            >
+              Retry
+            </button>
           </div>
         )}
 

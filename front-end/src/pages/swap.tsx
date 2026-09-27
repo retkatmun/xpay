@@ -3,7 +3,8 @@
  * Uses the API's returned transaction data directly for execution.
  */
 
-import { useEffect, useState, useCallback, useRef } from "react"
+import { useEffect, useState, useCallback, useRef, useLayoutEffect } from "react"
+import { createPortal } from "react-dom"
 import { useNavigate } from "react-router-dom"
 import { useWallets } from "@privy-io/react-auth"
 import { useSession } from "@/lib/session"
@@ -219,62 +220,114 @@ function parseTokenAmount(input: string, decimals: number): bigint | null {
   return val > 0n ? val : null
 }
 
-// ─── Token selector modal ─────────────────────────────────────────────────────
+// ─── Portal-anchored token dropdown ──────────────────────────────────────────
 
-function TokenSelector({
-  tokens, selected, onSelect, exclude, onClose,
+function TokenDropdown({
+  anchorRef,
+  tokens,
+  selected,
+  exclude,
+  onSelect,
+  onClose,
 }: {
+  anchorRef: React.RefObject<HTMLButtonElement | null>
   tokens: Token[]
   selected: Token
-  onSelect: (t: Token) => void
   exclude: Token
+  onSelect: (t: Token) => void
   onClose: () => void
 }) {
-  return (
+  const dropRef = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState<{ top: number; right: number; openUp: boolean } | null>(null)
+  const [focused, setFocused] = useState(0)
+  const filteredTokens = tokens.filter(t => t.symbol !== exclude.symbol)
+
+  // Calculate position after paint so we have real DOM measurements
+  useLayoutEffect(() => {
+    const anchor = anchorRef.current
+    if (!anchor) return
+    const r = anchor.getBoundingClientRect()
+    const dropH = Math.min(filteredTokens.length * 56 + 8, 248)
+    const spaceBelow = window.innerHeight - r.bottom - 8
+    const openUp = spaceBelow < dropH && r.top > dropH
+    setPos({
+      top: openUp ? r.top - dropH - 8 : r.bottom + 8,
+      right: window.innerWidth - r.right,
+      openUp,
+    })
+  }, [anchorRef, filteredTokens.length])
+
+  // Close on outside click or Escape
+  useEffect(() => {
+    function onMouse(e: MouseEvent) {
+      if (
+        dropRef.current && !dropRef.current.contains(e.target as Node) &&
+        anchorRef.current && !anchorRef.current.contains(e.target as Node)
+      ) onClose()
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") { onClose(); return }
+      if (e.key === "ArrowDown") { e.preventDefault(); setFocused(i => Math.min(i + 1, filteredTokens.length - 1)) }
+      if (e.key === "ArrowUp")   { e.preventDefault(); setFocused(i => Math.max(i - 1, 0)) }
+      if (e.key === "Enter") {
+        const t = filteredTokens[focused]
+        if (t) { onSelect(t); onClose() }
+      }
+    }
+    document.addEventListener("mousedown", onMouse)
+    document.addEventListener("keydown", onKey)
+    return () => {
+      document.removeEventListener("mousedown", onMouse)
+      document.removeEventListener("keydown", onKey)
+    }
+  }, [onClose, filteredTokens, focused, onSelect, anchorRef])
+
+  if (!pos) return null
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm"
-      onClick={onClose}
+      ref={dropRef}
+      role="listbox"
+      aria-label="Select token"
+      style={{
+        position: "fixed",
+        top: pos.top,
+        right: pos.right,
+        zIndex: 9999,
+        width: 224,
+        maxWidth: "calc(100vw - 32px)",
+        maxHeight: 248,
+        overflowY: "auto",
+        overscrollBehavior: "contain",
+      }}
+      className="overflow-hidden rounded-xl border border-white/[0.1] bg-[#1c1c1e] shadow-2xl shadow-black/70 divide-y divide-white/[0.06]"
     >
-      <div
-        className="w-full max-w-[26.25rem] overflow-hidden rounded-t-3xl bg-black pb-10 shadow-2xl"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between px-5 pt-5 pb-4">
-          <p className="text-base font-bold text-white/90">Select token</p>
-          <button
-            onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-white/[0.07] text-white/50 hover:bg-gray-200 transition"
-          >
-            <svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <path d="M1 1l12 12M13 1L1 13" />
+      {filteredTokens.map((token, i) => (
+        <button
+          key={token.symbol}
+          role="option"
+          aria-selected={selected.symbol === token.symbol}
+          onClick={() => { onSelect(token); onClose() }}
+          onMouseEnter={() => setFocused(i)}
+          className={[
+            "flex w-full items-center gap-3 px-3 py-3 text-left min-h-[44px] transition",
+            i === focused ? "bg-white/[0.06]" : "hover:bg-white/[0.04]",
+          ].join(" ")}
+        >
+          <TokenIcon token={token} size={32} />
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] font-semibold text-white/85 leading-tight">{token.symbol}</p>
+            <p className="text-[11px] text-white/35 leading-tight">{token.name}</p>
+          </div>
+          {selected.symbol === token.symbol && (
+            <svg viewBox="0 0 12 12" width="11" height="11" fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M1.5 6l3 3 6-6" />
             </svg>
-          </button>
-        </div>
-        <div className="divide-y divide-white/[0.06] px-3">
-          {tokens.filter(t => t.symbol !== exclude.symbol).map(token => (
-            <button
-              key={token.symbol}
-              onClick={() => { onSelect(token); onClose() }}
-              className={[
-                "flex w-full items-center gap-3 rounded-xl px-3 py-3.5 text-left transition hover:bg-[#161618]",
-                selected.symbol === token.symbol ? "bg-emerald-500/10" : "",
-              ].join(" ")}
-            >
-              <TokenIcon token={token} size={38} />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-white/90">{token.symbol}</p>
-                <p className="text-xs text-white/40">{token.name}</p>
-              </div>
-              {selected.symbol === token.symbol && (
-                <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="#2563eb" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M2 7l3.5 3.5L12 3" />
-                </svg>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
+          )}
+        </button>
+      ))}
+    </div>,
+    document.body,
   )
 }
 
@@ -314,8 +367,9 @@ export default function Swap() {
   const [amountIn,  setAmountIn]  = useState("")
 
   // ── Token selectors ─────────────────────────────────────────────────────────
-  const [showFromPicker, setShowFromPicker] = useState(false)
-  const [showToPicker,   setShowToPicker]   = useState(false)
+  const [openPicker, setOpenPicker] = useState<"from" | "to" | null>(null)
+  const fromBtnRef = useRef<HTMLButtonElement>(null)
+  const toBtnRef   = useRef<HTMLButtonElement>(null)
 
   // ── Balances ────────────────────────────────────────────────────────────────
   const [fromBalance, setFromBalance] = useState<bigint | null>(null)
@@ -583,7 +637,7 @@ export default function Swap() {
 
   // ── Main UI ──────────────────────────────────────────────────────────────────
   return (
-    <Screen back onBack={() => navigate("/home")} action={<NetworkSwitcher />}>
+    <Screen back onBack={() => navigate(-1)} action={<NetworkSwitcher />}>
       <div className="flex flex-1 flex-col pt-4 pb-12 gap-4">
         <Title sub={`Swap tokens on ${activeChain.name} via Uniswap`}>Swap</Title>
 
@@ -613,12 +667,14 @@ export default function Swap() {
                 className="min-w-0 flex-1 bg-transparent text-3xl font-bold text-white/90 outline-none placeholder-gray-200"
               />
               <button
-                onClick={() => setShowFromPicker(true)}
+                ref={fromBtnRef}
+                onClick={() => setOpenPicker(v => v === "from" ? null : "from")}
                 className="flex shrink-0 items-center gap-2 rounded-xl border border-white/[0.08] bg-[#161618] px-3 py-2.5 transition hover:bg-white/[0.07] active:scale-95"
               >
                 <TokenIcon token={fromToken} size={24} />
                 <span className="text-sm font-bold text-white/90">{fromToken.symbol}</span>
-                <svg viewBox="0 0 10 10" width="8" height="8" fill="none" stroke="#9ca3af" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg viewBox="0 0 10 10" width="8" height="8" fill="none" stroke="#9ca3af" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                  className={`transition-transform duration-150 ${openPicker === "from" ? "rotate-180" : ""}`}>
                   <path d="M2 3.5l3 3 3-3" />
                 </svg>
               </button>
@@ -657,12 +713,14 @@ export default function Swap() {
                 }
               </div>
               <button
-                onClick={() => setShowToPicker(true)}
+                ref={toBtnRef}
+                onClick={() => setOpenPicker(v => v === "to" ? null : "to")}
                 className="flex shrink-0 items-center gap-2 rounded-xl border border-white/[0.08] bg-[#161618] px-3 py-2.5 transition hover:bg-white/[0.07] active:scale-95"
               >
                 <TokenIcon token={toToken} size={24} />
                 <span className="text-sm font-bold text-white/90">{toToken.symbol}</span>
-                <svg viewBox="0 0 10 10" width="8" height="8" fill="none" stroke="#9ca3af" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg viewBox="0 0 10 10" width="8" height="8" fill="none" stroke="#9ca3af" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                  className={`transition-transform duration-150 ${openPicker === "to" ? "rotate-180" : ""}`}>
                   <path d="M2 3.5l3 3 3-3" />
                 </svg>
               </button>
@@ -704,11 +762,17 @@ export default function Swap() {
 
         {/* ── Testnet notice ────────────────────────────────────────────── */}
         {activeChain.isTestnet && (
-          <div className="flex items-start gap-2.5 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3.5">
-            <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 shrink-0">
+          <div
+            className="warning-amber flex items-start gap-2.5 rounded-xl border px-4 py-3.5"
+            style={{ backgroundColor: '#fffbeb', borderColor: '#fcd34d' }}
+          >
+            <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="#b45309" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 shrink-0">
               <path d="M8 1l7 13H1L8 1z" /><path d="M8 6v4M8 11.5v.5" />
             </svg>
-            <p className="text-xs text-amber-700 leading-relaxed">
+            <p
+              className="text-[13px] leading-relaxed"
+              style={{ color: '#3d2f00', userSelect: 'text' }}
+            >
               <strong>Testnet mode.</strong> Uniswap liquidity is very limited on {activeChain.name}. Switch to Ethereum or Base mainnet for live swaps.
             </p>
           </div>
@@ -747,22 +811,24 @@ export default function Swap() {
       </div>
 
       {/* Token pickers */}
-      {showFromPicker && (
-        <TokenSelector
+      {openPicker === "from" && (
+        <TokenDropdown
+          anchorRef={fromBtnRef}
           tokens={tokens}
           selected={fromToken}
           exclude={toToken}
           onSelect={t => { setFromToken(t); setAmountIn(""); setQuote(null) }}
-          onClose={() => setShowFromPicker(false)}
+          onClose={() => setOpenPicker(null)}
         />
       )}
-      {showToPicker && (
-        <TokenSelector
+      {openPicker === "to" && (
+        <TokenDropdown
+          anchorRef={toBtnRef}
           tokens={tokens}
           selected={toToken}
           exclude={fromToken}
           onSelect={t => { setToToken(t); setAmountIn(""); setQuote(null) }}
-          onClose={() => setShowToPicker(false)}
+          onClose={() => setOpenPicker(null)}
         />
       )}
     </Screen>

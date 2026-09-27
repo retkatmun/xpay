@@ -993,7 +993,7 @@ export default function Admin() {
   ]
 
   return (
-    <Screen back onBack={() => navigate("/home")}>
+    <Screen back onBack={() => navigate(-1)}>
       <div className="flex flex-1 flex-col pt-4 pb-12">
 
         {/* Header */}

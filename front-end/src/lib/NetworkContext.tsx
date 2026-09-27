@@ -71,7 +71,8 @@ export const CHAINS: ChainConfig[] = [
     usdcAddress: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
     isTestnet: false,
     blockExplorer: "https://basescan.org",
-    explorerApiUrl: "https://api.basescan.org/api",
+    // Blockscout: free, no API key, Etherscan-compatible module/action API
+    explorerApiUrl: "https://base.blockscout.com/api",
     nativeSymbol: "ETH",
     nativeDecimals: 18,
   },
@@ -87,7 +88,8 @@ export const CHAINS: ChainConfig[] = [
     usdcAddress: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
     isTestnet: true,
     blockExplorer: "https://sepolia.basescan.org",
-    explorerApiUrl: "https://api-sepolia.basescan.org/api",
+    // api-sepolia.basescan.org does not have a public API; use Blockscout instead
+    explorerApiUrl: "https://base-sepolia.blockscout.com/api",
     nativeSymbol: "ETH",
     nativeDecimals: 18,
   },

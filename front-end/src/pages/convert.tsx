@@ -63,10 +63,20 @@ export default function Convert() {
   const [rateError, setRateError] = useState(false)
 
   // ── dual-input state ──
-  const [inputMode, setInputMode] = useState<InputMode>("ngn")
-  const [usdcRaw, setUsdcRaw] = useState("")
-  const [ngnRaw, setNgnRaw] = useState("")
+  // `inputMode` tracks which field the user last typed in.
+  // Both fields are always rendered as <input> elements.
+  // The "other" field's value is always derived from the current quote/rate
+  // and stored in a separate display state so the active field is never
+  // overwritten while the user is typing.
+  const [inputMode, setInputMode] = useState<InputMode>("usdc")
+  const [usdcRaw, setUsdcRaw] = useState("")   // raw text in YOU PAY input
+  const [ngnRaw, setNgnRaw] = useState("")     // raw text in YOU RECEIVE input (digits only)
   const [memo, setMemo] = useState("")
+
+  // Derived display for the non-active field.
+  // These are updated only after a quote comes back.
+  const [derivedUsdcDisplay, setDerivedUsdcDisplay] = useState("") // shown when mode=ngn
+  const [derivedNgnDisplay, setDerivedNgnDisplay] = useState("")   // shown when mode=usdc
 
   // ── live quote ──
   const [quote, setQuote] = useState<Quote | null>(null)
@@ -96,8 +106,26 @@ export default function Convert() {
   const [polledTx, setPolledTx] = useState<Transaction | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  // When mode=usdc: usdcAmount comes from quote.amount (set by handleUsdcChange).
+  // When mode=ngn:  usdcAmount comes from quote.amount too (set by handleNgnChange).
   const usdcAmount = quote ? BigInt(quote.amount) : null
   const overBalance = balance !== null && usdcAmount !== null && usdcAmount > balance
+
+  // ── update derived displays whenever a quote arrives ──
+  useEffect(() => {
+    if (!quote) return
+    if (inputMode === "usdc") {
+      // user typed USDC → derive NGN
+      const ngn = BigInt(quote.ngnAmount)
+      setDerivedNgnDisplay(ngn > 0n ? ngn.toLocaleString("en-NG") : "")
+    } else {
+      // user typed NGN → derive USDC (2 dp)
+      const u = BigInt(quote.amount)
+      const whole = u / 1_000_000n
+      const frac = (u % 1_000_000n).toString().padStart(6, "0").slice(0, 2)
+      setDerivedUsdcDisplay(u > 0n ? (frac !== "00" ? `${whole}.${frac}` : whole.toString()) : "")
+    }
+  }, [quote, inputMode])
 
   // ── auth guard ──
   useEffect(() => {
@@ -221,18 +249,34 @@ export default function Convert() {
   }, [liveRate])
 
   // ── input handlers ──
-  function handleUsdcChange(raw: string) {
+
+  // Sanitise a decimal string: digits + at most one dot, cap integer part at 9 digits,
+  // fractional part at 6 digits (USDC precision).
+  function sanitiseUsdc(raw: string): string {
     let clean = raw.replace(/[^\d.]/g, "")
     const parts = clean.split(".")
     if (parts.length > 2) clean = parts[0] + "." + parts.slice(1).join("")
-    if (parts[0]?.length > 9) clean = parts[0].slice(0, 9) + (parts[1] !== undefined ? "." + parts[1] : "")
-    if (parts[1]?.length > 6) clean = parts[0] + "." + parts[1].slice(0, 6)
+    const [int = "", frac] = clean.split(".")
+    const cappedInt = int.slice(0, 9)
+    if (frac !== undefined) {
+      return cappedInt + "." + frac.slice(0, 6)
+    }
+    return cappedInt
+  }
+
+  function handleUsdcChange(raw: string) {
+    const clean = sanitiseUsdc(raw)
     setUsdcRaw(clean)
     setInputMode("usdc")
     setQuote(null)
     setQuoteError(null)
+    setDerivedNgnDisplay("") // clear the other field while user types
 
-    if (!clean || clean === ".") { fetchLiveQuote(0n); return }
+    if (!clean || clean === ".") {
+      setNgnRaw("")           // clear NGN side too
+      fetchLiveQuote(0n)
+      return
+    }
     const [whole = "0", frac = ""] = clean.split(".")
     const padded = frac.padEnd(6, "0")
     const units = BigInt(whole) * 1_000_000n + BigInt(padded)
@@ -240,54 +284,46 @@ export default function Convert() {
   }
 
   function handleNgnChange(raw: string) {
+    // Accept formatted input (with commas) or plain digits
     const digits = raw.replace(/\D/g, "").slice(0, 12)
     setNgnRaw(digits)
     setInputMode("ngn")
     setQuote(null)
     setQuoteError(null)
+    setDerivedUsdcDisplay("") // clear the other field while user types
 
-    if (!digits || digits === "0") { fetchLiveQuote(0n); return }
+    if (!digits || digits === "0") {
+      setUsdcRaw("")           // clear USDC side too
+      fetchLiveQuote(0n)
+      return
+    }
     const ngn = BigInt(digits)
     const rate = liveRate ?? 1600
     const usdcApprox = (ngn * 1_000_000n) / BigInt(rate)
     fetchLiveQuote(usdcApprox)
   }
 
-  function handleSwap() {
-    setInputMode(m => m === "usdc" ? "ngn" : "usdc")
-    if (quote) {
-      if (inputMode === "usdc") {
-        setNgnRaw(BigInt(quote.ngnAmount).toString())
-        setUsdcRaw("")
-      } else {
-        const u = BigInt(quote.amount)
-        const whole = u / 1_000_000n
-        const frac = (u % 1_000_000n).toString().padStart(6, "0").replace(/0+$/, "")
-        setUsdcRaw(frac ? `${whole}.${frac}` : whole.toString())
-        setNgnRaw("")
-      }
-    }
+  // ── Max button ──
+  function handleMax() {
+    if (balance === null || balance === 0n) return
+    // Format balance (6-decimal USDC) as a decimal string, 2 dp
+    const whole = balance / 1_000_000n
+    const frac = (balance % 1_000_000n).toString().padStart(6, "0").slice(0, 2)
+    const display = frac !== "00" ? `${whole}.${frac}` : whole.toString()
+    handleUsdcChange(display) // reuse handler: sets mode=usdc, triggers quote fetch
   }
 
+  // NGN display: show formatted value with commas so the input looks natural
+  const ngnDisplayValue = (() => {
+    if (inputMode === "ngn") {
+      // Format raw digits with commas for display
+      return ngnRaw ? BigInt(ngnRaw).toLocaleString("en-NG") : ""
+    }
+    return derivedNgnDisplay
+  })()
+
   // ── derived display values ──
-  const displayNgn = ngnRaw ? BigInt(ngnRaw).toLocaleString("en-NG") : ""
-
-  const derivedUsdcDisplay: string = (() => {
-    if (inputMode === "ngn" && quote) {
-      const u = BigInt(quote.amount)
-      const whole = u / 1_000_000n
-      const frac = (u % 1_000_000n).toString().padStart(6, "0").replace(/0+$/, "")
-      return frac ? `${whole}.${frac}` : whole.toString()
-    }
-    return ""
-  })()
-
-  const derivedNgnDisplay: string = (() => {
-    if (inputMode === "usdc" && quote) {
-      return BigInt(quote.ngnAmount).toLocaleString("en-NG")
-    }
-    return ""
-  })()
+  // (kept as simple pass-throughs; the real work is in the useEffect above)
 
   // ── continue from amount ──
   async function handleContinueAmount() {
@@ -416,7 +452,7 @@ export default function Convert() {
     const iconBg = pending ? "bg-emerald-500/10 ring-blue-50/50" : failed ? "bg-red-50 ring-red-50/50" : "bg-green-50 ring-green-50/50"
     const iconColor = pending ? "#2563eb" : failed ? "#dc2626" : "#16a34a"
     return (
-      <Screen bare>
+      <Screen back onBack={() => navigate(-1)}>
         <div className="flex flex-1 flex-col items-center justify-center px-5 py-16 text-center">
           <div className={`flex h-20 w-20 items-center justify-center rounded-full ring-8 ${iconBg}`}>
             {pending ? <Spinner className="h-8 w-8 text-emerald-400" />
@@ -463,7 +499,7 @@ export default function Convert() {
   // ══════════════════════════════════════════════════════════════════════════
   if (step === "sending") {
     return (
-      <Screen bare>
+      <Screen back onBack={() => navigate(-1)}>
         <div className="flex flex-1 flex-col items-center justify-center gap-4">
           <Spinner className="h-7 w-7 text-emerald-400" />
           <div className="text-center">
@@ -649,8 +685,8 @@ export default function Convert() {
                   if (e.key === "Escape") { setBankOpen(false); setBankSearch("") }
                 }}
                 className={[
-                  "flex h-12 cursor-pointer select-none items-center gap-2 rounded-xl border bg-black px-4 transition-colors focus:outline-none",
-                  bankOpen ? "border-blue-500 ring-2 ring-blue-100" : "border-white/[0.08] hover:border-gray-300",
+                  "flex h-12 cursor-pointer select-none items-center gap-2 rounded-xl border bg-[#111113] px-4 transition-colors focus:outline-none",
+                  bankOpen ? "border-emerald-500/60" : "border-white/[0.12] hover:border-white/25",
                 ].join(" ")}
               >
                 {bankOpen ? (
@@ -674,15 +710,18 @@ export default function Convert() {
               </div>
               {bankOpen && (
                 <ul role="listbox" aria-label="Banks"
-                  className="absolute z-50 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-white/[0.08] bg-black shadow-lg">
+                  className="absolute z-[200] mt-1 max-h-72 w-full overflow-y-auto rounded-xl border border-white/[0.12] shadow-[0_8px_32px_rgba(0,0,0,0.7)]"
+                  style={{ backgroundColor: "#111113" }}>
                   {filteredBanks.length === 0
                     ? <li className="px-4 py-3 text-sm text-white/40">No banks found.</li>
                     : filteredBanks.map((bank, i) => (
                       <li key={bank.code} role="option" aria-selected={selectedBank?.code === bank.code}
                         onMouseDown={e => { e.preventDefault(); setSelectedBank(bank); setBankSearch(""); setBankOpen(false); setVerifyError(null) }}
                         className={[
-                          "flex cursor-pointer items-center px-4 py-3 text-sm transition hover:bg-emerald-500/10",
-                          selectedBank?.code === bank.code ? "bg-emerald-500/10 font-semibold text-emerald-400" : "text-white/90",
+                          "flex min-h-[44px] cursor-pointer items-center px-4 py-3 text-sm transition-colors",
+                          selectedBank?.code === bank.code
+                            ? "bg-[#1e2e1e] font-semibold text-emerald-400"
+                            : "text-white/90 hover:bg-[#1c1c1e]",
                           i > 0 ? "border-t border-white/[0.06]" : "",
                         ].join(" ")}>
                         {bank.name}
@@ -720,187 +759,167 @@ export default function Convert() {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // AMOUNT — professional dual-input with live rate
+  // AMOUNT — both fields always editable, Max button, two-way sync
   // ══════════════════════════════════════════════════════════════════════════
-  const hasInput = inputMode === "usdc" ? usdcRaw.length > 0 : ngnRaw.length > 0
+  const hasInput = usdcRaw.length > 0 || ngnRaw.length > 0
   const canContinue = hasInput && !!quote && !quoteLoading && !overBalance
 
   return (
-    <Screen back onBack={() => navigate("/home")}>
-      <div className="flex flex-1 flex-col pt-4 pb-10">
+    <Screen back onBack={() => navigate(-1)}>
+      <div className="flex flex-1 flex-col px-5 pt-4 pb-10">
 
         {/* Header */}
-        <div className="mb-5">
-          <div className="flex items-center gap-2.5 mb-1">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-orange-50">
-              <svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="#ea580c" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M10 3v14M6 6l4-3 4 3M6 14l4 3 4-3"/>
-              </svg>
-            </div>
-            <h1 className="text-lg font-bold text-white/90">Convert to Naira</h1>
-          </div>
-          <p className="text-sm text-white/40 pl-[2.625rem]">Sell USDC and receive Naira directly to your bank.</p>
+        <div className="mb-6">
+          <h1 className="text-2xl font-medium tracking-tight text-white/90">Convert to Naira</h1>
+          <p className="mt-1 text-[13px] text-white/40">Sell USDC and receive Naira to your bank account.</p>
         </div>
 
-        {/* Live rate pill */}
-        <div className={`mb-4 flex items-center justify-between rounded-xl px-4 py-2.5 border ${rateError ? "border-red-100 bg-red-50" : "border-blue-100 bg-emerald-500/10"}`}>
-          <div className="flex items-center gap-2">
-            <img src={getTokenLogo("USDC")} alt="USDC" className="h-4 w-4 rounded-full" />
-            <span className={`text-xs font-semibold ${rateError ? "text-red-600" : "text-emerald-400"}`}>Live rate</span>
-          </div>
+        {/* Live rate — plain inline text, no border/box */}
+        <div className="mb-5 flex items-center gap-2">
+          <span className="text-[13px] text-white/40">Live rate</span>
           {rateLoading ? (
-            <span className="flex items-center gap-1.5 text-xs text-blue-500">
+            <span className="flex items-center gap-1.5 text-[13px] text-white/30">
               <Spinner className="h-3 w-3" /> Fetching…
             </span>
           ) : rateError ? (
-            <button onClick={retryRate} className="flex items-center gap-1.5 text-xs font-semibold text-red-600 underline">
+            <button onClick={retryRate} className="text-[13px] font-medium text-red-400 underline">
               Failed · Retry
             </button>
           ) : (
-            <span className="text-xs font-bold tabular-nums text-emerald-400">
+            <span className="text-[13px] font-semibold tabular-nums text-white/90">
               $1 = ₦{liveRate?.toLocaleString() ?? "…"}
             </span>
           )}
         </div>
 
-        {/* Conversion card */}
-        <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-black shadow-sm">
-
-          {/* USDC row */}
-          <div className={`flex items-center gap-3 px-4 py-4 transition-colors ${inputMode === "usdc" ? "bg-emerald-500/10/70" : "bg-white"}`}>
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-blue-100 bg-black shadow-sm">
+        {/* YOU PAY row — always an <input> */}
+        <div className="border-t border-white/[0.08] py-4">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-white/25">You pay</p>
+          <div className="flex items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <input
+                value={inputMode === "usdc" ? usdcRaw : derivedUsdcDisplay}
+                onChange={e => handleUsdcChange(e.target.value)}
+                onFocus={() => {
+                  // switching focus to USDC: seed the field with the derived value
+                  // so the user can edit it directly without it blanking
+                  if (inputMode === "ngn" && derivedUsdcDisplay) {
+                    setUsdcRaw(derivedUsdcDisplay)
+                    setInputMode("usdc")
+                  }
+                }}
+                inputMode="decimal"
+                placeholder="0.00"
+                className="w-full bg-transparent text-[32px] font-medium tabular-nums text-white/90 outline-none placeholder:text-white/25"
+              />
+            </div>
+            {/* Token badge */}
+            <div className="flex shrink-0 items-center gap-1.5">
               <img src={getTokenLogo("USDC")} alt="USDC" className="h-5 w-5 rounded-full" />
+              <span className="text-[13px] font-medium text-white/50">USDC</span>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="mb-0.5 text-[10px] font-bold uppercase tracking-widest text-white/40">You sell</p>
-              {inputMode === "usdc" ? (
-                <input
-                  value={usdcRaw}
-                  onChange={e => handleUsdcChange(e.target.value)}
-                  inputMode="decimal"
-                  placeholder="0.00"
-                  autoFocus={inputMode === "usdc"}
-                  className="w-full bg-transparent text-2xl font-bold tabular-nums text-white/90 outline-none placeholder:text-gray-200"
-                />
-              ) : (
-                <p className="text-2xl font-bold tabular-nums text-white/40 leading-none">
-                  {quoteLoading
-                    ? <span className="inline-block h-6 w-24 animate-pulse rounded-lg bg-white/[0.07] align-middle" />
-                    : derivedUsdcDisplay || <span className="text-gray-200">0.00</span>}
-                </p>
-              )}
-            </div>
-            <span className="shrink-0 rounded-lg bg-white/[0.07] px-2.5 py-1 text-xs font-bold text-white/50">USDC</span>
-          </div>
-
-          {/* Swap divider */}
-          <div className="relative flex items-center justify-center border-y border-white/[0.06] bg-[#161618] py-1.5">
-            <button
-              type="button"
-              onClick={handleSwap}
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.08] bg-black shadow-sm transition hover:border-blue-300 hover:bg-emerald-500/10 active:scale-90"
-              aria-label="Swap input direction"
-            >
-              <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="#6b7280" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M10 3v14M6 6l4-3 4 3M6 14l4 3 4-3"/>
-              </svg>
-            </button>
-          </div>
-
-          {/* NGN row */}
-          <div className={`flex items-center gap-3 px-4 py-4 transition-colors ${inputMode === "ngn" ? "bg-orange-50/60" : "bg-white"}`}>
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-green-600 shadow-sm">
-              <span className="text-sm font-bold text-white">₦</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="mb-0.5 text-[10px] font-bold uppercase tracking-widest text-white/40">You receive</p>
-              {inputMode === "ngn" ? (
-                <input
-                  value={displayNgn}
-                  onChange={e => handleNgnChange(e.target.value)}
-                  inputMode="numeric"
-                  placeholder="0"
-                  autoFocus={inputMode === "ngn"}
-                  className="w-full bg-transparent text-2xl font-bold tabular-nums text-white/90 outline-none placeholder:text-gray-200"
-                />
-              ) : (
-                <p className="text-2xl font-bold tabular-nums text-white/40 leading-none">
-                  {quoteLoading
-                    ? <span className="inline-block h-6 w-24 animate-pulse rounded-lg bg-white/[0.07] align-middle" />
-                    : derivedNgnDisplay || <span className="text-gray-200">0</span>}
-                </p>
-              )}
-            </div>
-            <span className="shrink-0 rounded-lg bg-white/[0.07] px-2.5 py-1 text-xs font-bold text-white/50">NGN</span>
           </div>
         </div>
 
-        {/* Quote details */}
-        {quote && !quoteError && (
-          <div className="mt-3 overflow-hidden rounded-xl border border-white/[0.06] bg-[#161618]">
-            <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.06]">
-              <span className="text-xs text-white/50">Fee</span>
-              <span className="text-xs font-semibold text-white/70">
-                {BigInt(quote.feeNgn) === 0n ? "Free 🎉" : `₦${BigInt(quote.feeNgn).toLocaleString()}`}
-              </span>
+        {/* YOU RECEIVE row — always an <input> */}
+        <div className="border-t border-white/[0.08] py-4">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-white/25">You receive</p>
+          <div className="flex items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <input
+                value={ngnDisplayValue}
+                onChange={e => handleNgnChange(e.target.value)}
+                onFocus={() => {
+                  // switching focus to NGN: seed the raw digits if we have a derived value
+                  if (inputMode === "usdc" && derivedNgnDisplay) {
+                    // derivedNgnDisplay is already formatted "1,234,567" — strip commas
+                    const digits = derivedNgnDisplay.replace(/\D/g, "")
+                    setNgnRaw(digits)
+                    setInputMode("ngn")
+                  }
+                }}
+                inputMode="numeric"
+                placeholder="₦0"
+                className="w-full bg-transparent text-[32px] font-medium tabular-nums text-white/90 outline-none placeholder:text-white/25"
+              />
             </div>
-            <div className="flex items-center justify-between px-4 py-2.5">
-              <span className="text-xs font-semibold text-white/60">You receive</span>
-              <span className="text-sm font-bold tabular-nums text-emerald-400">₦{BigInt(quote.ngnAmount).toLocaleString()}</span>
-            </div>
+            <span className="shrink-0 text-[13px] font-medium text-white/50">NGN</span>
           </div>
-        )}
+        </div>
 
-        {/* Errors & warnings */}
-        <div className="mt-2 space-y-1.5">
-          {overBalance && (
-            <div className="flex items-center gap-2 rounded-xl border border-red-100 bg-red-50 px-4 py-2.5">
-              <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="#dc2626" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="8" cy="8" r="7"/><path d="M8 5v3M8 10.5v.5"/>
-              </svg>
-              <p className="text-xs font-medium text-red-600">Exceeds your available USDC balance</p>
-            </div>
-          )}
+        <div className="border-t border-white/[0.08]" />
+
+        {/* Available balance + Max button + errors */}
+        <div className="mt-3 space-y-1.5">
+          {/* Balance row with Max button */}
+          <div className="flex items-center justify-between">
+            <p className={`text-[13px] tabular-nums ${overBalance ? "text-red-400" : "text-white/30"}`}>
+              {overBalance
+                ? "Insufficient balance"
+                : balance !== null
+                  ? `Available: ${formatUSD(balance)} USDC`
+                  : ""}
+            </p>
+            {balance !== null && balance > 0n && (
+              <button
+                type="button"
+                onClick={handleMax}
+                className="rounded-md border border-white/[0.12] px-2 py-0.5 text-[12px] font-semibold text-white/50 transition hover:border-white/25 hover:text-white/80 active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                Max
+              </button>
+            )}
+          </div>
+
           {quoteError && !quoteLoading && (
-            <div className="flex items-center justify-between rounded-xl border border-red-100 bg-red-50 px-4 py-2.5">
-              <p className="text-xs text-red-600">{quoteError}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-[13px] text-red-400">{quoteError}</p>
               <button
                 onClick={() => {
                   setQuoteError(null)
-                  if (hasInput) {
-                    if (inputMode === "usdc" && usdcRaw) handleUsdcChange(usdcRaw)
-                    else if (inputMode === "ngn" && ngnRaw) handleNgnChange(ngnRaw)
-                  }
+                  if (inputMode === "usdc" && usdcRaw) handleUsdcChange(usdcRaw)
+                  else if (inputMode === "ngn" && ngnRaw) handleNgnChange(ngnRaw)
                 }}
-                className="ml-2 shrink-0 text-xs font-semibold text-red-700 underline"
+                className="text-[13px] font-medium text-emerald-400 underline"
               >
                 Retry
               </button>
             </div>
           )}
-          {balance !== null && !overBalance && (
-            <p className="text-center text-xs text-white/30 tabular-nums">
-              Available: {formatUSD(balance)} USDC
+
+          {quote && !quoteError && !overBalance && (
+            <p className="text-[13px] text-white/35 tabular-nums">
+              Fee: {BigInt(quote.feeNgn) === 0n ? "Free" : `₦${BigInt(quote.feeNgn).toLocaleString()}`}
+              {" · "}You receive{" "}
+              <span className="font-medium text-white/60">₦{BigInt(quote.ngnAmount).toLocaleString()}</span>
             </p>
           )}
         </div>
 
-        {/* Memo + CTA */}
-        <div className="mt-4 space-y-3">
-          <Field
+        {/* Note field + Next button */}
+        <div className="mt-auto pt-6 space-y-3">
+          <input
             value={memo}
             onChange={e => setMemo(e.target.value.slice(0, 60))}
             placeholder="Add a note (optional)"
             maxLength={60}
+            className="h-12 w-full rounded-xl border border-white/[0.12] bg-transparent px-4 text-[14px] text-white/80 outline-none transition placeholder:text-white/30 focus:border-white/30"
           />
-          <Button
-            full size="lg"
+          <button
+            type="button"
             disabled={!canContinue}
-            loading={quoteLoading && hasInput}
             onClick={ensureFreshQuote}
+            className={[
+              "flex h-12 w-full items-center justify-center rounded-xl text-[14px] font-semibold transition",
+              canContinue
+                ? "bg-emerald-500 text-white hover:bg-emerald-400 active:scale-[.98]"
+                : "cursor-not-allowed bg-white/[0.06] text-white/25",
+            ].join(" ")}
           >
-            {quoteLoading && hasInput ? "Getting rate…" : "Continue"}
-          </Button>
+            {quoteLoading && hasInput
+              ? <span className="flex items-center gap-2"><Spinner className="h-4 w-4" /> Getting rate…</span>
+              : "Next"}
+          </button>
         </div>
       </div>
     </Screen>

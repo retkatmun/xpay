@@ -27,7 +27,6 @@ import { CodeInput } from "@/components/CodeInput"
 import { Field } from "@/components/Field"
 import { Screen, Title } from "@/components/Screen"
 import { Spinner } from "@/components/icons"
-import { PasteButton } from "@/components/PasteButton"
 import {
   ApiError,
   formatHandle, getQuote, getTransaction,
@@ -108,95 +107,6 @@ function friendlyError(reason: string): string {
   }
 }
 
-// ─── Token Picker sub-component ───────────────────────────────────────────────
-
-function TokenPicker({
-  chain,
-  value,
-  onChange,
-  usdcOnly = false,
-}: {
-  chain: ChainConfig
-  value: SelectedToken
-  onChange: (t: SelectedToken) => void
-  /** Lock to USDC only (XPay / bank sends) */
-  usdcOnly?: boolean
-}) {
-  return (
-    <div className="flex gap-2">
-      {/* USDC option */}
-      <button
-        type="button"
-        onClick={() => onChange("usdc")}
-        className={[
-          "flex flex-1 items-center gap-2 rounded-xl border px-3 py-2.5 text-left transition",
-          value === "usdc"
-            ? "border-blue-500 bg-emerald-500/10 ring-2 ring-blue-100"
-            : "border-white/[0.08] bg-black hover:border-gray-300",
-        ].join(" ")}
-      >
-        {/* USDC coin icon */}
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white text-[10px] font-bold">
-          $
-        </span>
-        <div className="min-w-0">
-          <p className={`text-sm font-semibold ${value === "usdc" ? "text-emerald-400" : "text-white/90"}`}>
-            USDC
-          </p>
-          <p className="text-[10px] text-white/40 truncate">USD Coin · {chain.name}</p>
-        </div>
-        {value === "usdc" && (
-          <svg className="ml-auto shrink-0 text-emerald-400" viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 8l3 3 7-7" />
-          </svg>
-        )}
-      </button>
-
-      {/* Native token option */}
-      <button
-        type="button"
-        disabled={usdcOnly}
-        onClick={() => !usdcOnly && onChange("native")}
-        className={[
-          "flex flex-1 items-center gap-2 rounded-xl border px-3 py-2.5 text-left transition",
-          usdcOnly
-            ? "cursor-not-allowed border-white/[0.06] bg-[#161618] opacity-60"
-            : value === "native"
-            ? "border-gray-700 bg-gray-900 ring-2 ring-gray-200"
-            : "border-white/[0.08] bg-black hover:border-gray-300",
-        ].join(" ")}
-      >
-        {/* Native coin icon */}
-        <span className={[
-          "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
-          value === "native" && !usdcOnly ? "bg-black text-white/90" : "bg-gray-200 text-white/60",
-        ].join(" ")}>
-          {chain.nativeSymbol.slice(0, 3)}
-        </span>
-        <div className="min-w-0">
-          <p className={`text-sm font-semibold ${value === "native" && !usdcOnly ? "text-white" : "text-white/90"}`}>
-            {chain.nativeSymbol}
-          </p>
-          <p className={`text-[10px] truncate ${value === "native" && !usdcOnly ? "text-white/30" : "text-white/40"}`}>
-            {usdcOnly ? "USDC only for XPay sends" : `Native · ${chain.name}`}
-          </p>
-        </div>
-        {value === "native" && !usdcOnly && (
-          <svg className="ml-auto shrink-0 text-white" viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 8l3 3 7-7" />
-          </svg>
-        )}
-        {usdcOnly && (
-          <svg className="ml-auto shrink-0 text-white/30" viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="7" width="10" height="7" rx="1.5" />
-            <path d="M5 7V5a3 3 0 016 0v2" />
-          </svg>
-        )}
-      </button>
-    </div>
-  )
-}
-
 // ─── Network + Token picker sub-component ─────────────────────────────────────
 
 function NetworkAndTokenPicker({
@@ -213,58 +123,77 @@ function NetworkAndTokenPicker({
   usdcOnly?: boolean
 }) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {/* Network pills */}
       <div>
-        <p className="mb-2 text-[0.68rem] font-bold uppercase tracking-widest text-white/40">
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-white/40">
           Network
         </p>
         <div className="flex flex-wrap gap-2">
-          {CHAINS.map(chain => (
-            <button
-              key={chain.id}
-              type="button"
-              onClick={() => {
-                onChainChange(chain)
-                // if switching to a chain with no USDC, force native
-                if (!chain.usdcAddress) onTokenChange("native")
-                else if (usdcOnly) onTokenChange("usdc")
-              }}
-              className={[
-                "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition",
-                selectedChain.id === chain.id
-                  ? "border-transparent text-white shadow-sm"
-                  : "border-white/[0.08] bg-black text-white/50 hover:border-gray-300",
-              ].join(" ")}
-              style={selectedChain.id === chain.id ? { backgroundColor: chain.color } : {}}
-            >
-              <span
-                className="h-1.5 w-1.5 rounded-full"
-                style={{ backgroundColor: selectedChain.id === chain.id ? "rgba(255,255,255,0.7)" : chain.color }}
-              />
-              {chain.name}
-              {chain.isTestnet && (
-                <span className={[
-                  "ml-0.5 rounded px-1 py-0.5 text-[9px] font-bold uppercase",
-                  selectedChain.id === chain.id ? "bg-white/20 text-white" : "bg-amber-100 text-amber-600",
-                ].join(" ")}>test</span>
-              )}
-            </button>
-          ))}
+          {CHAINS.map(chain => {
+            const active = selectedChain.id === chain.id
+            return (
+              <button
+                key={chain.id}
+                type="button"
+                onClick={() => {
+                  onChainChange(chain)
+                  if (!chain.usdcAddress) onTokenChange("native")
+                  else if (usdcOnly) onTokenChange("usdc")
+                }}
+                className={[
+                  "rounded-full border px-3 py-1.5 text-[13px] font-medium transition",
+                  active
+                    ? "border-emerald-500/70 text-white/90"
+                    : "border-white/[0.10] bg-transparent text-white/40 hover:border-white/25 hover:text-white/65",
+                ].join(" ")}
+              >
+                {chain.name}
+                {chain.isTestnet && (
+                  <span className="ml-1 text-white/30 font-normal">· test</span>
+                )}
+              </button>
+            )
+          })}
         </div>
       </div>
 
-      {/* Token picker */}
+      {/* Segmented token toggle */}
       <div>
-        <p className="mb-2 text-[0.68rem] font-bold uppercase tracking-widest text-white/40">
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-white/40">
           Token
         </p>
-        <TokenPicker
-          chain={selectedChain}
-          value={selectedToken}
-          onChange={onTokenChange}
-          usdcOnly={usdcOnly}
-        />
+        <div className="inline-flex w-full rounded-xl border border-white/[0.10] p-0.5">
+          <button
+            type="button"
+            onClick={() => onTokenChange("usdc")}
+            className={[
+              "flex flex-1 items-center justify-center gap-2 rounded-[10px] py-2.5 text-[13px] font-medium transition",
+              selectedToken === "usdc"
+                ? "bg-white/[0.07] text-white/90"
+                : "text-white/35 hover:text-white/60",
+            ].join(" ")}
+          >
+            <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"><circle cx="10" cy="10" r="8"/><path d="M10 6v8M7 8.5h4.5a1.5 1.5 0 010 3H8.5a1.5 1.5 0 000 3H13"/></svg>
+            USDC
+          </button>
+          <button
+            type="button"
+            disabled={usdcOnly || !selectedChain.nativeSymbol}
+            onClick={() => !usdcOnly && onTokenChange("native")}
+            className={[
+              "flex flex-1 items-center justify-center gap-2 rounded-[10px] py-2.5 text-[13px] font-medium transition",
+              usdcOnly
+                ? "cursor-not-allowed text-white/20"
+                : selectedToken === "native"
+                ? "bg-white/[0.07] text-white/90"
+                : "text-white/35 hover:text-white/60",
+            ].join(" ")}
+          >
+            <svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 2L4 12l8 5 8-5L12 2z" fill="currentColor" opacity="0.7"/><path d="M4 12l8 10 8-10" fill="currentColor" opacity="0.4"/></svg>
+            {selectedChain.nativeSymbol}
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -822,7 +751,7 @@ export default function Send() {
     const iconBg    = pending ? "bg-emerald-500/10 ring-blue-50/50" : failed ? "bg-red-50 ring-red-50/50" : "bg-green-50 ring-green-50/50"
 
     return (
-      <Screen bare>
+      <Screen back onBack={() => navigate(-1)}>
         <div className="flex flex-1 flex-col items-center justify-center px-5 py-16 text-center">
           <div className={`flex h-20 w-20 items-center justify-center rounded-full ring-8 ${iconBg}`}>
             {pending ? <Spinner className="h-8 w-8 text-emerald-400" />
@@ -887,7 +816,7 @@ export default function Send() {
   // ══════════════════════════════════════════════════════════════════════════
   if (step === "sending") {
     return (
-      <Screen bare>
+      <Screen back onBack={() => navigate(-1)}>
         <div className="flex flex-1 flex-col items-center justify-center gap-4">
           <Spinner className="h-7 w-7 text-emerald-400" />
           <div className="text-center">
@@ -1304,8 +1233,8 @@ export default function Send() {
                   if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setBankOpen(v => !v) }
                   if (e.key === "Escape") { setBankOpen(false); setBankSearch("") }
                 }}
-                className={["flex h-11 cursor-pointer select-none items-center gap-2 rounded-xl border bg-black px-4 transition-colors duration-150 focus:outline-none",
-                  bankOpen ? "border-blue-500" : "border-white/[0.08] hover:border-gray-300"].join(" ")}>
+                className={["flex h-11 cursor-pointer select-none items-center gap-2 rounded-xl border bg-[#111113] px-4 transition-colors duration-150 focus:outline-none",
+                  bankOpen ? "border-emerald-500/60" : "border-white/[0.12] hover:border-white/25"].join(" ")}>
                 {bankOpen ? (
                   <input value={bankSearch} onChange={e => setBankSearch(e.target.value)} placeholder="Search banks…" autoFocus
                     onClick={e => e.stopPropagation()}
@@ -1322,14 +1251,15 @@ export default function Send() {
               </div>
               {bankOpen && (
                 <ul role="listbox" aria-label="Banks"
-                  className="absolute z-50 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-white/[0.08] bg-black shadow-lg">
+                  className="absolute z-[200] mt-1 max-h-72 w-full overflow-y-auto rounded-xl border border-white/[0.12] shadow-[0_8px_32px_rgba(0,0,0,0.7)]"
+                  style={{ backgroundColor: "#111113" }}>
                   {filteredBanks.length === 0
                     ? <li className="px-4 py-3 text-sm text-white/40">No banks found.</li>
                     : filteredBanks.map((bank, i) => (
                       <li key={bank.code} role="option" aria-selected={selectedBank?.code === bank.code}
                         onMouseDown={e => { e.preventDefault(); setSelectedBank(bank); setBankSearch(""); setBankOpen(false); setVerifyError(null) }}
-                        className={["flex cursor-pointer items-center px-4 py-3 text-sm transition hover:bg-emerald-500/10",
-                          selectedBank?.code === bank.code ? "bg-emerald-500/10 font-semibold text-emerald-400" : "text-white/90",
+                        className={["flex min-h-[44px] cursor-pointer items-center px-4 py-3 text-sm transition-colors",
+                          selectedBank?.code === bank.code ? "bg-[#1e2e1e] font-semibold text-emerald-400" : "text-white/90 hover:bg-[#1c1c1e]",
                           i > 0 ? "border-t border-white/[0.06]" : ""].join(" ")}>
                         {bank.name}
                       </li>
@@ -1397,10 +1327,19 @@ export default function Send() {
             />
           </div>
 
-          {/* Address input */}
+          {/* Address field — monospace, Paste as plain accent text inside */}
           <div className="mt-5">
-            <label className="mb-1.5 block text-sm font-semibold text-white/70">Recipient address</label>
-            <div className="relative">
+            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-widest text-white/40">
+              Recipient address
+            </label>
+            <div
+              className={[
+                "flex h-12 items-center rounded-xl border bg-transparent transition",
+                walletAddressError
+                  ? "border-red-400"
+                  : "border-white/[0.12] focus-within:border-white/30",
+              ].join(" ")}
+            >
               <input
                 value={walletAddressInput}
                 onChange={e => { setWalletAddressInput(e.target.value); setWalletAddressError(null) }}
@@ -1408,15 +1347,23 @@ export default function Send() {
                 autoFocus
                 autoComplete="off"
                 spellCheck={false}
-                className={["h-12 w-full rounded-xl border bg-black pl-4 pr-20 font-mono text-base text-white/90 outline-none transition",
-                  "placeholder:font-sans placeholder:text-white/40",
-                  walletAddressError ? "border-red-400 ring-2 ring-red-100" : "border-white/[0.08] focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"].join(" ")}
+                className="min-w-0 flex-1 bg-transparent pl-4 font-mono text-[14px] text-white/90 outline-none placeholder:font-sans placeholder:text-white/30"
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2">
-                <PasteButton onPaste={text => { setWalletAddressInput(text); setWalletAddressError(null) }} />
-              </span>
+              {/* Plain "Paste" text inside the field, right side */}
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    const text = await navigator.clipboard.readText()
+                    if (text) { setWalletAddressInput(text.trim()); setWalletAddressError(null) }
+                  } catch { /* clipboard denied */ }
+                }}
+                className="shrink-0 pr-4 text-[13px] font-semibold text-emerald-400 transition hover:text-emerald-300"
+              >
+                Paste
+              </button>
             </div>
-            {walletAddressError && <p className="mt-1.5 text-xs text-red-600">{walletAddressError}</p>}
+            {walletAddressError && <p className="mt-1.5 text-xs text-red-400">{walletAddressError}</p>}
             {!walletAddressError && walletAddressInput && (
               <p className={`mt-1.5 text-xs ${isValidAddress ? "text-green-600" : "text-white/40"}`}>
                 {isValidAddress
@@ -1426,8 +1373,22 @@ export default function Send() {
             )}
           </div>
 
-          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-            <p className="text-xs leading-relaxed text-amber-700">
+          {/* Warning box — dark text on soft yellow, no selection glow */}
+          <div
+            className="mt-4 rounded-xl border px-4 py-3"
+            style={{
+              backgroundColor: "#fff8e1",
+              borderColor: "#f59e0b",
+            }}
+          >
+            <style>{`
+              .wallet-warning-box *::selection { background: #f59e0b33; color: #3d2f00; }
+              .wallet-warning-box *::-moz-selection { background: #f59e0b33; color: #3d2f00; }
+            `}</style>
+            <p
+              className="wallet-warning-box text-[13px] leading-relaxed"
+              style={{ color: "#3d2f00" }}
+            >
               <strong>Double-check the network.</strong> Only send to addresses that support{" "}
               <strong>{tokenSymbol}</strong> on <strong>{selectedChain.name}</strong>.
               Sending to the wrong network may result in permanent loss.
@@ -1457,145 +1418,166 @@ export default function Send() {
     return (
       <Screen back onBack={() => { setStep("recipient_mode"); setQuery(""); setLookupError(null); setSuggestions([]) }}>
         <div className="flex flex-1 flex-col pt-4 pb-10">
-          <div className="mb-5">
-            <h1 className="text-2xl font-bold tracking-tight text-white/90">Who are you paying?</h1>
-            <p className="mt-1 text-sm text-white/40">Enter their XPay handle or phone number</p>
+
+          {/* Header */}
+          <div className="mb-6">
+            <h1 className="text-[22px] font-semibold tracking-tight text-white/90">Who are you paying?</h1>
+            <p className="mt-1 text-[13px] text-white/40">Handle or phone number</p>
           </div>
 
-          {/* Search box */}
-          <div className="relative">
-            <div className={["flex h-14 items-center gap-3 rounded-2xl border bg-black px-4 transition-all duration-150",
-              query.length > 0 ? "border-blue-400 ring-2 ring-blue-100" : "border-white/[0.08]"].join(" ")}>
-              {isPhoneQuery
-                ? <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="#3b82f6" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/></svg>
-                : <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="#9ca3af" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M14.5 14.5l3.5 3.5"/></svg>
-              }
-              <input value={query}
-                onChange={e => { setQuery(e.target.value); setLookupError(null) }}
-                placeholder="08012345678 or username.xpay"
-                autoFocus autoCapitalize="none" autoComplete="off" inputMode="text" spellCheck={false}
-                className="min-w-0 flex-1 bg-transparent text-base text-white/90 outline-none placeholder:text-white/40" />
-              {searchLoading && <Spinner className="h-4 w-4 shrink-0 text-blue-400" />}
-              {query.length > 0 && !searchLoading && (
-                <button type="button" onClick={() => { setQuery(""); setSuggestions([]) }}
-                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/[0.07] text-white/40 transition hover:bg-gray-200 hover:text-white/60">
-                  <svg viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>
-                </button>
-              )}
-            </div>
-            {!query && (
-              <div className="mt-2 flex items-center justify-between">
-                <p className="flex items-center gap-3 text-[11px] text-white/30">
-                  <span className="flex items-center gap-1">
-                    <svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="6.5" cy="6.5" r="4.5"/><path d="M11.5 11.5l2.5 2.5"/></svg>
-                    username.xpay
-                  </span>
-                  <span className="text-gray-200">·</span>
-                  <span className="flex items-center gap-1">
-                    <svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3a1 1 0 011-1h2.153a.5.5 0 01.493.418l.74 4.435a.5.5 0 01-.27.53l-1.548.773a9.03 9.03 0 005.105 5.105l.774-1.548a.5.5 0 01.53-.27l4.435.74A.5.5 0 0115 13v1a1 1 0 01-1 1h-2C6.82 15 2 10.18 2 5V3z"/></svg>
-                    08012345678
-                  </span>
-                </p>
-                <PasteButton onPaste={text => { setQuery(text); setLookupError(null) }} />
-              </div>
-            )}
-            {lookupError && <p className="mt-2 text-xs text-red-600">{lookupError}</p>}
-          </div>
-
-          {/* Network picker (full — both USDC and native allowed) */}
-          <div className="mt-4">
-            <NetworkAndTokenPicker
-              selectedChain={selectedChain}
-              onChainChange={chain => {
-                setSelectedChain(chain)
-                if (!chain.usdcAddress) setSelectedToken("native")
-              }}
-              selectedToken={selectedToken}
-              onTokenChange={setSelectedToken}
-              usdcOnly={false}
+          {/* Search field */}
+          <div className={[
+            "flex h-12 items-center gap-2.5 rounded-xl border px-3.5 transition",
+            query.length > 0 ? "border-emerald-500/60" : "border-white/[0.12]",
+          ].join(" ")}>
+            {isPhoneQuery
+              ? <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/></svg>
+              : <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M14.5 14.5l3.5 3.5"/></svg>
+            }
+            <input
+              value={query}
+              onChange={e => { setQuery(e.target.value); setLookupError(null) }}
+              placeholder="username.xpay or phone"
+              autoFocus autoCapitalize="none" autoComplete="off" inputMode="text" spellCheck={false}
+              className="min-w-0 flex-1 bg-transparent text-[14px] text-white/85 outline-none placeholder:text-white/30"
             />
+            {searchLoading && <Spinner className="h-3.5 w-3.5 shrink-0 text-white/30" />}
+            {query.length > 0 && !searchLoading && (
+              <button
+                type="button"
+                onClick={() => { setQuery(""); setSuggestions([]) }}
+                className="shrink-0 text-white/30 transition hover:text-white/60"
+              >
+                <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+              </button>
+            )}
+            {!query && (
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    const text = await navigator.clipboard.readText()
+                    if (text) { setQuery(text.trim()); setLookupError(null) }
+                  } catch { /* clipboard denied */ }
+                }}
+                className="shrink-0 text-[12px] font-semibold text-emerald-400 transition hover:text-emerald-300"
+              >
+                Paste
+              </button>
+            )}
           </div>
 
-          {/* Results */}
-          <div className="mt-4 flex-1 overflow-y-auto">
-            {!isTyping && recents.length > 0 && <p className="mb-2 text-[0.68rem] font-bold uppercase tracking-widest text-white/40">Recent</p>}
-            {isTyping && combined.length > 0 && (
-              <p className="mb-2 text-[0.68rem] font-bold uppercase tracking-widest text-white/40">
-                {suggestions.length > 0 ? "Matches" : "Recent"}
+          {lookupError && <p className="mt-2 text-[12px] text-red-400">{lookupError}</p>}
+
+          {/* Network selector */}
+          <div className="mt-6">
+            <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-widest text-white/25">Network</p>
+            <div className="flex flex-wrap gap-2">
+              {CHAINS.map(chain => {
+                const active = selectedChain.id === chain.id
+                return (
+                  <button
+                    key={chain.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedChain(chain)
+                      if (!chain.usdcAddress) setSelectedToken("native")
+                      else if (false) setSelectedToken("usdc") // usdcOnly not applicable here
+                    }}
+                    className={[
+                      "rounded-full border px-3 py-1.5 text-[13px] font-medium transition",
+                      active
+                        ? "border-emerald-500/60 text-white"
+                        : "border-white/[0.1] text-white/35 hover:border-white/25 hover:text-white/60",
+                    ].join(" ")}
+                  >
+                    {chain.name}
+                    {chain.isTestnet && (
+                      <span className="ml-1 text-white/30">· test</span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Token selector */}
+          <div className="mt-5">
+            <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-widest text-white/25">Token</p>
+            <div className="inline-flex w-full rounded-xl border border-white/[0.1] p-0.5">
+              <button
+                type="button"
+                onClick={() => setSelectedToken("usdc")}
+                className={[
+                  "flex flex-1 items-center justify-center gap-2 rounded-[10px] py-2.5 text-[13px] font-medium transition",
+                  selectedToken === "usdc"
+                    ? "bg-white/[0.07] text-white/90"
+                    : "text-white/30 hover:text-white/55",
+                ].join(" ")}
+              >
+                <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"><circle cx="10" cy="10" r="8"/><path d="M10 6v8M7 8.5h4.5a1.5 1.5 0 010 3H8.5a1.5 1.5 0 000 3H13"/></svg>
+                USDC
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedToken("native")}
+                className={[
+                  "flex flex-1 items-center justify-center gap-2 rounded-[10px] py-2.5 text-[13px] font-medium transition",
+                  selectedToken === "native"
+                    ? "bg-white/[0.07] text-white/90"
+                    : "text-white/30 hover:text-white/55",
+                ].join(" ")}
+              >
+                <svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 2L4 12l8 5 8-5L12 2z" fill="currentColor" opacity="0.7"/><path d="M4 12l8 10 8-10" fill="currentColor" opacity="0.4"/></svg>
+                {selectedChain.nativeSymbol}
+              </button>
+            </div>
+          </div>
+
+          {/* Results / empty state */}
+          <div className="mt-6 flex-1 overflow-y-auto">
+            {/* Empty — not typing yet */}
+            {!isTyping && combined.length === 0 && (
+              <p className="py-10 text-center text-[13px] text-white/30">Start typing to search</p>
+            )}
+
+            {/* No results after search */}
+            {isTyping && !searchLoading && combined.length === 0 && (
+              <p className="py-10 text-center text-[13px] text-white/30">
+                {isPhoneQuery ? "No XPay account linked to that number" : "No users found"}
               </p>
             )}
 
+            {/* Result rows */}
             {combined.length > 0 && (
-              <div className="space-y-2">
+              <div className="divide-y divide-white/[0.06]">
                 {combined.map(p => {
                   const noWallet = isNativeSend && !p.walletAddress
                   return (
-                    <button key={p.username} type="button"
+                    <button
+                      key={p.username}
+                      type="button"
                       disabled={noWallet}
                       onClick={() => { setXpayRecipient(p); setSuggestions([]); setStep("amount") }}
                       className={[
-                        "flex w-full items-center gap-3 rounded-2xl border bg-black p-3.5 text-left shadow-sm transition active:scale-[.99]",
+                        "flex w-full items-center gap-3 py-3.5 text-left transition",
                         noWallet
-                          ? "cursor-not-allowed border-white/[0.06] opacity-50"
-                          : "border-white/[0.06] hover:border-blue-200 hover:bg-emerald-500/10/40",
-                      ].join(" ")}>
-                      <Avatar name={p.displayName} size={44} src={p.avatarUrl} />
+                          ? "cursor-not-allowed opacity-40"
+                          : "hover:opacity-80 active:opacity-60",
+                      ].join(" ")}
+                    >
+                      <Avatar name={p.displayName} size={40} src={p.avatarUrl} />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-white/90">{p.displayName}</p>
-                        <p className="truncate text-xs text-white/40">{formatHandle(p.username)}</p>
-                        {p.phone && (
-                          <p className="mt-0.5 text-[11px] text-white/30">
-                            {p.phone.replace(/(\+?\d{3})(\d+)(\d{4})/, "$1 •••• $3")}
-                          </p>
-                        )}
-                        {p.walletAddress ? (
-                          <p className="mt-0.5 flex items-center gap-1 font-mono text-[10px] text-white/30">
-                            <svg viewBox="0 0 12 12" width="9" height="9" fill="none" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round">
-                              <rect x="1" y="4" width="10" height="7" rx="1"/><path d="M4 4V3a2 2 0 114 0v1"/>
-                            </svg>
-                            {p.walletAddress.slice(0, 6)}…{p.walletAddress.slice(-4)}
-                          </p>
-                        ) : isNativeSend ? (
-                          <p className="mt-0.5 text-[11px] text-amber-500">No wallet address — switch to USDC</p>
-                        ) : null}
-                      </div>
-                      <div className="flex shrink-0 flex-col items-end gap-1.5">
-                        <div className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                          style={{ backgroundColor: selectedChain.color + "18", color: selectedChain.color }}>
-                          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: selectedChain.color }} />
-                          {tokenSymbol}
-                        </div>
-                        {!noWallet && (
-                          <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+                        <p className="truncate text-[14px] font-medium text-white/85">{p.displayName}</p>
+                        <p className="truncate text-[12px] text-white/35">{formatHandle(p.username)}</p>
+                        {isNativeSend && !p.walletAddress && (
+                          <p className="text-[12px] text-amber-500/80">No wallet — switch to USDC</p>
                         )}
                       </div>
+                      <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="2" strokeLinecap="round"><path d="M6 4l4 4-4 4"/></svg>
                     </button>
                   )
                 })}
-              </div>
-            )}
-
-            {isTyping && !searchLoading && combined.length === 0 && (
-              <div className="flex flex-col items-center gap-3 py-12 text-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#161618]">
-                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
-                  </svg>
-                </div>
-                <p className="text-sm font-medium text-white/60">No users found</p>
-                <p className="text-xs text-white/40">
-                  {isPhoneQuery ? "No XPay account linked to that number" : "Try a different name, username, or phone number"}
-                </p>
-              </div>
-            )}
-
-            {!isTyping && recents.length === 0 && (
-              <div className="flex flex-col items-center gap-2 py-10 text-center">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#161618]">
-                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-                </div>
-                <p className="text-sm text-white/40">Start typing to search</p>
-                <p className="text-xs text-white/30">Name, @username or phone number</p>
               </div>
             )}
           </div>
@@ -1608,7 +1590,7 @@ export default function Send() {
   // RECIPIENT MODE (entry point)
   // ══════════════════════════════════════════════════════════════════════════
   return (
-    <Screen back onBack={() => navigate("/home")}>
+    <Screen back onBack={() => navigate(-1)}>
       <div className="flex flex-1 flex-col pt-4 pb-10">
         <Title sub="Choose how you want to send.">Send money</Title>
 

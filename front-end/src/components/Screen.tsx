@@ -29,7 +29,7 @@ export function Screen({
                 type="button"
                 onClick={onBack ?? (() => navigate(-1))}
                 aria-label="Go back"
-                className="-ml-2 flex h-9 w-9 items-center justify-center rounded-full text-white/40 transition hover:bg-white/[0.06] hover:text-white/80"
+                className="-ml-2 flex h-11 w-11 items-center justify-center rounded-full text-white/40 transition hover:bg-white/[0.06] hover:text-white/80"
               >
                 <ArrowLeft />
               </button>

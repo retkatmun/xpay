@@ -8,7 +8,6 @@ import { useNavigate } from "react-router-dom"
 import { useSession } from "@/lib/session"
 import { fetchEnrollmentsByUser, type Enrollment } from "@/lib/supabase"
 import { Spinner } from "@/components/icons"
-import xpayLogo from "@/assets/xpay_logo.png"
 
 // ── Status colours ────────────────────────────────────────────────────────────
 
@@ -193,26 +192,6 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-dvh bg-[#161618]">
-      {/* Top bar */}
-      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/[0.06] bg-white px-4 py-3 shadow-sm">
-        <img src={xpayLogo} alt="XPay" className="h-7 w-auto object-contain" />
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => navigate("/home")}
-            className="rounded-xl border border-white/[0.08] px-3 py-1.5 text-xs font-semibold text-white/60 hover:bg-[#161618] transition"
-          >
-            Wallet
-          </button>
-          <button
-            onClick={handleLogout}
-            disabled={loggingOut}
-            className="flex items-center gap-1.5 rounded-xl border border-red-900/30 bg-red-950/30 px-3 py-1.5 text-xs font-semibold text-red-400 transition hover:bg-red-100 disabled:opacity-50"
-          >
-            {loggingOut ? <Spinner className="h-3 w-3" /> : null}
-            Log out
-          </button>
-        </div>
-      </div>
 
       <div className="mx-auto max-w-lg space-y-5 px-4 py-6">
 
