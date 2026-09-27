@@ -43,17 +43,17 @@ export default function PhoneStep() {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center bg-white px-5 py-12">
+    <div className="flex min-h-dvh flex-col items-center justify-center bg-[#111113] px-5 py-12">
       <div className="w-full max-w-sm">
         {/* logo */}
         <div className="mb-8 text-center">
-          <span className="font-[var(--font-instrument-serif)] text-3xl text-blue-600">XPay</span>
+          <span className="font-[var(--font-instrument-serif)] text-3xl text-emerald-400">XPay</span>
         </div>
 
-        <h1 className="font-[var(--font-instrument-serif)] text-[1.75rem] leading-tight tracking-[-0.02em] text-gray-900">
+        <h1 className="font-[var(--font-instrument-serif)] text-[1.75rem] leading-tight tracking-[-0.02em] text-white/90">
           What&rsquo;s your number?
         </h1>
-        <p className="mt-2 text-sm text-gray-500">
+        <p className="mt-2 text-sm text-white/50">
           We&rsquo;ll send a one-time code to confirm it&rsquo;s you.
         </p>
 
@@ -75,13 +75,13 @@ export default function PhoneStep() {
           </Button>
         </form>
 
-        <p className="mt-6 text-center text-xs text-gray-400">
+        <p className="mt-6 text-center text-xs text-white/40">
           Your number is your XPay identity. It stays private.
         </p>
 
-        <p className="mt-4 text-center text-sm text-gray-500">
+        <p className="mt-4 text-center text-sm text-white/50">
           Already have an account?{" "}
-          <a href="/login" className="font-medium text-blue-600 hover:underline">Log in</a>
+          <a href="/login" className="font-medium text-emerald-400 hover:underline">Log in</a>
         </p>
       </div>
     </div>

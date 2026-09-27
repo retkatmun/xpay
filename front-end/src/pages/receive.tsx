@@ -81,7 +81,7 @@ export default function Receive() {
               label="Copy"
             />
           </div>
-          <div className="border-t border-blue-50 bg-emerald-500/10 px-5 py-3">
+          <div className="border-t border-emerald-500/20 bg-emerald-500/10 px-5 py-3">
             <p className="text-xs leading-relaxed text-emerald-400">
               Share this 10-digit number. Anyone on XPay can send you money using it — no country code needed.
             </p>
@@ -117,7 +117,7 @@ export default function Receive() {
             <div className="px-4 py-3.5">
               {walletLoading ? (
                 <div className="flex items-center gap-2">
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent" />
                   <span className="text-sm text-white/40">Loading address…</span>
                 </div>
               ) : walletAddress ? (
@@ -133,8 +133,8 @@ export default function Receive() {
             </div>
 
             {/* Warning */}
-            <div className="border-t border-amber-100 bg-amber-50 px-4 py-3">
-              <p className="text-xs leading-relaxed text-amber-700">
+            <div className="border-t border-amber-500/20 bg-amber-500/10 px-4 py-3">
+              <p className="text-xs leading-relaxed text-amber-400">
                 <strong>{activeChain.name} network only.</strong>{' '}
                 Only send{activeChain.usdcAddress ? ' USDC' : ` ${activeChain.nativeSymbol}`} on{' '}
                 {activeChain.name} to this address. Sending any other token or network will result in permanent loss.
@@ -149,9 +149,9 @@ export default function Receive() {
           <button
             onClick={handleFund}
             disabled={fundLoading || !walletAddress}
-            className="flex w-full items-center gap-4 rounded-2xl border border-emerald-100 bg-emerald-50 px-5 py-4 text-left shadow-sm transition hover:bg-emerald-100 active:scale-[.98] disabled:opacity-60"
+            className="flex w-full items-center gap-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-5 py-4 text-left shadow-sm transition hover:bg-emerald-500/20 active:scale-[.98] disabled:opacity-60"
           >
-            <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl shadow-sm transition ${fundSuccess ? 'bg-green-500 shadow-green-200' : 'bg-emerald-500 shadow-emerald-200'}`}>
+            <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl shadow-sm transition ${fundSuccess ? 'bg-emerald-500 shadow-emerald-900/30' : 'bg-emerald-500 shadow-emerald-200'}`}>
               {fundLoading ? (
                 <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
               ) : fundSuccess ? (
@@ -165,10 +165,10 @@ export default function Receive() {
               )}
             </span>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-emerald-900">
+              <p className="text-sm font-semibold text-white/90">
                 {fundSuccess ? 'Funds received!' : 'Fund with card'}
               </p>
-              <p className="mt-0.5 text-xs text-emerald-600">
+              <p className="mt-0.5 text-xs text-emerald-400">
                 {fundSuccess
                   ? 'Balance is updating…'
                   : `Apple Pay, Google Pay, debit or credit card · ${activeChain.name}`}

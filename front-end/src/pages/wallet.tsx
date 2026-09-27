@@ -120,7 +120,7 @@ export default function Wallet() {
 
             {/* Admin star badge */}
             {isAdmin && (
-              <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-purple-600 ring-2 ring-white">
+              <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-purple-500 ring-2 ring-[#111113]">
                 <svg viewBox="0 0 12 12" width="8" height="8" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M6 1l1.5 3h3l-2.4 1.8.9 3L6 7.2l-3 1.6.9-3L1.5 4h3z"/>
                 </svg>
@@ -133,7 +133,7 @@ export default function Wallet() {
               onClick={() => fileInputRef.current?.click()}
               disabled={avatarUploading}
               aria-label="Change profile photo"
-              className="absolute -bottom-1 left-0 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 ring-2 ring-white transition hover:bg-emerald-400 active:scale-95 disabled:opacity-60"
+              className="absolute -bottom-1 left-0 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 ring-2 ring-[#111113] transition hover:bg-emerald-400 active:scale-95 disabled:opacity-60"
             >
               {avatarUploading ? (
                 <Spinner className="h-3 w-3 text-white" />
@@ -166,7 +166,7 @@ export default function Wallet() {
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={avatarUploading}
-              className="rounded-full border border-blue-200 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-400 transition hover:bg-blue-100 disabled:opacity-50"
+              className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-400 transition hover:bg-emerald-500/20 disabled:opacity-50"
             >
               {profile.avatar_url ? "Change photo" : "Add photo"}
             </button>
@@ -175,7 +175,7 @@ export default function Wallet() {
                 type="button"
                 onClick={handleRemoveAvatar}
                 disabled={avatarUploading}
-                className="rounded-full border border-red-100 bg-red-50 px-3 py-1 text-xs font-semibold text-red-500 transition hover:bg-red-100 disabled:opacity-50"
+                className="rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-500 transition hover:bg-red-500/20 disabled:opacity-50"
               >
                 Remove
               </button>
@@ -197,7 +197,7 @@ export default function Wallet() {
               <>
                 <div className="flex items-center justify-between px-4 py-3.5">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-50">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/10">
                       <span
                         className="h-4 w-4 rounded-full"
                         style={{ backgroundColor: activeChain.color }}
@@ -215,8 +215,8 @@ export default function Wallet() {
                 </div>
                 <div className="flex items-center justify-between px-4 py-3">
                   <span className="text-xs text-white/40">Status</span>
-                  <span className="flex items-center gap-1.5 text-xs font-semibold text-green-600">
-                    <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />Active
+                  <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-400">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500/100 animate-pulse" />Active
                   </span>
                 </div>
               </>
@@ -246,7 +246,7 @@ export default function Wallet() {
                 <span className="text-sm text-white/50">Role</span>
               </div>
               <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
-                isAdmin ? "bg-purple-50 text-purple-700 border border-purple-100" : "bg-white/[0.07] text-white/60"
+                isAdmin ? "bg-purple-500/20 text-purple-400 border border-purple-500/20" : "bg-white/[0.07] text-white/60"
               }`}>
                 {isAdmin ? "Admin" : "User"}
               </span>
@@ -260,9 +260,9 @@ export default function Wallet() {
           <button
             onClick={handleFund}
             disabled={fundLoading}
-            className="flex w-full items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-4 text-left shadow-sm transition hover:bg-emerald-100 active:scale-[.98] disabled:opacity-60"
+            className="flex w-full items-center gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-4 text-left shadow-sm transition hover:bg-emerald-100 active:scale-[.98] disabled:opacity-60"
           >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-500 shadow-md shadow-emerald-200">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-500 shadow-md shadow-emerald-900/30">
               {fundLoading ? (
                 <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
               ) : (
@@ -272,8 +272,8 @@ export default function Wallet() {
               )}
             </div>
             <div className="flex-1">
-              <p className="text-sm font-bold text-emerald-900">Fund with card</p>
-              <p className="text-xs text-emerald-600">Apple Pay, Google Pay, debit or credit card</p>
+              <p className="text-sm font-bold text-white/90">Fund with card</p>
+              <p className="text-xs text-emerald-400">Apple Pay, Google Pay, debit or credit card</p>
             </div>
             <div className="flex items-center gap-1">
               <img src={getTokenLogo("USDC")} alt="USDC" className="h-5 w-5 rounded-full" />
@@ -326,13 +326,13 @@ export default function Wallet() {
                   </div>
                   <button
                     onClick={() => navigate(`/send?to=${b.type === "xpay_user" ? "@" + b.xpay_username : b.account_number}`)}
-                    className="shrink-0 rounded-lg bg-emerald-500/10 px-2.5 py-1.5 text-xs font-semibold text-emerald-400 transition hover:bg-blue-100"
+                    className="shrink-0 rounded-lg bg-emerald-500/10 px-2.5 py-1.5 text-xs font-semibold text-emerald-400 transition hover:bg-emerald-500/20"
                   >
                     Send
                   </button>
                   <button
                     onClick={() => handleDeleteBeneficiary(b.id)}
-                    className="shrink-0 rounded-lg bg-red-50 p-1.5 text-red-400 transition hover:bg-red-100"
+                    className="shrink-0 rounded-lg bg-red-50 p-1.5 text-red-400 transition hover:bg-red-500/20"
                   >
                     <svg viewBox="0 0 14 14" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M3 3l8 8M11 3l-8 8"/>
@@ -357,7 +357,7 @@ export default function Wallet() {
         <div className="mt-auto pt-4">
           <button
             onClick={async () => { await signOut(); navigate("/", { replace: true }); }}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-red-100 bg-red-50 py-3.5 text-sm font-semibold text-red-600 transition hover:bg-red-100 active:scale-[.98]"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-red-500/20 bg-red-500/10 py-3.5 text-sm font-semibold text-red-600 transition hover:bg-red-500/20 active:scale-[.98]"
           >
             <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M10 3h3a1 1 0 011 1v8a1 1 0 01-1 1h-3M7 11l4-4-4-4M11 8H2"/>
@@ -401,12 +401,12 @@ function NavRow({ label, icon, onClick, purple }: {
   label: string; icon: React.ReactNode; onClick: () => void; purple?: boolean;
 }) {
   return (
-    <button onClick={onClick} className={`flex w-full items-center justify-between px-4 py-3.5 text-left transition hover:bg-[#161618] ${purple ? "bg-purple-50 hover:bg-purple-100" : ""}`}>
+    <button onClick={onClick} className={`flex w-full items-center justify-between px-4 py-3.5 text-left transition hover:bg-[#161618] ${purple ? "bg-purple-500/10 hover:bg-purple-500/20" : ""}`}>
       <div className="flex items-center gap-3">
-        <div className={`flex h-8 w-8 items-center justify-center rounded-full ${purple ? "bg-purple-100" : "bg-[#161618]"}`}>
+        <div className={`flex h-8 w-8 items-center justify-center rounded-full ${purple ? "bg-purple-500/20" : "bg-[#161618]"}`}>
           {icon}
         </div>
-        <span className={`text-sm font-medium ${purple ? "text-purple-900" : "text-white/70"}`}>{label}</span>
+        <span className={`text-sm font-medium ${purple ? "text-purple-400" : "text-white/70"}`}>{label}</span>
       </div>
       <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke={purple ? "#9333ea" : "#9ca3af"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M6 4l4 4-4 4"/>

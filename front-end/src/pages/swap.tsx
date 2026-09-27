@@ -232,18 +232,18 @@ function TokenSelector({
 }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-[#111113]/50 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-[26.25rem] overflow-hidden rounded-t-3xl bg-black pb-10 shadow-2xl"
+        className="w-full max-w-[26.25rem] overflow-hidden rounded-t-3xl bg-[#111113] pb-10 shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-5 pt-5 pb-4">
           <p className="text-base font-bold text-white/90">Select token</p>
           <button
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-white/[0.07] text-white/50 hover:bg-gray-200 transition"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-white/[0.07] text-white/50 hover:bg-white/10 transition"
           >
             <svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
               <path d="M1 1l12 12M13 1L1 13" />
@@ -535,7 +535,7 @@ export default function Swap() {
               href={`${activeChain.blockExplorer}/tx/${txHash}`}
               target="_blank"
               rel="noreferrer"
-              className="flex items-center gap-1.5 rounded-full border border-blue-100 bg-emerald-500/10 px-4 py-2 text-xs font-semibold text-emerald-400 transition hover:bg-blue-100"
+              className="flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 text-xs font-semibold text-emerald-400 transition hover:bg-emerald-500/20"
             >
               View on explorer
               <svg viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -562,7 +562,7 @@ export default function Swap() {
     return (
       <Screen back onBack={() => setStep("idle")}>
         <div className="flex flex-1 flex-col items-center justify-center pb-16 text-center gap-4">
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-red-50">
+          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-red-500/10">
             <svg viewBox="0 0 40 40" width="40" height="40" fill="none">
               <circle cx="20" cy="20" r="20" fill="#ef4444" opacity="0.15" />
               <path d="M14 14l12 12M26 14L14 26" stroke="#ef4444" strokeWidth="3" strokeLinecap="round" />
@@ -588,7 +588,7 @@ export default function Swap() {
         <Title sub={`Swap tokens on ${activeChain.name} via Uniswap`}>Swap</Title>
 
         {/* ── Swap card ─────────────────────────────────────────────────── */}
-        <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-black shadow-sm">
+        <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#111113] shadow-sm">
 
           {/* You pay */}
           <div className="px-4 pt-5 pb-4">
@@ -597,7 +597,7 @@ export default function Swap() {
               {maxBalanceLabel !== null && (
                 <button
                   onClick={setMax}
-                  className="rounded-lg bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-400 hover:bg-blue-100 transition"
+                  className="rounded-lg bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-400 hover:bg-emerald-500/20 transition"
                 >
                   Max: {maxBalanceLabel} {fromToken.symbol}
                 </button>
@@ -624,7 +624,7 @@ export default function Swap() {
               </button>
             </div>
             {insufficientBalance && (
-              <p className="mt-2 text-xs font-medium text-red-500">Insufficient balance</p>
+              <p className="mt-2 text-xs font-medium text-red-400">Insufficient balance</p>
             )}
           </div>
 
@@ -633,7 +633,7 @@ export default function Swap() {
             <div className="absolute inset-x-0 top-1/2 border-t border-white/[0.06]" />
             <button
               onClick={flipTokens}
-              className="relative z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/[0.08] bg-black shadow-sm transition hover:border-blue-300 hover:bg-emerald-500/10 active:scale-90"
+              className="relative z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/[0.08] bg-[#111113] shadow-sm transition hover:border-emerald-500/50 hover:bg-emerald-500/10 active:scale-90"
               aria-label="Flip tokens"
             >
               {/* Simple up/down arrows — clear swap icon */}
@@ -653,7 +653,7 @@ export default function Swap() {
                   ? <div className="h-9 w-36 animate-pulse rounded-xl bg-white/[0.07]" />
                   : outputAmount
                     ? <p className="text-3xl font-bold text-white/90">≈{outputAmount}</p>
-                    : <p className="text-3xl font-bold text-gray-200">0.00</p>
+                    : <p className="text-3xl font-bold text-white/20">0.00</p>
                 }
               </div>
               <button
@@ -672,7 +672,7 @@ export default function Swap() {
 
         {/* ── Quote details ─────────────────────────────────────────────── */}
         {quote && !quoteLoading && (
-          <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-black shadow-sm">
+          <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#111113] shadow-sm">
             <div className="divide-y divide-white/[0.06]">
               <div className="flex items-center justify-between px-4 py-3">
                 <p className="text-xs text-white/50">Route</p>
@@ -694,11 +694,11 @@ export default function Swap() {
 
         {/* ── Quote error ───────────────────────────────────────────────── */}
         {quoteError && (
-          <div className="flex items-start gap-2.5 rounded-2xl border border-red-100 bg-red-50 px-4 py-3.5">
+          <div className="flex items-start gap-2.5 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3.5">
             <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 shrink-0">
               <circle cx="8" cy="8" r="6" /><path d="M8 5v3M8 10.5v.5" />
             </svg>
-            <p className="text-xs text-red-700 leading-relaxed">{quoteError}</p>
+            <p className="text-xs text-red-400 leading-relaxed">{quoteError}</p>
           </div>
         )}
 
@@ -718,7 +718,7 @@ export default function Swap() {
         <button
           disabled={!canSwap}
           onClick={executeSwap}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 py-4 text-sm font-bold text-white shadow-sm shadow-blue-200 transition hover:bg-emerald-400 active:scale-[.98] disabled:opacity-40 disabled:cursor-not-allowed"
+          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 py-4 text-sm font-bold text-white shadow-sm shadow-emerald-900/30 transition hover:bg-emerald-400 active:scale-[.98] disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {step === "signing" ? (
             <>

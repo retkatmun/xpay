@@ -103,20 +103,20 @@ export default function VerifyStep() {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center bg-white px-5 py-12">
+    <div className="flex min-h-dvh flex-col items-center justify-center bg-[#111113] px-5 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <span className="font-[var(--font-instrument-serif)] text-3xl text-blue-600">XPay</span>
+          <span className="font-[var(--font-instrument-serif)] text-3xl text-emerald-400">XPay</span>
         </div>
 
-        <h1 className="font-[var(--font-instrument-serif)] text-[1.75rem] leading-tight tracking-[-0.02em] text-gray-900">
+        <h1 className="font-[var(--font-instrument-serif)] text-[1.75rem] leading-tight tracking-[-0.02em] text-white/90">
           Enter the code
         </h1>
         {phone && (
-          <p className="mt-2 text-sm text-gray-500">
-            Sent to <span className="tabular-nums text-gray-800">{prettyPhone(phone)}</span>.{" "}
+          <p className="mt-2 text-sm text-white/50">
+            Sent to <span className="tabular-nums text-white/80">{prettyPhone(phone)}</span>.{" "}
             <button type="button" onClick={() => navigate("/phone", { replace: true })}
-              className="text-blue-600 hover:underline">Change</button>
+              className="text-emerald-400 hover:underline">Change</button>
           </p>
         )}
 
@@ -133,7 +133,7 @@ export default function VerifyStep() {
 
         <div className="mt-7">
           <CodeInput label="6-digit code" length={6} value={code} onChange={handleCode} error={!!error} autoFocus />
-          {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+          {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
         </div>
 
         <div className="mt-6">
@@ -147,7 +147,7 @@ export default function VerifyStep() {
               : "Resend code"}
           </Button>
           {resendError && (
-            <p className="mt-2 text-center text-sm text-red-600">{resendError}</p>
+            <p className="mt-2 text-center text-sm text-red-400">{resendError}</p>
           )}
         </div>
       </div>

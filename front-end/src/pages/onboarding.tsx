@@ -83,7 +83,7 @@ function StepBar({ current }: { current: Step }) {
               <div
                 className={[
                   "mx-2 mb-5 h-px flex-1 transition-all duration-500",
-                  i < idx ? "bg-emerald-500/100" : "bg-gray-200",
+                  i < idx ? "bg-emerald-500/100" : "bg-white/[0.07]",
                 ].join(" ")}
               />
             )}
@@ -176,7 +176,7 @@ function PinPad({
       </div>
 
       {error && (
-        <p className="mt-4 text-center text-sm font-medium text-red-600">{error}</p>
+        <p className="mt-4 text-center text-sm font-medium text-red-400">{error}</p>
       )}
     </div>
   );
@@ -486,7 +486,7 @@ export default function Onboarding() {
                   <span className="text-[10px] font-medium leading-tight text-white/50">Instant transfers</span>
                 </div>
                 <div className="flex flex-col items-center gap-2 rounded-xl bg-[#161618] px-2 py-3.5 text-center">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-100">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/20">
                     <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="#16a34a" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                       <circle cx="10" cy="10" r="8"/>
                       <path d="M2 10h16M10 2a14 14 0 010 16M10 2a14 14 0 000 16"/>
@@ -564,7 +564,7 @@ export default function Onboarding() {
                     placeholder="Bola Adeyemi"
                     autoComplete="name"
                     autoFocus
-                    className="h-12 w-full rounded-xl border border-white/[0.08] bg-black px-4 text-base text-white/90 outline-none transition placeholder:text-white/40 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                    className="h-12 w-full rounded-xl border border-white/[0.08] bg-[#111113] px-4 text-base text-white/90 outline-none transition placeholder:text-white/40 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
                   />
                 </div>
 
@@ -586,7 +586,7 @@ export default function Onboarding() {
                   <div className="relative">
                     <div
                       className={[
-                        "flex h-12 items-center rounded-xl border bg-black transition-all duration-150",
+                        "flex h-12 items-center rounded-xl border bg-[#111113] transition-all duration-150",
                         usernameState === "taken"
                           ? "border-red-400 ring-2 ring-red-100"
                           : usernameState === "ok"
@@ -622,8 +622,8 @@ export default function Onboarding() {
                   </div>
                   <p className={[
                     "mt-1.5 text-xs",
-                    usernameState === "ok" ? "text-green-600"
-                    : usernameState === "taken" ? "text-red-500"
+                    usernameState === "ok" ? "text-emerald-400"
+                    : usernameState === "taken" ? "text-red-400"
                     : "text-white/40",
                   ].join(" ")}>
                     {usernameState === "ok"
@@ -717,7 +717,7 @@ export default function Onboarding() {
                   <select
                     value={draft.courseName}
                     onChange={e => { patch({ courseName: e.target.value }); setError(null); }}
-                    className="h-12 w-full rounded-xl border border-white/[0.08] bg-black px-4 text-sm text-white/90 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                    className="h-12 w-full rounded-xl border border-white/[0.08] bg-[#111113] px-4 text-sm text-white/90 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
                   >
                     <option value="">Select a course…</option>
                     <option value="Web3 Fundamentals">Web3 Fundamentals</option>
@@ -729,7 +729,7 @@ export default function Onboarding() {
                   </select>
                   {draft.courseName === "other" && (
                     <input
-                      className="mt-2 h-12 w-full rounded-xl border border-white/[0.08] bg-black px-4 text-sm text-white/90 outline-none transition placeholder:text-white/40 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                      className="mt-2 h-12 w-full rounded-xl border border-white/[0.08] bg-[#111113] px-4 text-sm text-white/90 outline-none transition placeholder:text-white/40 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
                       placeholder="Enter course name"
                       onChange={e => patch({ courseName: e.target.value })}
                     />
@@ -746,7 +746,7 @@ export default function Onboarding() {
                         className={["flex-1 rounded-xl border py-2.5 text-xs font-semibold capitalize transition",
                           draft.programType === t
                             ? "border-emerald-500 bg-emerald-500/10 text-emerald-400"
-                            : "border-white/[0.08] bg-black text-white/60 hover:bg-[#1c1c1e]",
+                            : "border-white/[0.08] bg-[#111113] text-white/60 hover:bg-[#1c1c1e]",
                         ].join(" ")}>
                         {t}
                       </button>
@@ -763,7 +763,7 @@ export default function Onboarding() {
                     value={draft.paymentAmount}
                     onChange={e => { patch({ paymentAmount: e.target.value }); setError(null); }}
                     placeholder="e.g. 50000"
-                    className="h-12 w-full rounded-xl border border-white/[0.08] bg-black px-4 text-sm text-white/90 outline-none transition placeholder:text-white/40 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                    className="h-12 w-full rounded-xl border border-white/[0.08] bg-[#111113] px-4 text-sm text-white/90 outline-none transition placeholder:text-white/40 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
                   />
                 </div>
 
@@ -772,7 +772,7 @@ export default function Onboarding() {
                   <select
                     value={draft.paymentMethod}
                     onChange={e => patch({ paymentMethod: e.target.value })}
-                    className="h-12 w-full rounded-xl border border-white/[0.08] bg-black px-4 text-sm text-white/90 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                    className="h-12 w-full rounded-xl border border-white/[0.08] bg-[#111113] px-4 text-sm text-white/90 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
                   >
                     <option value="">Select…</option>
                     <option value="bank_transfer">Bank Transfer</option>
@@ -788,7 +788,7 @@ export default function Onboarding() {
                     value={draft.paymentReference}
                     onChange={e => patch({ paymentReference: e.target.value })}
                     placeholder="Bank teller number or transaction ref"
-                    className="h-12 w-full rounded-xl border border-white/[0.08] bg-black px-4 text-sm text-white/90 outline-none transition placeholder:text-white/40 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                    className="h-12 w-full rounded-xl border border-white/[0.08] bg-[#111113] px-4 text-sm text-white/90 outline-none transition placeholder:text-white/40 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
                   />
                 </div>
 
@@ -823,8 +823,8 @@ export default function Onboarding() {
           {step === "done" && (
             <div className="flex flex-col items-center text-center animate-[fadeSlideUp_0.4s_ease-out]">
               <div className="relative flex h-24 w-24 items-center justify-center">
-                <div className="absolute inset-0 rounded-full bg-green-100 animate-[ping_0.9s_ease-out_1]" />
-                <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-green-100">
+                <div className="absolute inset-0 rounded-full bg-emerald-500/20 animate-[ping_0.9s_ease-out_1]" />
+                <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-emerald-500/20">
                   <svg viewBox="0 0 48 48" width="40" height="40" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M10 24l10 10 18-20" />
                   </svg>

@@ -257,22 +257,22 @@ function TimelineStep({
           className={[
             "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
             failed
-              ? "bg-red-100 text-red-600"
+              ? "bg-red-500/20 text-red-400"
               : done
-              ? "bg-green-100 text-green-600"
+              ? "bg-emerald-500/20 text-emerald-400"
               : active
-              ? "bg-blue-100 text-emerald-400 animate-pulse"
+              ? "bg-sky-500/20 text-sky-400 animate-pulse"
               : "bg-white/[0.07] text-white/40",
           ].join(" ")}
         >
           {failed ? "✕" : done ? "✓" : active ? "◉" : "○"}
         </div>
         {!isLast && (
-          <div className={`mt-1 w-px flex-1 ${done ? "bg-green-200" : "bg-white/[0.07]"}`} style={{ minHeight: 16 }} />
+          <div className={`mt-1 w-px flex-1 ${done ? "bg-emerald-500/30" : "bg-white/[0.07]"}`} style={{ minHeight: 16 }} />
         )}
       </div>
       <div className="pb-3">
-        <p className={`text-xs font-semibold ${failed ? "text-red-600" : done ? "text-white/90" : active ? "text-emerald-400" : "text-white/40"}`}>
+        <p className={`text-xs font-semibold ${failed ? "text-red-400" : done ? "text-white/90" : active ? "text-emerald-400" : "text-white/40"}`}>
           {label}
         </p>
         {description && <p className="mt-0.5 text-[0.68rem] text-white/40">{description}</p>}

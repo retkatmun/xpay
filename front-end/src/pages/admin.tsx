@@ -66,20 +66,20 @@ function chainName(chainId: number | null): string {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  completed:             "bg-green-100 text-green-700",
-  payout_processing:     "bg-blue-100 text-emerald-400",
-  payout_pending:        "bg-blue-100 text-emerald-400",
-  conversion_processing: "bg-yellow-100 text-yellow-700",
-  blockchain_confirmed:  "bg-yellow-100 text-yellow-700",
-  blockchain_detected:   "bg-yellow-100 text-yellow-700",
-  awaiting_payment:      "bg-white/[0.07] text-white/60",
-  created:               "bg-white/[0.07] text-white/60",
-  manual_review:         "bg-purple-100 text-purple-700",
-  blockchain_failed:     "bg-red-100 text-red-700",
-  payout_failed:         "bg-red-100 text-red-700",
-  cancelled:             "bg-red-100 text-red-600",
-  expired:               "bg-red-100 text-red-600",
-  rejected:              "bg-red-100 text-red-700",
+  completed:             "bg-emerald-500/20 text-emerald-400",
+  payout_processing:     "bg-sky-500/20 text-sky-400",
+  payout_pending:        "bg-sky-500/20 text-sky-400",
+  conversion_processing: "bg-yellow-500/20 text-yellow-400",
+  blockchain_confirmed:  "bg-yellow-500/20 text-yellow-400",
+  blockchain_detected:   "bg-yellow-500/20 text-yellow-400",
+  awaiting_payment:      "bg-white/[0.07] text-white/50",
+  created:               "bg-white/[0.07] text-white/50",
+  manual_review:         "bg-purple-500/20 text-purple-400",
+  blockchain_failed:     "bg-red-500/20 text-red-400",
+  payout_failed:         "bg-red-500/20 text-red-400",
+  cancelled:             "bg-red-500/20 text-red-400",
+  expired:               "bg-red-500/20 text-red-400",
+  rejected:              "bg-red-500/20 text-red-400",
 }
 
 function StatusPill({ status }: { status: string }) {
@@ -95,7 +95,7 @@ function RoleBadge({ role }: { role: string }) {
   return (
     <span className={[
       "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold",
-      role === "admin" ? "bg-purple-100 text-purple-700" : "bg-white/[0.07] text-white/60",
+      role === "admin" ? "bg-purple-500/20 text-purple-400" : "bg-white/[0.07] text-white/50",
     ].join(" ")}>
       {role === "admin" && (
         <svg viewBox="0 0 12 12" width="9" height="9" fill="currentColor">
@@ -114,18 +114,25 @@ function StatCard({
   color?: "gray"|"green"|"blue"|"red"|"purple"|"yellow"
 }) {
   const bg: Record<string, string> = {
-    gray: "border-white/[0.06] bg-[#1a1a1c]", green: "border-green-100 bg-green-50",
-    blue: "border-blue-100 bg-emerald-500/10", red: "border-red-100 bg-red-50",
-    purple: "border-purple-100 bg-purple-50", yellow: "border-yellow-100 bg-yellow-50",
+    gray:   "border-white/[0.06] bg-[#1a1a1c]",
+    green:  "border-emerald-500/20 bg-emerald-500/10",
+    blue:   "border-sky-500/20 bg-sky-500/10",
+    red:    "border-red-500/20 bg-red-500/10",
+    purple: "border-purple-500/20 bg-purple-500/10",
+    yellow: "border-yellow-500/20 bg-yellow-500/10",
   }
   const txt: Record<string, string> = {
-    gray: "text-white/90", green: "text-green-700", blue: "text-emerald-400",
-    red: "text-red-700", purple: "text-purple-700", yellow: "text-yellow-700",
+    gray:   "text-white/90",
+    green:  "text-emerald-400",
+    blue:   "text-sky-400",
+    red:    "text-red-400",
+    purple: "text-purple-400",
+    yellow: "text-yellow-400",
   }
   return (
     <div className={`rounded-xl border px-4 py-3 shadow-sm ${bg[color]}`}>
       <p className={`text-xl font-bold tabular-nums ${txt[color]}`}>{value}</p>
-      {sub && <p className="mt-0.5 text-xs tabular-nums text-white/50">{sub}</p>}
+      {sub && <p className="mt-0.5 text-xs tabular-nums text-white/40">{sub}</p>}
       <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-white/40">{label}</p>
     </div>
   )
@@ -227,10 +234,10 @@ function OverviewTab({ stats, transactions, loading }: {
         {transactions.length === 0
           ? <p className="px-4 py-8 text-center text-sm text-white/40">No transactions yet.</p>
           : transactions.slice(0, 10).map(tx => (
-            <div key={tx.id} className="flex items-center gap-3 border-b border-gray-50 px-4 py-3 last:border-0">
+            <div key={tx.id} className="flex items-center gap-3 border-b border-white/[0.04] px-4 py-3 last:border-0">
               <div className={[
                 "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold",
-                tx.direction === "in" ? "bg-green-50 text-green-600" : "bg-emerald-500/10 text-emerald-400",
+                tx.direction === "in" ? "bg-emerald-500/10 text-emerald-400" : "bg-white/[0.07] text-white/50",
               ].join(" ")}>
                 {tx.direction === "in" ? "↓" : "↑"}
               </div>
@@ -321,7 +328,7 @@ function UsersTab({ users, loading, currentUserId, onToggleRole, updating }: {
         {(["display_name","username","role","created_at"] as const).map(col => (
           <button key={col} onClick={() => handleSort(col)}
             className={["rounded-lg border px-2.5 py-1 font-semibold transition",
-              sortKey === col ? "border-blue-500 bg-emerald-500/10 text-emerald-400" : "border-white/[0.08] bg-white text-white/50 hover:border-gray-300",
+              sortKey === col ? "border-emerald-500 bg-emerald-500/10 text-emerald-400" : "border-white/[0.08] bg-white/[0.04] text-white/50 hover:border-white/20",
             ].join(" ")}>
             {col === "display_name" ? "Name" : col === "created_at" ? "Joined" : col[0].toUpperCase()+col.slice(1)}
             <Arrow col={col} />
@@ -337,10 +344,10 @@ function UsersTab({ users, loading, currentUserId, onToggleRole, updating }: {
             const isSelf = user.id === currentUserId
             const isOpen = expanded === user.id
             return (
-              <div key={user.id} className={i < sorted.length-1 ? "border-b border-gray-50" : ""}>
+              <div key={user.id} className={i < sorted.length-1 ? "border-b border-white/[0.04]" : ""}>
                 <button type="button" onClick={() => setExpanded(isOpen ? null : user.id)}
                   className={["flex w-full items-center gap-3 px-4 py-3 text-left transition",
-                    isSelf ? "bg-emerald-500/10/40" : "hover:bg-[#161618]"].join(" ")}>
+                    isSelf ? "bg-emerald-500/[0.06]" : "hover:bg-[#161618]"].join(" ")}>
                   <Avatar name={user.display_name} size={38} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
@@ -357,7 +364,7 @@ function UsersTab({ users, loading, currentUserId, onToggleRole, updating }: {
                 </button>
 
                 {isOpen && (
-                  <div className="border-t border-gray-50 bg-[#161618]/50 px-4 py-3 space-y-2">
+                  <div className="border-t border-white/[0.04] bg-[#161618]/50 px-4 py-3 space-y-2">
                     <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
                       <div>
                         <p className="font-medium text-white/40">Account #</p>
@@ -388,8 +395,8 @@ function UsersTab({ users, loading, currentUserId, onToggleRole, updating }: {
                       <button onClick={() => onToggleRole(user)} disabled={updating === user.id}
                         className={["mt-1 flex h-8 w-full items-center justify-center gap-1.5 rounded-lg text-xs font-semibold transition",
                           user.role === "admin"
-                            ? "bg-red-50 text-red-600 hover:bg-red-100"
-                            : "bg-purple-50 text-purple-700 hover:bg-purple-100",
+                            ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
+                            : "bg-purple-500/20 text-purple-400 hover:bg-purple-500/30",
                         ].join(" ")}>
                         {updating === user.id ? <Spinner className="h-3.5 w-3.5" />
                           : user.role === "admin" ? "Revoke Admin" : "Make Admin"}
@@ -465,7 +472,7 @@ function TransactionsTab({ transactions, users, loading }: {
         {(["all","out","in"] as const).map(d => (
           <button key={d} onClick={() => setDir(d)}
             className={["rounded-full border px-3 py-1 text-xs font-semibold transition",
-              dirFilter === d ? "border-blue-500 bg-emerald-500/100 text-white" : "border-white/[0.08] bg-white text-white/50 hover:border-gray-300",
+              dirFilter === d ? "border-emerald-500 bg-emerald-500/20 text-emerald-400" : "border-white/[0.08] bg-white/[0.04] text-white/50 hover:border-white/20",
             ].join(" ")}>
             {d === "all" ? "All" : d === "out" ? "↑ Sent" : "↓ Received"}
           </button>
@@ -476,14 +483,14 @@ function TransactionsTab({ transactions, users, loading }: {
       <div className="flex flex-wrap gap-1.5">
         <button onClick={() => setStatus("all")}
           className={["rounded-full border px-2.5 py-0.5 text-[11px] font-semibold transition",
-            statusFilter === "all" ? "border-gray-700 bg-gray-700 text-white" : "border-white/[0.08] bg-white text-white/50",
+            statusFilter === "all" ? "border-white/20 bg-white/10 text-white/80" : "border-white/[0.08] bg-white/[0.04] text-white/40",
           ].join(" ")}>All</button>
         {allStatuses.map(s => (
           <button key={s} onClick={() => setStatus(s)}
             className={["rounded-full border px-2.5 py-0.5 text-[11px] font-semibold transition",
               statusFilter === s
-                ? `${STATUS_COLORS[s] ?? "bg-gray-200 text-white/70"} border-transparent`
-                : "border-white/[0.08] bg-white text-white/50",
+                ? `${STATUS_COLORS[s] ?? "bg-white/10 text-white/70"} border-transparent`
+                : "border-white/[0.08] bg-white/[0.04] text-white/40",
             ].join(" ")}>
             {s.replace(/_/g, " ")}
           </button>
@@ -504,11 +511,11 @@ function TransactionsTab({ transactions, users, loading }: {
             const feeNgn      = BigInt(tx.fee_ngn || "0")
 
             return (
-              <div key={tx.id} className={i < filtered.length-1 ? "border-b border-gray-50" : ""}>
+              <div key={tx.id} className={i < filtered.length-1 ? "border-b border-white/[0.04]" : ""}>
                 <button type="button" onClick={() => setExpanded(isOpen ? null : tx.id)}
                   className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-[#161618]">
                   <div className={["flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold",
-                    tx.direction === "in" ? "bg-green-50 text-green-600" : "bg-emerald-500/10 text-emerald-400"].join(" ")}>
+                    tx.direction === "in" ? "bg-emerald-500/10 text-emerald-400" : "bg-white/[0.07] text-white/50"].join(" ")}>
                     {tx.direction === "in" ? "↓" : "↑"}
                   </div>
                   <div className="min-w-0 flex-1">
@@ -528,7 +535,7 @@ function TransactionsTab({ transactions, users, loading }: {
                 </button>
 
                 {isOpen && (
-                  <div className="border-t border-gray-50 bg-[#161618]/50 px-4 py-3">
+                  <div className="border-t border-white/[0.04] bg-[#161618]/50 px-4 py-3">
                     <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-xs">
                       <div>
                         <p className="font-medium text-white/40">USDC Amount</p>
@@ -614,19 +621,19 @@ function TransactionsTab({ transactions, users, loading }: {
 // ─── Enrollments Tab ──────────────────────────────────────────────────────────
 
 const ENROLL_STATUS_COLORS: Record<string, string> = {
-  pending:   "bg-yellow-100 text-yellow-700",
-  active:    "bg-green-100 text-green-700",
-  suspended: "bg-orange-100 text-orange-700",
-  completed: "bg-blue-100 text-emerald-400",
-  cancelled: "bg-red-100 text-red-600",
+  pending:   "bg-yellow-500/20 text-yellow-400",
+  active:    "bg-emerald-500/20 text-emerald-400",
+  suspended: "bg-orange-500/20 text-orange-400",
+  completed: "bg-sky-500/20 text-sky-400",
+  cancelled: "bg-red-500/20 text-red-400",
 }
 
 const PAY_STATUS_COLORS: Record<string, string> = {
-  pending:  "bg-yellow-100 text-yellow-700",
-  approved: "bg-green-100 text-green-700",
-  rejected: "bg-red-100 text-red-700",
-  refunded: "bg-purple-100 text-purple-700",
-  failed:   "bg-red-100 text-red-600",
+  pending:  "bg-yellow-500/20 text-yellow-400",
+  approved: "bg-emerald-500/20 text-emerald-400",
+  rejected: "bg-red-500/20 text-red-400",
+  refunded: "bg-purple-500/20 text-purple-400",
+  failed:   "bg-red-500/20 text-red-400",
 }
 
 function EnrollmentsTab({
@@ -697,20 +704,20 @@ function EnrollmentsTab({
       <div className="flex flex-wrap gap-2">
         {["all","pending","active","completed","cancelled"].map(s => (
           <button key={s} onClick={() => setStatusFilter(s)}
-            className={["rounded-full px-3 py-1 text-xs font-semibold transition", statusFilter === s ? "bg-emerald-500 text-white" : "bg-white/[0.07] text-white/60 hover:bg-gray-200"].join(" ")}>
+            className={["rounded-full px-3 py-1 text-xs font-semibold transition", statusFilter === s ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-white/[0.07] text-white/50 hover:bg-white/10"].join(" ")}>
             {s === "all" ? "All status" : s}
           </button>
         ))}
-        <span className="mx-1 text-white/30">|</span>
+        <span className="mx-1 text-white/20">|</span>
         {["all","pending","approved","rejected","none"].map(s => (
           <button key={s} onClick={() => setPayFilter(s)}
-            className={["rounded-full px-3 py-1 text-xs font-semibold transition", payFilter === s ? "bg-purple-600 text-white" : "bg-white/[0.07] text-white/60 hover:bg-gray-200"].join(" ")}>
+            className={["rounded-full px-3 py-1 text-xs font-semibold transition", payFilter === s ? "bg-purple-500/20 text-purple-400 border border-purple-500/30" : "bg-white/[0.07] text-white/50 hover:bg-white/10"].join(" ")}>
             {s === "all" ? "All payments" : s === "none" ? "No payment" : `Pay: ${s}`}
           </button>
         ))}
       </div>
 
-      {actionError && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{actionError}</div>}
+      {actionError && <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">{actionError}</div>}
 
       {/* Enrollment list */}
       {filtered.length === 0
@@ -767,7 +774,7 @@ function EnrollmentsTab({
                   {progress && (
                     <div>
                       <p className="mb-1 text-xs font-semibold text-white/60">Progress — {progress.completed_lessons}/{progress.total_lessons} lessons ({pct}%)</p>
-                      <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-white/[0.07]">
                         <div className="h-full rounded-full bg-emerald-500/100 transition-all" style={{ width: `${pct}%` }} />
                       </div>
                       {progress.last_activity_at && (
@@ -781,7 +788,7 @@ function EnrollmentsTab({
                     <div className="space-y-3">
                       <p className="text-xs font-semibold text-white/60">Payment Records</p>
                       {enroll.payments.map(pay => (
-                        <div key={pay.id} className="rounded-xl border border-white/[0.08] bg-black p-3 space-y-2">
+                        <div key={pay.id} className="rounded-xl border border-white/[0.08] bg-[#111113] p-3 space-y-2">
                           <div className="flex items-center justify-between">
                             <span className="text-sm font-bold text-white/90">₦{Number(pay.amount).toLocaleString()} {pay.currency}</span>
                             <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${PAY_STATUS_COLORS[pay.status] ?? "bg-white/[0.07]"}`}>{pay.status}</span>
@@ -871,8 +878,8 @@ function NotificationsPanel({
       {notifications.length === 0
         ? <p className="py-8 text-center text-sm text-white/40">No notifications yet.</p>
         : notifications.map(n => (
-          <div key={n.id} className={["flex gap-3 rounded-xl p-3 transition", n.is_read ? "bg-[#161618]" : "bg-emerald-500/10 border border-blue-100"].join(" ")}>
-            <div className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${n.is_read ? "bg-gray-200 text-white/50" : "bg-blue-200 text-emerald-400"}`}>
+          <div key={n.id} className={["flex gap-3 rounded-xl p-3 transition", n.is_read ? "bg-[#1a1a1c]" : "bg-sky-500/10 border border-sky-500/20"].join(" ")}>
+            <div className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${n.is_read ? "bg-white/[0.07] text-white/40" : "bg-sky-500/20 text-sky-400"}`}>
               {n.type === "new_enrollment" ? "📋" : n.type === "payment_approved" ? "✓" : n.type === "payment_rejected" ? "✕" : "🔔"}
             </div>
             <div className="min-w-0 flex-1">
@@ -927,11 +934,11 @@ export default function Admin() {
       } = await import("@/lib/supabase")
 
       const [p, t, s, e, n] = await Promise.all([
-        fetchAllProfiles(),
-        fetchAllTransactions(),
-        fetchAdminStats(),
-        fetchAllEnrollments(),
-        fetchAdminNotifications(),
+        fetchAllProfiles().catch(() => []),
+        fetchAllTransactions().catch(() => []),
+        fetchAdminStats().catch(() => null),
+        fetchAllEnrollments().catch(() => []),
+        fetchAdminNotifications().catch(() => []),
       ])
       setUsers(p as XPayProfile[])
       setTransactions(t)
@@ -1038,12 +1045,12 @@ export default function Admin() {
             {TABS.map(t => (
               <button key={t.key} onClick={() => setTab(t.key)}
                 className={["relative flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition whitespace-nowrap",
-                  tab === t.key ? "bg-white text-white/90 shadow-sm" : "text-white/50 hover:text-white/70",
+                  tab === t.key ? "bg-white/10 text-white shadow-sm" : "text-white/50 hover:text-white/70",
                 ].join(" ")}>
                 {t.label}
                 {t.count !== undefined && (
                   <span className={["rounded-full px-1.5 py-0.5 text-[9px] font-bold",
-                    tab === t.key ? "bg-blue-100 text-emerald-400" : "bg-gray-200 text-white/50",
+                    tab === t.key ? "bg-sky-500/20 text-sky-400" : "bg-white/[0.07] text-white/40",
                   ].join(" ")}>{t.count}</span>
                 )}
                 {t.badge !== undefined && t.badge > 0 && (

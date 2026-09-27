@@ -131,8 +131,8 @@ function TokenPicker({
         className={[
           "flex flex-1 items-center gap-2 rounded-xl border px-3 py-2.5 text-left transition",
           value === "usdc"
-            ? "border-blue-500 bg-emerald-500/10 ring-2 ring-blue-100"
-            : "border-white/[0.08] bg-black hover:border-gray-300",
+            ? "border-emerald-500 bg-emerald-500/10 ring-2 ring-emerald-500/20"
+            : "border-white/[0.08] bg-[#111113] hover:border-white/20",
         ].join(" ")}
       >
         {/* USDC coin icon */}
@@ -162,14 +162,14 @@ function TokenPicker({
           usdcOnly
             ? "cursor-not-allowed border-white/[0.06] bg-[#161618] opacity-60"
             : value === "native"
-            ? "border-gray-700 bg-gray-900 ring-2 ring-gray-200"
-            : "border-white/[0.08] bg-black hover:border-gray-300",
+            ? "border-white/20 bg-[#1a1a1c] ring-2 ring-white/10"
+            : "border-white/[0.08] bg-[#111113] hover:border-white/20",
         ].join(" ")}
       >
         {/* Native coin icon */}
         <span className={[
           "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
-          value === "native" && !usdcOnly ? "bg-black text-white/90" : "bg-gray-200 text-white/60",
+          value === "native" && !usdcOnly ? "bg-[#111113] text-white/90" : "bg-white/[0.07] text-white/40",
         ].join(" ")}>
           {chain.nativeSymbol.slice(0, 3)}
         </span>
@@ -234,7 +234,7 @@ function NetworkAndTokenPicker({
                 "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition",
                 selectedChain.id === chain.id
                   ? "border-transparent text-white shadow-sm"
-                  : "border-white/[0.08] bg-black text-white/50 hover:border-gray-300",
+                  : "border-white/[0.08] bg-[#111113] text-white/50 hover:border-white/20",
               ].join(" ")}
               style={selectedChain.id === chain.id ? { backgroundColor: chain.color } : {}}
             >
@@ -819,7 +819,7 @@ export default function Send() {
       : "Sent!"
 
     const iconColor = pending ? "#2563eb" : failed ? "#dc2626" : "#16a34a"
-    const iconBg    = pending ? "bg-emerald-500/10 ring-blue-50/50" : failed ? "bg-red-50 ring-red-50/50" : "bg-green-50 ring-green-50/50"
+    const iconBg    = pending ? "bg-emerald-500/10 ring-blue-50/50" : failed ? "bg-red-500/10 ring-red-500/20" : "bg-emerald-500/10 ring-emerald-500/20"
 
     return (
       <Screen bare>
@@ -840,7 +840,7 @@ export default function Send() {
           <h1 className="mt-6 font-[var(--font-instrument-serif)] text-[2rem] tracking-[-0.02em] text-white/90">{headline}</h1>
 
           {pending && <p className="mt-2 max-w-[280px] text-sm text-white/50">Your transfer is being processed. This usually takes a few minutes.</p>}
-          {failed  && <p className="mt-2 max-w-[280px] text-sm text-red-600">The transfer could not be completed. If money left your account, it will be reversed automatically.</p>}
+          {failed  && <p className="mt-2 max-w-[280px] text-sm text-red-400">The transfer could not be completed. If money left your account, it will be reversed automatically.</p>}
 
           {!failed && (
             <>
@@ -919,7 +919,7 @@ export default function Send() {
               <div className="flex items-center gap-3">
                 {xpayRecipient ? <Avatar name={recipientLabel} size={40} src={xpayRecipient.avatarUrl} />
                   : walletRecipient ? (
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-50">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-500/100/10">
                       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#7c3aed" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                         <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8M16 11h.01"/>
                       </svg>
@@ -972,7 +972,7 @@ export default function Send() {
 
           <div className="mt-8 text-center">
             <CodeInput label="4-digit PIN" length={4} value={pin} onChange={handlePin} secret autoFocus error={!!pinError} />
-            {pinError && <p className="mt-2 text-sm text-red-600">{pinError}</p>}
+            {pinError && <p className="mt-2 text-sm text-red-400">{pinError}</p>}
             {submitting
               ? <p className="mt-3 flex items-center justify-center gap-2 text-xs text-white/40"><Spinner className="h-3 w-3" /> Processing…</p>
               : <p className="mt-3 text-xs text-white/40">Your PIN securely authorises this transfer.</p>
@@ -992,14 +992,14 @@ export default function Send() {
         <div className="flex flex-1 flex-col pt-4 pb-10">
           <Title>Review transfer</Title>
 
-          <div className="mt-6 overflow-hidden rounded-2xl border border-white/[0.06] bg-black shadow-sm">
+          <div className="mt-6 overflow-hidden rounded-2xl border border-white/[0.06] bg-[#111113] shadow-sm">
             {/* Recipient */}
             <div className="p-4">
               <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-white/40">Recipient</p>
               <div className="flex items-center gap-3">
                 {xpayRecipient ? <Avatar name={recipientLabel} size={40} src={xpayRecipient.avatarUrl} />
                   : walletRecipient ? (
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-purple-50">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-purple-500/100/10">
                       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#7c3aed" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                         <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8M16 11h.01"/>
                       </svg>
@@ -1035,7 +1035,7 @@ export default function Send() {
                   </div>
                 ) : quoteError ? (
                   <div className="px-4 py-4">
-                    <p className="text-sm text-red-600">{quoteError}</p>
+                    <p className="text-sm text-red-400">{quoteError}</p>
                     <button type="button" className="mt-2 text-xs text-emerald-400 underline"
                       onClick={() => parsedUsdcAmount && void fetchQuote(parsedUsdcAmount)}>Retry</button>
                   </div>
@@ -1128,7 +1128,7 @@ export default function Send() {
           <div className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-[#161618] px-4 py-3">
             {xpayRecipient ? <Avatar name={recipientLabel} size={36} src={xpayRecipient.avatarUrl} />
               : walletRecipient ? (
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-purple-50">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-purple-500/100/10">
                   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#7c3aed" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8M16 11h.01"/>
                   </svg>
@@ -1236,7 +1236,7 @@ export default function Send() {
               onClick={handleContinueFromAmount}>
               {quoteLoading ? "Getting rate…" : "Continue"}
             </Button>
-            {quoteError && <p className="text-center text-sm text-red-600">{quoteError}</p>}
+            {quoteError && <p className="text-center text-sm text-red-400">{quoteError}</p>}
           </div>
         </div>
       </Screen>
@@ -1251,7 +1251,7 @@ export default function Send() {
       <Screen back onBack={() => { setStep("bank_account"); setVerifiedAccount(null) }}>
         <div className="flex flex-1 flex-col pt-4 pb-10">
           <Title sub="Please verify the account name carefully.">Confirm recipient</Title>
-          <div className="mt-6 overflow-hidden rounded-2xl border border-white/[0.06] bg-black shadow-sm">
+          <div className="mt-6 overflow-hidden rounded-2xl border border-white/[0.06] bg-[#111113] shadow-sm">
             <div className="flex items-center justify-center py-6">
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-50 ring-8 ring-green-50/60">
                 <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7"/></svg>
@@ -1304,8 +1304,8 @@ export default function Send() {
                   if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setBankOpen(v => !v) }
                   if (e.key === "Escape") { setBankOpen(false); setBankSearch("") }
                 }}
-                className={["flex h-11 cursor-pointer select-none items-center gap-2 rounded-xl border bg-black px-4 transition-colors duration-150 focus:outline-none",
-                  bankOpen ? "border-blue-500" : "border-white/[0.08] hover:border-gray-300"].join(" ")}>
+                className={["flex h-11 cursor-pointer select-none items-center gap-2 rounded-xl border bg-[#111113] px-4 transition-colors duration-150 focus:outline-none",
+                  bankOpen ? "border-blue-500" : "border-white/[0.08] hover:border-white/20"].join(" ")}>
                 {bankOpen ? (
                   <input value={bankSearch} onChange={e => setBankSearch(e.target.value)} placeholder="Search banks…" autoFocus
                     onClick={e => e.stopPropagation()}
@@ -1322,7 +1322,7 @@ export default function Send() {
               </div>
               {bankOpen && (
                 <ul role="listbox" aria-label="Banks"
-                  className="absolute z-50 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-white/[0.08] bg-black shadow-lg">
+                  className="absolute z-50 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-white/[0.08] bg-[#111113] shadow-lg">
                   {filteredBanks.length === 0
                     ? <li className="px-4 py-3 text-sm text-white/40">No banks found.</li>
                     : filteredBanks.map((bank, i) => (
@@ -1408,7 +1408,7 @@ export default function Send() {
                 autoFocus
                 autoComplete="off"
                 spellCheck={false}
-                className={["h-12 w-full rounded-xl border bg-black pl-4 pr-20 font-mono text-base text-white/90 outline-none transition",
+                className={["h-12 w-full rounded-xl border bg-[#111113] pl-4 pr-20 font-mono text-base text-white/90 outline-none transition",
                   "placeholder:font-sans placeholder:text-white/40",
                   walletAddressError ? "border-red-400 ring-2 ring-red-100" : "border-white/[0.08] focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"].join(" ")}
               />
@@ -1416,7 +1416,7 @@ export default function Send() {
                 <PasteButton onPaste={text => { setWalletAddressInput(text); setWalletAddressError(null) }} />
               </span>
             </div>
-            {walletAddressError && <p className="mt-1.5 text-xs text-red-600">{walletAddressError}</p>}
+            {walletAddressError && <p className="mt-1.5 text-xs text-red-400">{walletAddressError}</p>}
             {!walletAddressError && walletAddressInput && (
               <p className={`mt-1.5 text-xs ${isValidAddress ? "text-green-600" : "text-white/40"}`}>
                 {isValidAddress
@@ -1464,8 +1464,8 @@ export default function Send() {
 
           {/* Search box */}
           <div className="relative">
-            <div className={["flex h-14 items-center gap-3 rounded-2xl border bg-black px-4 transition-all duration-150",
-              query.length > 0 ? "border-blue-400 ring-2 ring-blue-100" : "border-white/[0.08]"].join(" ")}>
+            <div className={["flex h-14 items-center gap-3 rounded-2xl border bg-[#111113] px-4 transition-all duration-150",
+              query.length > 0 ? "border-blue-400 ring-2 ring-emerald-500/20" : "border-white/[0.08]"].join(" ")}>
               {isPhoneQuery
                 ? <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="#3b82f6" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/></svg>
                 : <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="#9ca3af" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M14.5 14.5l3.5 3.5"/></svg>
@@ -1499,7 +1499,7 @@ export default function Send() {
                 <PasteButton onPaste={text => { setQuery(text); setLookupError(null) }} />
               </div>
             )}
-            {lookupError && <p className="mt-2 text-xs text-red-600">{lookupError}</p>}
+            {lookupError && <p className="mt-2 text-xs text-red-400">{lookupError}</p>}
           </div>
 
           {/* Network picker (full — both USDC and native allowed) */}
@@ -1534,7 +1534,7 @@ export default function Send() {
                       disabled={noWallet}
                       onClick={() => { setXpayRecipient(p); setSuggestions([]); setStep("amount") }}
                       className={[
-                        "flex w-full items-center gap-3 rounded-2xl border bg-black p-3.5 text-left shadow-sm transition active:scale-[.99]",
+                        "flex w-full items-center gap-3 rounded-2xl border bg-[#111113] p-3.5 text-left shadow-sm transition active:scale-[.99]",
                         noWallet
                           ? "cursor-not-allowed border-white/[0.06] opacity-50"
                           : "border-white/[0.06] hover:border-blue-200 hover:bg-emerald-500/10/40",
@@ -1615,7 +1615,7 @@ export default function Send() {
         <div className="mt-8 space-y-3">
           {/* XPay user — USDC or native */}
           <button type="button" onClick={() => setStep("xpay_lookup")}
-            className="flex w-full items-center gap-4 rounded-2xl border border-white/[0.06] bg-black p-5 text-left shadow-sm transition hover:border-blue-200 hover:bg-emerald-500/10 active:scale-[.99]">
+            className="flex w-full items-center gap-4 rounded-2xl border border-white/[0.06] bg-[#111113] p-5 text-left shadow-sm transition hover:border-blue-200 hover:bg-emerald-500/10 active:scale-[.99]">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10">
               <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#2563eb" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
@@ -1635,7 +1635,7 @@ export default function Send() {
 
           {/* Convert to Naira — USDC only (converted to NGN) */}
           <button type="button" onClick={() => navigate("/convert")}
-            className="flex w-full items-center gap-4 rounded-2xl border border-white/[0.06] bg-black p-5 text-left shadow-sm transition hover:border-orange-200 hover:bg-orange-50/60 active:scale-[.99]">
+            className="flex w-full items-center gap-4 rounded-2xl border border-white/[0.06] bg-[#111113] p-5 text-left shadow-sm transition hover:border-orange-200 hover:bg-orange-50/60 active:scale-[.99]">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-50">
               <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="#ea580c" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M10 3v14M6 6l4-3 4 3M6 14l4 3 4-3"/>
@@ -1653,8 +1653,8 @@ export default function Send() {
 
           {/* Crypto wallet — USDC or native */}
           <button type="button" onClick={() => setStep("wallet_address")}
-            className="flex w-full items-center gap-4 rounded-2xl border border-white/[0.06] bg-black p-5 text-left shadow-sm transition hover:border-purple-200 hover:bg-purple-50 active:scale-[.99]">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-purple-50">
+            className="flex w-full items-center gap-4 rounded-2xl border border-white/[0.06] bg-[#111113] p-5 text-left shadow-sm transition hover:border-purple-200 hover:bg-purple-500/100/10 active:scale-[.99]">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-purple-500/100/10">
               <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#7c3aed" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8M16 11h.01"/>
               </svg>
