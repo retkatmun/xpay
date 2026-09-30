@@ -92,6 +92,8 @@ export default function Landing() {
   // Has this browser ever had an XPay account?
   // Used to decide whether to show "Sign In" alongside "Get Started".
   const hasAccount = readHasAccount();
+  const navigate = useNavigate();
+  const { authUser, profile, loading } = useSession();
 
   // Returning users with a completed profile go straight to /home
   useEffect(() => {

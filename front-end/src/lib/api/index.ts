@@ -206,7 +206,7 @@ function dbRowToTransaction(row: SupabaseTransaction): Transaction {
 }
 
 /** Get current user ID from session cookie (backend) or Supabase profile */
-async function getCurrentUserId(): Promise<string | null> {
+export async function getCurrentUserId(): Promise<string | null> {
   try {
     const user = await get<User | null>("/api/me")
     return user?.id ?? null

@@ -19,35 +19,6 @@ const cache = new Map<string, string | null>()
 // In-flight fetch promises so concurrent calls don't create duplicate requests
 const inflight = new Map<string, Promise<string | null>>()
 
-async function fetchAvatarForUsername(username: string): Promise<string | null> {
-  // Cache hit
-  if (cache.has(username)) return cache.get(username)!
-
-  // Already in-flight
-  const existing = inflight.get(username)
-  if (existing) return existing
-
-  const promise = supabaseAdmin
-    .from("profiles")
-    .select("avatar_url")
-    .eq("username", username)
-    .maybeSingle()
-    .then(({ data }) => {
-      const url = (data as { avatar_url: string | null } | null)?.avatar_url ?? null
-      cache.set(username, url)
-      inflight.delete(username)
-      return url
-    })
-    .catch(() => {
-      cache.set(username, null)
-      inflight.delete(username)
-      return null
-    })
-
-  inflight.set(username, promise)
-  return promise
-}
-
 /**
  * Batch-fetches up to 20 usernames in a single Supabase query, then populates
  * the module-level cache and resolves individual promises.

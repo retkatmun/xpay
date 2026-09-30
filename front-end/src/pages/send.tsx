@@ -1619,19 +1619,19 @@ export default function Send() {
             <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 4l6 6-6 6"/></svg>
           </button>
 
-          {/* Convert to Naira — USDC only (converted to NGN) */}
+          {/* Send to Nigerian bank — USDC converted to NGN for bank payout */}
           <button type="button" onClick={() => navigate("/convert")}
             className="flex w-full items-center gap-4 rounded-2xl border border-white/[0.06] bg-black p-5 text-left shadow-sm transition hover:border-orange-200 hover:bg-orange-50/60 active:scale-[.99]">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-50">
-              <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="#ea580c" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M10 3v14M6 6l4-3 4 3M6 14l4 3 4-3"/>
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#ea580c" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4"/>
               </svg>
             </div>
             <div className="min-w-0 flex-1">
-              <p className="font-semibold text-white/90">Convert to Naira</p>
+              <p className="font-semibold text-white/90">Nigerian bank account</p>
               <p className="mt-0.5 text-sm text-white/50">
-                Any verified bank ·{" "}
-                <span className="font-medium text-orange-600">USDC → Naira</span>
+                Any Nigerian bank ·{" "}
+                <span className="font-medium text-orange-500">USDC → NGN</span>
               </p>
             </div>
             <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 4l6 6-6 6"/></svg>

@@ -65,7 +65,7 @@ export default function Wallet() {
       await updateProfile(authUser.id, { avatar_url: url })
       if (profile) setProfile({ ...profile, avatar_url: url })
       // Bust the module-level avatar cache so other components re-fetch the new photo
-      invalidateAvatarCache(profile.username)
+      if (profile) invalidateAvatarCache(profile.username)
     } catch (err) {
       setAvatarError(err instanceof Error ? err.message : "Upload failed. Try again.")
     } finally {
