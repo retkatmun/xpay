@@ -188,9 +188,10 @@ function dbRowToTransaction(row: SupabaseTransaction): Transaction {
     direction: row.direction,
     recipientType: row.recipient_type,
     recipientDisplayName: row.recipient_display_name,
+    recipientUsername: row.recipient_username ?? null,
     recipientBankName: row.recipient_bank_name ?? null,
     recipientAccountNumberLast4: row.recipient_account_number_last4 ?? null,
-    asset: "USDC",
+    asset: row.asset ?? "USDC",
     amount: row.amount,
     chainId: row.chain_id ?? null,
     txHash: row.tx_hash ?? null,
@@ -215,17 +216,26 @@ async function getCurrentUserId(): Promise<string | null> {
 }
 
 export async function getTransactions(userId?: string): Promise<Transaction[]> {
-  // Try backend first
+  // If we have a userId (Privy user ID), go directly to Supabase — it's the
+  // canonical store for this app and avoids a round-trip through the backend
+  // session-cookie auth that may not be set in the Privy-first flow.
+  if (userId) {
+    const rows = await fetchTxFromDb(userId)
+    // Deduplicate by id (defensive — shouldn't be needed with a correct DB)
+    const seen = new Set<string>()
+    return rows.filter(r => {
+      if (seen.has(r.id)) return false
+      seen.add(r.id)
+      return true
+    }).map(dbRowToTransaction)
+  }
+
+  // No userId in session yet — try backend as a last resort
   try {
     return await get<Transaction[]>("/api/transactions")
   } catch {
-    // Backend unavailable — fall back to Supabase directly
+    return []
   }
-
-  const uid = userId ?? await getCurrentUserId()
-  if (!uid) return []
-  const rows = await fetchTxFromDb(uid)
-  return rows.map(dbRowToTransaction)
 }
 
 export async function getTransaction(id: string): Promise<(Transaction & { payout: Payout | null }) | null> {

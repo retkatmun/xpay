@@ -7,6 +7,7 @@ import { Spinner } from "@/components/icons";
 import { useSession } from "@/lib/session";
 import { useNetwork } from "@/lib/NetworkContext";
 import { getSavedBeneficiaries, deleteBeneficiary, uploadAvatar, updateProfile } from "@/lib/supabase";
+import { invalidateAvatarCache } from "@/lib/useProfileAvatars";
 import type { SavedBeneficiary } from "@/lib/supabase";
 
 export default function Wallet() {
@@ -18,6 +19,8 @@ export default function Wallet() {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [avatarRemoving, setAvatarRemoving] = useState(false);
 
   useEffect(() => {
     if (!loading && !authUser) navigate("/login", { replace: true });
@@ -61,11 +64,28 @@ export default function Wallet() {
       const url = await uploadAvatar(authUser.id, file)
       await updateProfile(authUser.id, { avatar_url: url })
       if (profile) setProfile({ ...profile, avatar_url: url })
+      // Bust the module-level avatar cache so other components re-fetch the new photo
+      invalidateAvatarCache(profile.username)
     } catch (err) {
       setAvatarError(err instanceof Error ? err.message : "Upload failed. Try again.")
     } finally {
       setAvatarUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ""
+    }
+  }
+
+  async function handleAvatarRemove() {
+    if (!authUser || !profile?.avatar_url) return
+    setAvatarRemoving(true)
+    setAvatarError(null)
+    try {
+      await updateProfile(authUser.id, { avatar_url: null })
+      setProfile({ ...profile, avatar_url: null })
+      invalidateAvatarCache(profile.username)
+    } catch (err) {
+      setAvatarError(err instanceof Error ? err.message : "Could not remove photo.")
+    } finally {
+      setAvatarRemoving(false)
     }
   }
 
@@ -75,47 +95,72 @@ export default function Wallet() {
   };
 
   return (
-    <Screen back onBack={() => navigate(-1)}>
+    <Screen back onBack={() => navigate("/home")}>
       <div className="flex flex-1 flex-col pb-12">
 
         {/* ── Avatar section ─────────────────────────────────────────── */}
         <div className="flex flex-col items-center pt-6 pb-8 text-center">
-          {/* Avatar — no ring */}
-          <div className="relative mb-3">
-            <Avatar name={displayName} size={80} src={profile.avatar_url} />
-            {/* Hidden file input */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif"
-              className="hidden"
-              onChange={handleAvatarChange}
-            />
+          {/* Avatar */}
+          <Avatar name={displayName} size={80} src={profile.avatar_url} />
+
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            className="hidden"
+            onChange={handleAvatarChange}
+          />
+
+          {/* Icon buttons below avatar */}
+          <div className="mt-2.5 flex items-center gap-2">
+            {/* Camera — change / add photo */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={avatarUploading || avatarRemoving}
+              aria-label={profile.avatar_url ? "Change photo" : "Add photo"}
+              title={profile.avatar_url ? "Change photo" : "Add photo"}
+              className="flex h-7 w-7 items-center justify-center rounded-full border border-white/[0.1] bg-white/[0.04] text-white/40 transition hover:border-white/25 hover:bg-white/[0.08] hover:text-white/80 disabled:opacity-40"
+            >
+              {avatarUploading ? (
+                <Spinner className="h-3 w-3" />
+              ) : (
+                <svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 12a1 1 0 01-1 1H3a1 1 0 01-1-1V6a1 1 0 011-1h2l1-2h4l1 2h2a1 1 0 011 1v6z" />
+                  <circle cx="8" cy="8.5" r="2" />
+                </svg>
+              )}
+            </button>
+
+            {/* Trash — remove photo (only shown when photo exists) */}
+            {profile.avatar_url && (
+              <button
+                type="button"
+                onClick={handleAvatarRemove}
+                disabled={avatarUploading || avatarRemoving}
+                aria-label="Remove photo"
+                title="Remove photo"
+                className="flex h-7 w-7 items-center justify-center rounded-full border border-white/[0.1] bg-white/[0.04] text-white/40 transition hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-400 disabled:opacity-40"
+              >
+                {avatarRemoving ? (
+                  <Spinner className="h-3 w-3" />
+                ) : (
+                  <svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M2 4h12M5 4V2h6v2M6 7v5M10 7v5M3 4l1 9h8l1-9" />
+                  </svg>
+                )}
+              </button>
+            )}
           </div>
 
-          {/* Change photo — plain accent text only */}
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={avatarUploading}
-            className="mb-4 text-xs font-medium text-blue-400 transition hover:text-blue-300 disabled:opacity-50"
-          >
-            {avatarUploading ? (
-              <span className="flex items-center gap-1.5">
-                <Spinner className="h-3 w-3" /> Uploading…
-              </span>
-            ) : (
-              profile.avatar_url ? "Change photo" : "Add photo"
-            )}
-          </button>
-
-          {/* Upload error */}
+          {/* Upload/remove error */}
           {avatarError && (
-            <p className="mb-2 text-xs text-red-400">{avatarError}</p>
+            <p className="mt-2 text-xs text-red-400">{avatarError}</p>
           )}
 
           {/* Name */}
-          <h1 className="text-[1.25rem] font-semibold tracking-tight text-white/90">{displayName}</h1>
+          <h1 className="mt-3 text-[1.25rem] font-semibold tracking-tight text-white/90">{displayName}</h1>
 
           {/* Email */}
           {displayEmail && (

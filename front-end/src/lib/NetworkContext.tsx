@@ -42,19 +42,24 @@ export const CHAINS: ChainConfig[] = [
   },
   {
     id: 11155111,
-    name: "Sepolia",
+    name: "ETH Sepolia",
     shortName: "SEP",
     color: "#9B59B6",
     rpcUrls: [
+      // Public endpoints for ETH Sepolia — order matters (first healthy wins)
       "https://ethereum-sepolia-rpc.publicnode.com",
       "https://sepolia.gateway.tenderly.co",
       "https://rpc.sepolia.org",
       "https://rpc2.sepolia.org",
+      "https://1rpc.io/sepolia",
     ],
     usdcAddress: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
     isTestnet: true,
     blockExplorer: "https://sepolia.etherscan.io",
-    explorerApiUrl: "https://api-sepolia.etherscan.io/api",
+    // Use Blockscout for ETH Sepolia — free, no API key, Etherscan-compatible API.
+    // Etherscan Sepolia (api-sepolia.etherscan.io) requires a paid API key and
+    // severely rate-limits unauthenticated requests (1 req/5s → fails in practice).
+    explorerApiUrl: "https://eth-sepolia.blockscout.com/api",
     nativeSymbol: "ETH",
     nativeDecimals: 18,
   },

@@ -34,7 +34,7 @@ export function Screen({
                 <ArrowLeft />
               </button>
             ) : (
-              <Link to="/home">
+              <Link to="/">
                 <img src={xpayLogo} alt="XPay" className="h-7 w-auto object-contain brightness-0 invert opacity-90" />
               </Link>
             )}
