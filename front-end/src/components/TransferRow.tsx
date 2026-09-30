@@ -3,6 +3,7 @@ import { formatUSD } from "@/lib/money"
 import { clockTime, relativeTime } from "@/lib/time"
 import type { Transaction } from "@/lib/types"
 import { Avatar } from "./Avatar"
+import { useProfileAvatars } from "@/lib/useProfileAvatars"
 
 export function TransferRow({
   transfer,
@@ -21,6 +22,11 @@ export function TransferRow({
     stamp === "clock" ? clockTime(transfer.createdAt) : relativeTime(transfer.createdAt)
 
   const name = transfer.recipientDisplayName
+
+  // Fetch avatar for XPay user counterparts
+  const lookupUsernames = transfer.recipientUsername ? [transfer.recipientUsername] : []
+  const avatarMap = useProfileAvatars(lookupUsernames)
+  const avatarSrc = transfer.recipientUsername ? avatarMap.get(transfer.recipientUsername) : null
 
   // How was it sent?
   const methodLabel =
@@ -56,7 +62,7 @@ export function TransferRow({
           </svg>
         </div>
       ) : (
-        <Avatar name={name} />
+        <Avatar name={name} src={avatarSrc} />
       )}
 
       <span className="min-w-0 flex-1">

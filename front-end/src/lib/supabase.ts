@@ -281,6 +281,7 @@ export type SupabaseTransaction = {
   direction: "in" | "out"
   recipient_type: "xpay_user" | "bank_account"
   recipient_display_name: string
+  recipient_username?: string | null
   recipient_bank_name: string | null
   recipient_account_number_last4: string | null
   asset: string

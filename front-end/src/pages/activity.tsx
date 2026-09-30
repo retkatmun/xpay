@@ -11,12 +11,51 @@ import { getTokenLogo } from '@/assets/logos'
 import { Avatar } from '@/components/Avatar'
 import { useNetwork } from '@/lib/NetworkContext'
 import { NetworkSwitcher } from '@/components/NetworkSwitcher'
-import { useOnChainTxs, type OnChainTx } from '@/lib/useOnChainTxs'
+import { useAllChainsOnChainTxs, type OnChainTx } from '@/lib/useOnChainTxs'
+import { useProfileAvatars } from '@/lib/useProfileAvatars'
 import type { Transaction } from '@/lib/types'
+
+// ─── Bottom tab icons (shared visual language with home.tsx) ──────────────────
+
+function HomeIcon() {
+  return (
+    <svg viewBox="0 0 20 20" width="18" height="18" fill="none"
+      stroke="rgba(255,255,255,0.4)" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9.5L10 3l7 6.5V17a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" />
+      <path d="M7 18v-6h6v6" />
+    </svg>
+  )
+}
+function PortfolioIcon() {
+  return (
+    <svg viewBox="0 0 20 20" width="18" height="18" fill="none"
+      stroke="rgba(255,255,255,0.4)" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="5" width="16" height="12" rx="1.5" />
+      <path d="M6 5V4a2 2 0 014 0v1" /><path d="M2 10h16" />
+    </svg>
+  )
+}
+function ActivityIconActive() {
+  return (
+    <svg viewBox="0 0 20 20" width="18" height="18" fill="none"
+      stroke="#10b981" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="10" cy="10" r="7" /><path d="M10 6v4l2.5 2.5" />
+    </svg>
+  )
+}
+function SettingsIcon() {
+  return (
+    <svg viewBox="0 0 20 20" width="18" height="18" fill="none"
+      stroke="rgba(255,255,255,0.4)" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="10" cy="10" r="2.5" />
+      <path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.22 4.22l1.42 1.42M14.36 14.36l1.42 1.42M4.22 15.78l1.42-1.42M14.36 5.64l1.42-1.42" />
+    </svg>
+  )
+}
 
 // ─── XPay internal tx row ─────────────────────────────────────────────────────
 
-function TxRow({ tx, last }: { tx: Transaction; last: boolean }) {
+function TxRow({ tx, last, avatarSrc }: { tx: Transaction; last: boolean; avatarSrc?: string | null }) {
   const navigate = useNavigate()
   const out = tx.direction === 'out'
   const usd = BigInt(tx.amount)
@@ -36,7 +75,7 @@ function TxRow({ tx, last }: { tx: Transaction; last: boolean }) {
             </svg>
           </div>
         ) : (
-          <Avatar name={tx.recipientDisplayName} size={40} />
+          <Avatar name={tx.recipientDisplayName} size={40} src={avatarSrc} />
         )}
         <span className={`absolute -right-0.5 -bottom-0.5 flex h-[14px] w-[14px] items-center justify-center rounded-full text-[8px] font-bold text-white ${out ? 'bg-gray-400' : 'bg-emerald-500/100'}`}>
           {out ? '↑' : '↓'}
@@ -58,12 +97,14 @@ function TxRow({ tx, last }: { tx: Transaction; last: boolean }) {
 
 // ─── On-chain tx row (ETH / USDC from explorer) ───────────────────────────────
 
-function OnChainTxRow({ tx, last, nativeSymbol }: { tx: OnChainTx; last: boolean; nativeSymbol: string }) {
+function OnChainTxRow({ tx, last }: { tx: OnChainTx; last: boolean }) {
   const isIn = tx.type === 'eth_in' || tx.type === 'usdc_in'
 
   const valueLabel = tx.asset === 'ETH'
-    ? `${(Number(tx.value) / 1e18).toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 6 })} ${nativeSymbol}`
+    ? `${(Number(tx.value) / 1e18).toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 6 })} ETH`
     : formatUSD(tx.value)
+
+  const chainColor = tx.chainId === 84532 ? 'text-blue-400/70' : 'text-purple-400/70'
 
   return (
     <a
@@ -89,9 +130,13 @@ function OnChainTxRow({ tx, last, nativeSymbol }: { tx: OnChainTx; last: boolean
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-white/90">
-          {isIn ? `Received ${tx.asset === 'ETH' ? nativeSymbol : tx.asset}` : `Sent ${tx.asset === 'ETH' ? nativeSymbol : tx.asset}`}
+          {isIn ? `Received ${tx.asset}` : `Sent ${tx.asset}`}
         </p>
-        <p className="text-xs text-white/40">{tx.counterpart}</p>
+        <div className="flex items-center gap-1.5">
+          <span className={`text-[10px] font-semibold uppercase tracking-wide ${chainColor}`}>{tx.chainName}</span>
+          <span className="text-white/20 text-[9px]">·</span>
+          <span className="text-xs text-white/40 truncate">{tx.counterpart}</span>
+        </div>
       </div>
       <div className="shrink-0 text-right">
         <p className={`text-sm font-semibold tabular-nums ${isIn ? 'text-emerald-400' : 'text-white/80'}`}>
@@ -111,21 +156,31 @@ export default function Activity() {
   const { activeChain } = useNetwork()
   const [transactions, setTransactions] = useState<Transaction[] | null>(null)
 
-  // On-chain txs from block explorer, respects active chain
+  // On-chain txs: both Base Sepolia + ETH Sepolia in parallel
   const effectiveWallet = walletAddress || profile?.wallet_address || null
-  const { txs: onChainTxs, loading: onChainLoading, error: onChainError, refresh: refreshOnChain } = useOnChainTxs(effectiveWallet, activeChain)
+  const { txs: onChainTxs, loading: onChainLoading, error: onChainError, refresh: refreshOnChain } = useAllChainsOnChainTxs(effectiveWallet)
+
+  // Batch-fetch avatars for all XPay transaction counterparts
+  const xpayUsernames = useMemo(
+    () => (transactions ?? [])
+      .filter(tx => tx.recipientType === 'xpay_user' && tx.recipientUsername)
+      .map(tx => tx.recipientUsername!)
+      .filter((u, i, arr) => arr.indexOf(u) === i), // deduplicate
+    [transactions]
+  )
+  const avatars = useProfileAvatars(xpayUsernames)
 
   useEffect(() => {
     if (!loading && !authUser) navigate('/', { replace: true })
     if (!loading && authUser && !profile) navigate('/onboarding', { replace: true })
   }, [loading, authUser, profile, navigate])
 
-  // Re-fetch XPay internal transactions whenever the active network changes
+  // Re-fetch XPay internal transactions whenever the user or active network changes
   useEffect(() => {
-    if (!profile) return
+    if (!authUser?.id) return
     setTransactions(null)
-    void getTransactions(authUser?.id).then(setTransactions).catch(() => setTransactions([]))
-  }, [profile, activeChain.id])
+    void getTransactions(authUser.id).then(setTransactions).catch(() => setTransactions([]))
+  }, [authUser?.id, activeChain.id])
 
   // Merge XPay txs + on-chain txs, sorted newest first
   type FeedItem =
@@ -161,14 +216,17 @@ export default function Activity() {
   const isLoading = transactions === null && onChainLoading
 
   return (
-    <Screen back onBack={() => navigate(-1)} action={<NetworkSwitcher />}>
-      <div className="flex-1 pt-4 pb-12">
+    <>
+    <Screen back onBack={() => navigate('/home')} action={<NetworkSwitcher />}>
+      <div className="flex-1 pt-4 pb-24">
         <Title>Transactions</Title>
 
         {/* Network context pill */}
         <p className="mt-1 text-xs text-white/40">
-          Showing XPay transfers + on-chain activity on{' '}
-          <span className="font-semibold text-white/60">{activeChain.name}</span>
+          XPay transfers + on-chain activity across{' '}
+          <span className="font-semibold text-white/60">Base Sepolia</span>
+          {' '}&amp;{' '}
+          <span className="font-semibold text-white/60">ETH Sepolia</span>
         </p>
 
         {/* Loading skeleton */}
@@ -234,9 +292,9 @@ export default function Activity() {
             <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#1a1a1c] shadow-sm">
               {group.items.map((item, i) =>
                 item.kind === 'xpay' ? (
-                  <TxRow key={item.tx.id} tx={item.tx} last={i === group.items.length - 1} />
+                  <TxRow key={item.tx.id} tx={item.tx} last={i === group.items.length - 1} avatarSrc={item.tx.recipientUsername ? avatars.get(item.tx.recipientUsername) : undefined} />
                 ) : (
-                  <OnChainTxRow key={item.tx.hash + item.tx.type} tx={item.tx} last={i === group.items.length - 1} nativeSymbol={activeChain.nativeSymbol} />
+                  <OnChainTxRow key={item.tx.hash + item.tx.type} tx={item.tx} last={i === group.items.length - 1} />
                 )
               )}
             </div>
@@ -244,5 +302,30 @@ export default function Activity() {
         ))}
       </div>
     </Screen>
+
+    {/* ── Bottom tab bar — Activity highlighted, mirrors home.tsx ── */}
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/[0.07] bg-[#111113]/95 backdrop-blur-xl lg:hidden">
+      <div className="mx-auto flex max-w-[480px] items-stretch">
+        {[
+          { label: 'Home',      route: '/home',      icon: <HomeIcon /> },
+          { label: 'Portfolio', route: '/dashboard',  icon: <PortfolioIcon /> },
+          { label: 'Activity',  route: '/activity',   icon: <ActivityIconActive />, active: true },
+          { label: 'Settings',  route: '/settings',   icon: <SettingsIcon /> },
+        ].map(({ label, route, icon, active }) => (
+          <button
+            key={route}
+            onClick={() => navigate(route)}
+            className={[
+              'flex flex-1 flex-col items-center gap-1 py-2 transition active:scale-95',
+              active ? 'text-emerald-400' : 'text-white/35 hover:text-white/60',
+            ].join(' ')}
+          >
+            {icon}
+            <span className="text-[10px] font-medium">{label}</span>
+          </button>
+        ))}
+      </div>
+    </nav>
+    </>
   )
 }

@@ -70,6 +70,8 @@ export type Transaction = {
   direction: "in" | "out"
   recipientType: "xpay_user" | "bank_account"
   recipientDisplayName: string
+  /** XPay username of the counterpart (only set for xpay_user transfers) */
+  recipientUsername?: string | null
   recipientBankName?: string | null
   recipientAccountNumberLast4?: string | null
   asset: string

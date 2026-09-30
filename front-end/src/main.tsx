@@ -1,4 +1,3 @@
-import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { PrivyProvider } from '@privy-io/react-auth'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
@@ -13,7 +12,6 @@ if (!privyAppId) {
 }
 
 createRoot(document.getElementById('root')!).render(
-  <StrictMode>
     <ErrorBoundary>
       {privyAppId ? (
         <PrivyProvider
@@ -54,5 +52,4 @@ createRoot(document.getElementById('root')!).render(
         </div>
       )}
     </ErrorBoundary>
-  </StrictMode>,
 )

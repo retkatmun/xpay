@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useSession } from "@/lib/session";
+import { readHasAccount } from "@/lib/hasAccount";
 import xpayLogo from "@/assets/xpay_logo.png";
 
 // ── Smooth-scroll helper ──────────────────────────────────────────────────────
@@ -87,6 +89,18 @@ export default function Landing() {
   const [activeSection, setActiveSection] = useState("");
   const menuRef = useRef<HTMLDivElement>(null);
 
+  // Has this browser ever had an XPay account?
+  // Used to decide whether to show "Sign In" alongside "Get Started".
+  const hasAccount = readHasAccount();
+
+  // Returning users with a completed profile go straight to /home
+  useEffect(() => {
+    if (loading) return;
+    if (authUser && profile) {
+      navigate("/home", { replace: true });
+    }
+  }, [loading, authUser, profile, navigate]);
+
   // Close menu on outside click
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -153,18 +167,41 @@ export default function Landing() {
 
           {/* Right: CTA + hamburger */}
           <div className="flex items-center gap-2">
-            <Link
-              to="/login"
-              className="hidden sm:inline-flex rounded-xl border border-white/[0.1] bg-white/[0.04] px-4 py-2 text-[13px] font-semibold text-white/70 transition hover:border-white/20 hover:text-white"
-            >
-              Sign In
-            </Link>
-            <Link
-              to="/onboarding"
-              className="rounded-xl bg-emerald-500 px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-emerald-400"
-            >
-              Get Started
-            </Link>
+            {authUser ? (
+              /* Currently logged in → go straight to the app */
+              <Link
+                to="/home"
+                className="rounded-xl bg-emerald-500 px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-emerald-400"
+              >
+                Go to Dashboard
+              </Link>
+            ) : hasAccount ? (
+              /* Returning user (has signed in before) but not currently logged in.
+                 Show only "Get Started" which routes to /login — they know how to
+                 log in; no need to duplicate the button. */
+              <Link
+                to="/login"
+                className="rounded-xl bg-emerald-500 px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-emerald-400"
+              >
+                Get Started
+              </Link>
+            ) : (
+              /* Brand new visitor — show both Sign In and Get Started */
+              <>
+                <Link
+                  to="/login"
+                  className="hidden sm:inline-flex rounded-xl border border-white/[0.1] bg-white/[0.04] px-4 py-2 text-[13px] font-semibold text-white/70 transition hover:border-white/20 hover:text-white"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  to="/onboarding"
+                  className="rounded-xl bg-emerald-500 px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-emerald-400"
+                >
+                  Get Started
+                </Link>
+              </>
+            )}
 
             {/* Mobile hamburger */}
             <button
@@ -203,13 +240,33 @@ export default function Landing() {
               </button>
             ))}
             <div className="mt-1 border-t border-white/[0.06] pt-2 pb-1">
-              <Link
-                to="/login"
-                onClick={() => setMenuOpen(false)}
-                className="flex w-full items-center rounded-xl px-4 py-3 text-left text-[14px] font-medium text-white/50 transition-colors hover:bg-white/[0.04] hover:text-white/80"
-              >
-                Sign In
-              </Link>
+              {authUser ? (
+                <Link
+                  to="/home"
+                  onClick={() => setMenuOpen(false)}
+                  className="flex w-full items-center rounded-xl px-4 py-3 text-left text-[14px] font-medium text-emerald-400 transition-colors hover:bg-white/[0.04]"
+                >
+                  Go to Dashboard
+                </Link>
+              ) : hasAccount ? (
+                /* Returning user — "Get Started" goes to login */
+                <Link
+                  to="/login"
+                  onClick={() => setMenuOpen(false)}
+                  className="flex w-full items-center rounded-xl px-4 py-3 text-left text-[14px] font-semibold text-white transition-colors hover:bg-white/[0.04]"
+                >
+                  Get Started
+                </Link>
+              ) : (
+                /* New visitor — show Sign In in mobile menu */
+                <Link
+                  to="/login"
+                  onClick={() => setMenuOpen(false)}
+                  className="flex w-full items-center rounded-xl px-4 py-3 text-left text-[14px] font-medium text-white/50 transition-colors hover:bg-white/[0.04] hover:text-white/80"
+                >
+                  Sign In
+                </Link>
+              )}
             </div>
           </div>
         )}
@@ -475,10 +532,10 @@ export default function Landing() {
             Receive USDC on Base. Convert to naira. Sent to any Nigerian bank account.
           </p>
           <Link
-            to="/onboarding"
+            to={authUser ? "/home" : "/onboarding"}
             className="mt-7 inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-8 py-3.5 text-[14px] font-semibold text-white transition hover:bg-emerald-400"
           >
-            Get Started
+            {authUser ? "Go to Dashboard" : "Get Started"}
             <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
               <path d="M4 10h12M12 6l4 4-4 4" />
             </svg>
@@ -506,7 +563,10 @@ export default function Landing() {
                 </button>
               ))}
               <Link to="/login"      className="text-[13px] text-white/30 transition hover:text-white/60">Sign in</Link>
-              <Link to="/onboarding" className="text-[13px] text-white/30 transition hover:text-white/60">Get started</Link>
+              {authUser
+                ? <Link to="/home"       className="text-[13px] text-white/30 transition hover:text-white/60">Dashboard</Link>
+                : <Link to="/onboarding" className="text-[13px] text-white/30 transition hover:text-white/60">Get started</Link>
+              }
             </div>
           </div>
           <div className="mt-6 border-t border-white/[0.05] pt-6 text-center sm:text-left">

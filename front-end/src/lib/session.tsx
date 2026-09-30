@@ -8,6 +8,7 @@ import {
 } from "react";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { fetchProfileById, updateProfile, supabaseSignOut } from "@/lib/supabase";
+import { markHasAccount } from "@/lib/hasAccount";
 
 export type XPayProfile = {
   id: string;
@@ -28,7 +29,19 @@ type SessionValue = {
   /** Privy user ID (string) — used as the profile primary key */
   authUser: { id: string; email?: string } | null;
   profile: XPayProfile | null;
+  /**
+   * True only while we need to block a redirect decision:
+   * - Privy SDK not yet ready, OR
+   * - User is authenticated but profile fetch is still in flight.
+   * Use this to gate `navigate("/home")` style redirects.
+   */
   loading: boolean;
+  /**
+   * True while Privy SDK is initialising (before `ready`).
+   * Use this to disable the login button / show a skeleton.
+   * Becomes false as soon as Privy is ready — before the profile loads.
+   */
+  privyLoading: boolean;
   isAdmin: boolean;
   walletAddress: string | null;
   setProfile: (p: XPayProfile | null) => void;
@@ -44,6 +57,14 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   const [profile, setProfile] = useState<XPayProfile | null>(null);
   const [profileLoaded, setProfileLoaded] = useState(false);
+  // Safety valve: if Privy never fires `ready`, unblock the button after 4s
+  const [privyTimedOut, setPrivyTimedOut] = useState(false);
+
+  useEffect(() => {
+    if (ready) return;
+    const t = setTimeout(() => setPrivyTimedOut(true), 4000);
+    return () => clearTimeout(t);
+  }, [ready]);
 
   const authUser = useMemo(() => {
     if (!authenticated || !privyUser) return null;
@@ -83,12 +104,15 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const timer = setTimeout(() => setProfileLoaded(true), 8000);
+    const timer = setTimeout(() => setProfileLoaded(true), 3000);
 
     fetchProfileById(privyUser.id)
       .then((p) => {
         setProfile(p as XPayProfile | null);
         setProfileLoaded(true);
+        // Mark that this browser has had an account — used by the landing page
+        // to hide "Sign In" for returning users (they still reach login via "Get Started")
+        if (p) markHasAccount();
       })
       .catch(() => {
         setProfile(null);
@@ -125,11 +149,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, [logout]);
 
   const loading = !ready || (authenticated && !profileLoaded);
+  const privyLoading = !ready && !privyTimedOut;
   const isAdmin = profile?.role === "admin";
 
   const value = useMemo(
-    () => ({ authUser, profile, loading, isAdmin, walletAddress, setProfile, refresh, signOut }),
-    [authUser, profile, loading, isAdmin, walletAddress, refresh, signOut]
+    () => ({ authUser, profile, loading, privyLoading, isAdmin, walletAddress, setProfile, refresh, signOut }),
+    [authUser, profile, loading, privyLoading, isAdmin, walletAddress, refresh, signOut]
   );
 
   return (
