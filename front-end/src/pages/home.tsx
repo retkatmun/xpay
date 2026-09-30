@@ -14,6 +14,7 @@ import { useAllChainsOnChainTxs, type OnChainTx } from "@/lib/useOnChainTxs";
 import { useNetwork } from "@/lib/NetworkContext";
 import { NetworkSwitcher } from "@/components/NetworkSwitcher";
 import { useProfileAvatars } from "@/lib/useProfileAvatars";
+import { getBmoniBalance, getNgnDepositAccount, type BmoniVba } from "@/lib/bmoni";
 import xpayLogo from "@/assets/xpay_logo.png";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -74,6 +75,121 @@ function SettingsIcon({ active }: { active: boolean }) {
       <circle cx="10" cy="10" r="2.5" />
       <path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.22 4.22l1.42 1.42M14.36 14.36l1.42 1.42M4.22 15.78l1.42-1.42M14.36 5.64l1.42-1.42" />
     </svg>
+  );
+}
+
+// ─── Receive Modal ────────────────────────────────────────────────────────────
+
+type ReceiveModalProps = {
+  asset: "USDC" | "ETH" | "NGN";
+  walletAddress: string | null;
+  vba: BmoniVba | null;
+  username: string;
+  onClose: () => void;
+};
+
+function ReceiveModal({ asset, walletAddress, vba, username, onClose }: ReceiveModalProps) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-[480px] rounded-t-3xl bg-[#18181b] border-t border-white/[0.08] px-5 pt-5 pb-10"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-white/10" />
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2.5">
+            {asset === "NGN" ? (
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500/15 text-[15px] font-bold text-emerald-400">₦</div>
+            ) : asset === "USDC" ? (
+              <img src={getTokenLogo("USDC")} alt="USDC" className="h-9 w-9 rounded-full" />
+            ) : (
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#627EEA]/15">
+                <svg viewBox="0 0 24 24" width="18" height="18">
+                  <path d="M12 2L4 12l8 5 8-5L12 2z" fill="#627EEA" opacity="0.9" />
+                  <path d="M4 12l8 10 8-10" fill="#627EEA" opacity="0.5" />
+                </svg>
+              </div>
+            )}
+            <div>
+              <p className="text-[15px] font-semibold text-white/90">Receive {asset}</p>
+              <p className="text-[12px] text-white/35">
+                {asset === "NGN" ? "Bank transfer · Nigeria" : "Crypto wallet"}
+              </p>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-white/30 hover:text-white/60 transition">
+            <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M5 5l10 10M15 5L5 15" />
+            </svg>
+          </button>
+        </div>
+
+        {asset === "NGN" && (
+          <div className="space-y-3">
+            {vba ? (
+              <>
+                <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] divide-y divide-white/[0.06]">
+                  <div className="px-4 py-3.5">
+                    <p className="text-[11px] text-white/35 mb-0.5">Bank</p>
+                    <p className="text-[14px] font-semibold text-white/85">{vba.bankName}</p>
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-3.5">
+                    <div>
+                      <p className="text-[11px] text-white/35 mb-0.5">Account number</p>
+                      <p className="text-[24px] font-bold tracking-widest text-white tabular-nums">{vba.accountNumber}</p>
+                    </div>
+                    <CopyButton value={vba.accountNumber} label="Copy" />
+                  </div>
+                  <div className="px-4 py-3.5">
+                    <p className="text-[11px] text-white/35 mb-0.5">Account name</p>
+                    <p className="text-[14px] font-semibold text-white/85">{vba.accountName}</p>
+                  </div>
+                </div>
+                <p className="text-[11px] text-white/30 text-center px-2">
+                  Transfer NGN from any Nigerian bank to this account. Funds arrive as NGN in your XPay wallet.
+                </p>
+              </>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-white/[0.08] py-10 text-center">
+                <p className="text-[13px] text-white/40">NGN account not set up yet.</p>
+                <p className="text-[12px] text-white/25 mt-1">Complete KYC to activate your Nigerian bank account.</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {(asset === "USDC" || asset === "ETH") && (
+          <div className="space-y-3">
+            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] divide-y divide-white/[0.06]">
+              <div className="flex items-center justify-between px-4 py-3.5">
+                <div className="min-w-0 flex-1 mr-3">
+                  <p className="text-[11px] text-white/35 mb-0.5">XPay handle</p>
+                  <p className="text-[15px] font-semibold text-white/85">{username}.xpay</p>
+                </div>
+                <CopyButton value={`${username}.xpay`} label="Copy" />
+              </div>
+              {walletAddress && (
+                <div className="flex items-center justify-between px-4 py-3.5">
+                  <div className="min-w-0 flex-1 mr-3">
+                    <p className="text-[11px] text-white/35 mb-0.5">Wallet address</p>
+                    <p className="text-[12px] font-mono text-white/60 break-all">{walletAddress}</p>
+                  </div>
+                  <CopyButton value={walletAddress} label="Copy" />
+                </div>
+              )}
+            </div>
+            <p className="text-[11px] text-white/30 text-center px-2">
+              {asset === "USDC"
+                ? "Send USDC to your wallet address on any supported chain."
+                : "Send ETH to your wallet address on the correct network."}
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -168,10 +284,7 @@ function OnChainTxRow({ tx, last }: { tx: OnChainTx; last: boolean }) {
   const chainColor = tx.chainId === 84532 ? "text-blue-400/70" : "text-purple-400/70";
 
   return (
-    <a
-      href={tx.explorerUrl}
-      target="_blank"
-      rel="noreferrer"
+    <a href={tx.explorerUrl} target="_blank" rel="noreferrer"
       className={[
         "flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition hover:bg-white/[0.025]",
         !last ? "border-b border-white/[0.06]" : "",
@@ -271,6 +384,11 @@ export default function Home() {
   const effectiveWallet = walletAddress || profile?.wallet_address || null;
   const { txs: onChainTxs, refresh: refreshOnChain } = useAllChainsOnChainTxs(effectiveWallet);
 
+  // NGN balance + VBA
+  const [ngnBalance, setNgnBalance] = useState<string | null>(null);
+  const [vba, setVba]               = useState<BmoniVba | null>(null);
+  const [receiveModal, setReceiveModal] = useState<"USDC" | "ETH" | "NGN" | null>(null);
+
   const toggle = () =>
     setBalanceVisible(v => {
       const n = !v;
@@ -287,12 +405,21 @@ export default function Home() {
     finally { setTxLoading(false); }
   }, [authUser?.id]);
 
+  const fetchNgn = useCallback(() => {
+    const userId = profile?.bmoni_user_id;
+    if (!userId) return;
+    getBmoniBalance(userId, "CNGN")
+      .then(b => setNgnBalance(b ? `₦${parseFloat(b.balance).toLocaleString("en-NG", { minimumFractionDigits: 2 })}` : "₦0.00"))
+      .catch(() => setNgnBalance("₦0.00"));
+  }, [profile?.bmoni_user_id]);
+
   const handleRefresh = useCallback(async () => {
     if (refreshing) return;
     setRefreshing(true);
     await Promise.all([refreshBalance(), fetchTx(true), refreshOnChain()]);
+    fetchNgn();
     setRefreshing(false);
-  }, [refreshing, refreshBalance, fetchTx, refreshOnChain]);
+  }, [refreshing, refreshBalance, fetchTx, refreshOnChain, fetchNgn]);
 
   useEffect(() => {
     if (!loading && !authUser) navigate("/login", { replace: true });
@@ -307,7 +434,19 @@ export default function Home() {
     void fetchTx(true);
   }, [activeChain.id]); // eslint-disable-line
 
-  // Must be unconditional (Rules of Hooks)
+  // Fetch NGN balance + VBA
+  useEffect(() => {
+    fetchNgn();
+    const userId = profile?.bmoni_user_id;
+    if (!userId) return;
+    const stored = profile?.bmoni_ngn_vba;
+    if (stored) {
+      setVba({ id: "", accountNumber: stored, bankName: "Providus Bank", accountName: profile?.display_name ?? "", currency: "NGN" });
+    } else {
+      getNgnDepositAccount(userId).then(v => setVba(v)).catch(() => {});
+    }
+  }, [profile?.bmoni_user_id]); // eslint-disable-line
+
   const txUsernames = (transactions ?? [])
     .filter(tx => tx.recipientType === "xpay_user" && tx.recipientUsername)
     .map(tx => tx.recipientUsername as string)
@@ -319,7 +458,6 @@ export default function Home() {
   const displayName = profile.display_name || profile.username;
   const isEthChain  = activeChain.nativeSymbol === "ETH";
 
-  // Build combined feed
   type FI = { kind: "xpay"; tx: Transaction; ts: number } | { kind: "onchain"; tx: OnChainTx; ts: number };
   const feedItems: FI[] = [
     ...(transactions ?? []).map(tx => ({ kind: "xpay" as const, tx, ts: new Date(tx.createdAt).getTime() })),
@@ -335,13 +473,6 @@ export default function Home() {
   }
   for (const [label, items] of gmap) groups.push({ label, items });
 
-  const bs = (() => {
-    if (!balanceVisible) return "hidden";
-    if (balanceLoading || refreshing) return null;
-    return usdcBalance !== null ? formatUSD(usdcBalance) : "$0.00";
-  })();
-
-  // Sidebar / bottom-tab nav definition
   const navDef = [
     { label: "Home",      route: "/home",      icon: (a: boolean) => <HomeIcon active={a} /> },
     { label: "Portfolio", route: "/dashboard",  icon: (a: boolean) => <PortfolioIcon active={a} /> },
@@ -352,12 +483,22 @@ export default function Home() {
   return (
     <div className="min-h-dvh bg-[#111113] text-white selection:bg-emerald-500/30">
 
+      {/* Receive modal */}
+      {receiveModal && (
+        <ReceiveModal
+          asset={receiveModal}
+          walletAddress={effectiveWallet}
+          vba={vba}
+          username={profile.username}
+          onClose={() => setReceiveModal(null)}
+        />
+      )}
+
       {/* ── Top navbar ── */}
       <nav className="sticky top-0 z-40 border-b border-white/[0.06] bg-[#111113]/95 backdrop-blur-xl">
         <div className="mx-auto flex h-14 max-w-[900px] items-center justify-between px-5">
           <Link to="/" className="shrink-0">
-            <img src={xpayLogo} alt="XPay"
-              className="h-6 w-auto object-contain brightness-0 invert opacity-90" />
+            <img src={xpayLogo} alt="XPay" className="h-6 w-auto object-contain brightness-0 invert opacity-90" />
           </Link>
           <div className="flex items-center gap-2.5">
             <NetworkSwitcher />
@@ -372,44 +513,29 @@ export default function Home() {
         </div>
       </nav>
 
-      {/* ── Body: sidebar + main ── */}
+      {/* ── Body ── */}
       <div className="mx-auto flex max-w-[900px]">
 
-        {/* Left sidebar — desktop only (lg+) */}
+        {/* Sidebar — desktop */}
         <aside className="hidden lg:flex lg:w-56 lg:shrink-0 lg:flex-col lg:border-r lg:border-white/[0.06]">
           <div className="sticky top-14 flex flex-col gap-1 px-3 pt-6 pb-8">
             <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-widest text-white/20">Menu</p>
-
             {navDef.map(({ label, route, icon }) => (
-              <SidebarLink
-                key={route}
-                label={label}
-                route={route}
-                active={route === "/home"}
-                icon={icon(route === "/home")}
-                navigate={navigate}
-              />
+              <SidebarLink key={route} label={label} route={route}
+                active={route === "/home"} icon={icon(route === "/home")} navigate={navigate} />
             ))}
-
             <div className="my-3 border-t border-white/[0.06]" />
-
-            {/* User mini-card */}
-            <Link
-              to="/wallet"
-              className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 transition hover:bg-white/[0.04]"
-            >
+            <Link to="/wallet"
+              className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 transition hover:bg-white/[0.04]">
               <Avatar name={displayName} size={28} src={profile.avatar_url} />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[12px] font-medium text-white/70">{displayName}</p>
                 <p className="truncate font-mono text-[10px] text-white/30">{profile.username}.xpay</p>
               </div>
             </Link>
-
             {isAdmin && (
-              <button
-                onClick={() => navigate("/admin")}
-                className="mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-white/[0.04]"
-              >
+              <button onClick={() => navigate("/admin")}
+                className="mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-white/[0.04]">
                 <svg viewBox="0 0 20 20" width="18" height="18" fill="none"
                   stroke="rgba(167,139,250,0.6)" strokeWidth="1.75" strokeLinecap="round">
                   <path d="M10 2a2 2 0 012 2v1h3a1 1 0 011 1v11a1 1 0 01-1 1H5a1 1 0 01-1-1V6a1 1 0 011-1h3V4a2 2 0 012-2z" />
@@ -424,22 +550,20 @@ export default function Home() {
         {/* Main content */}
         <main className="min-w-0 flex-1 pb-24 lg:pb-10">
 
-          {/* Balance card */}
-          <div className="px-5 pt-8 pb-6 lg:px-6">
-            <div className="rounded-2xl border border-white/[0.07] bg-[#1a1a1c] px-6 py-6">
-
-              <div className="flex items-center justify-between">
-                <p className="text-[11px] font-bold uppercase tracking-widest text-white/25">Total Balance</p>
-                <div className="flex items-center gap-2">
-                  <button onClick={toggle} aria-label={balanceVisible ? "Hide balance" : "Show balance"}
-                    className="text-white/25 transition hover:text-white/55">
+          {/* ── Balance section ── */}
+          <div className="px-5 pt-8 pb-5 lg:px-6">
+            <div className="rounded-2xl border border-white/[0.07] bg-[#1a1a1c] px-5 py-5">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-[11px] font-bold uppercase tracking-widest text-white/25">Balances</p>
+                <div className="flex items-center gap-2.5">
+                  <button onClick={toggle} className="text-white/25 transition hover:text-white/55">
                     {balanceVisible
                       ? <svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"><path d="M1 10s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z" /><circle cx="10" cy="10" r="2.5" /></svg>
                       : <svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"><path d="M13.875 13.875A8.963 8.963 0 0110 15c-5.5 0-9-5-9-5a16.47 16.47 0 014.125-4.125M8.25 4.135A8.963 8.963 0 0110 4c5.5 0 9 5 9 5a16.47 16.47 0 01-2.1 2.773M3 3l14 14" /></svg>
                     }
                   </button>
                   <button onClick={handleRefresh} disabled={refreshing || balanceLoading}
-                    aria-label="Refresh" className="text-white/25 transition hover:text-white/55 disabled:opacity-30">
+                    className="text-white/25 transition hover:text-white/55 disabled:opacity-30">
                     <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor"
                       strokeWidth="2" strokeLinecap="round"
                       className={refreshing || balanceLoading ? "animate-spin" : ""}>
@@ -449,64 +573,84 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Amount */}
-              <div className="mt-3">
-                {bs === null
-                  ? <div className="h-10 w-36 animate-pulse rounded-xl bg-white/[0.08]" />
-                  : bs === "hidden"
-                  ? <span className="text-[36px] font-bold leading-none tracking-[0.1em] text-white/20">••••••</span>
-                  : <span className="text-[36px] font-bold leading-none tabular-nums text-white">{bs}</span>
-                }
-                {(refreshing || txLoading) && (
-                  <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-white/25">
-                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-                    Updating…
-                  </p>
-                )}
-              </div>
-
-              {/* Asset rows */}
-              <div className="mt-5 space-y-2.5">
-                {/* USDC */}
-                <div className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-black/20 px-4 py-3">
-                  <img src={getTokenLogo("USDC")} alt="USDC" className="h-7 w-7 shrink-0 rounded-full" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-medium text-white/75">USDC</p>
-                    <p className="text-[11px] text-white/30">Stablecoin</p>
+              {/* 2-column asset grid — tap each to open receive modal */}
+              <div className="grid grid-cols-2 gap-3">
+                {/* NGN */}
+                <button
+                  onClick={() => setReceiveModal("NGN")}
+                  className="flex flex-col gap-3 rounded-xl border border-emerald-500/30 bg-gradient-to-br from-emerald-950/60 to-[#111113] p-3.5 text-left transition active:scale-[0.97] hover:brightness-110"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/15 text-[14px] font-bold text-emerald-400">₦</div>
+                    <svg viewBox="0 0 16 16" width="9" height="9" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 4l4 4-4 4" /></svg>
                   </div>
-                  <p className="tabular-nums text-[13px] font-semibold text-white/70">
-                    {balanceLoading || refreshing
-                      ? <span className="inline-block h-3 w-14 animate-pulse rounded bg-white/[0.08]" />
-                      : usdcBalance !== null ? formatUSD(usdcBalance) : "$0.00"}
-                  </p>
-                </div>
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-white/30 mb-0.5">NGN</p>
+                    {ngnBalance === null
+                      ? <div className="h-5 w-16 animate-pulse rounded bg-white/[0.08]" />
+                      : <p className="text-[15px] font-bold text-white tabular-nums">{balanceVisible ? ngnBalance : "••••"}</p>
+                    }
+                    <p className="text-[10px] text-white/25 mt-1">Tap to deposit</p>
+                  </div>
+                </button>
 
-                {/* ETH */}
+                {/* USDC */}
+                <button
+                  onClick={() => setReceiveModal("USDC")}
+                  className="flex flex-col gap-3 rounded-xl border border-[#2775CA]/40 bg-gradient-to-br from-[#091828] to-[#111113] p-3.5 text-left transition active:scale-[0.97] hover:brightness-110"
+                >
+                  <div className="flex items-center justify-between">
+                    <img src={getTokenLogo("USDC")} alt="USDC" className="h-8 w-8 rounded-full" />
+                    <svg viewBox="0 0 16 16" width="9" height="9" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 4l4 4-4 4" /></svg>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-white/30 mb-0.5">USDC</p>
+                    {balanceLoading || refreshing
+                      ? <div className="h-5 w-16 animate-pulse rounded bg-white/[0.08]" />
+                      : <p className="text-[15px] font-bold text-white tabular-nums">{balanceVisible ? (usdcBalance !== null ? formatUSD(usdcBalance) : "$0.00") : "••••"}</p>
+                    }
+                    <p className="text-[10px] text-white/25 mt-1">Tap to receive</p>
+                  </div>
+                </button>
+
+                {/* ETH — spans full width on ETH chains */}
                 {isEthChain && (
-                  <div className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-black/20 px-4 py-3">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#627EEA]/10">
+                  <button
+                    onClick={() => setReceiveModal("ETH")}
+                    className="col-span-2 flex items-center gap-3 rounded-xl border border-[#627EEA]/35 bg-gradient-to-r from-[#0f1120] to-[#111113] px-4 py-3 text-left transition active:scale-[0.98] hover:brightness-110"
+                  >
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#627EEA]/15">
                       <svg viewBox="0 0 24 24" width="16" height="16">
                         <path d="M12 2L4 12l8 5 8-5L12 2z" fill="#627EEA" opacity="0.9" />
                         <path d="M4 12l8 10 8-10" fill="#627EEA" opacity="0.5" />
                       </svg>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-medium text-white/75">{activeChain.nativeSymbol}</p>
-                      <p className="text-[11px] text-white/30">Native token</p>
-                    </div>
-                    <p className="tabular-nums text-[13px] font-semibold text-white/70">
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-white/30">{activeChain.nativeSymbol}</p>
                       {balanceLoading || refreshing
-                        ? <span className="inline-block h-3 w-14 animate-pulse rounded bg-white/[0.08]" />
-                        : ethBalance !== null ? formatEth(ethBalance) : `0 ${activeChain.nativeSymbol}`}
-                    </p>
-                  </div>
+                        ? <div className="mt-0.5 h-4 w-20 animate-pulse rounded bg-white/[0.08]" />
+                        : <p className="text-[14px] font-bold text-white tabular-nums">{balanceVisible ? (ethBalance !== null ? formatEth(ethBalance) : `0 ${activeChain.nativeSymbol}`) : "••••"}</p>
+                      }
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="text-[10px] text-white/25">Tap to receive</p>
+                      <svg viewBox="0 0 16 16" width="9" height="9" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="ml-auto mt-1"><path d="M6 4l4 4-4 4" /></svg>
+                    </div>
+                  </button>
                 )}
               </div>
+
+              {(refreshing || txLoading) && (
+                <p className="mt-3 flex items-center gap-1.5 text-[11px] text-white/25">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                  Updating…
+                </p>
+              )}
             </div>
           </div>
 
           {/* Quick actions */}
-          <div className="px-5 pb-6 lg:px-6">
+          <div className="px-5 pb-5 lg:px-6">
             <div className="flex items-start justify-between gap-3">
               <Action onClick={() => navigate("/send")} label="Send"
                 icon={<svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="rgba(255,255,255,0.65)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 16L16 4M16 4H8M16 4v8" /></svg>}
@@ -523,37 +667,26 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Handle + profile card */}
+          {/* Handle + profile */}
           <div className="px-5 pb-5 lg:px-6">
             <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#1a1a1c]">
               <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3.5">
                 <span className="font-mono text-[12px] text-white/30">{profile.username}.xpay</span>
                 <CopyButton value={`${profile.username}.xpay`} label="Copy" />
               </div>
-              <button
-                onClick={() => navigate("/dashboard")}
-                className="flex w-full items-center justify-between px-4 py-3.5 text-left transition hover:bg-white/[0.025] active:bg-white/[0.04]"
-              >
+              <button onClick={() => navigate("/dashboard")}
+                className="flex w-full items-center justify-between px-4 py-3.5 text-left transition hover:bg-white/[0.025] active:bg-white/[0.04]">
                 <div>
                   <p className="text-[13px] font-medium text-white/75">Profile &amp; Enrollments</p>
                   <p className="text-[11px] text-white/30">View your courses &amp; progress</p>
                 </div>
-                <svg viewBox="0 0 16 16" width="13" height="13" fill="none"
-                  stroke="rgba(255,255,255,0.2)" strokeWidth="2" strokeLinecap="round">
-                  <path d="M6 4l4 4-4 4" />
-                </svg>
+                <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="2" strokeLinecap="round"><path d="M6 4l4 4-4 4" /></svg>
               </button>
-              {/* Admin row — mobile only (sidebar covers desktop) */}
               {isAdmin && (
-                <button
-                  onClick={() => navigate("/admin")}
-                  className="flex w-full items-center justify-between border-t border-white/[0.06] px-4 py-3.5 text-left transition hover:bg-white/[0.025] active:bg-white/[0.04] lg:hidden"
-                >
+                <button onClick={() => navigate("/admin")}
+                  className="flex w-full items-center justify-between border-t border-white/[0.06] px-4 py-3.5 text-left transition hover:bg-white/[0.025] active:bg-white/[0.04] lg:hidden">
                   <p className="text-[13px] font-medium text-violet-300">Admin Panel</p>
-                  <svg viewBox="0 0 16 16" width="13" height="13" fill="none"
-                    stroke="#a78bfa" strokeWidth="2" strokeLinecap="round">
-                    <path d="M6 4l4 4-4 4" />
-                  </svg>
+                  <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round"><path d="M6 4l4 4-4 4" /></svg>
                 </button>
               )}
             </div>
@@ -564,14 +697,10 @@ export default function Home() {
             <div className="mb-3 flex items-center justify-between">
               <p className="text-[11px] font-bold uppercase tracking-widest text-white/25">Recent</p>
               {feedItems.length > 0 && (
-                <Link to="/activity"
-                  className="text-[12px] font-medium text-white/35 transition hover:text-white/60">
-                  See all
-                </Link>
+                <Link to="/activity" className="text-[12px] font-medium text-white/35 transition hover:text-white/60">See all</Link>
               )}
             </div>
 
-            {/* Loading skeleton */}
             {transactions === null && feedItems.length === 0 && (
               <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#1a1a1c]">
                 {[1, 2, 3].map(i => (
@@ -587,42 +716,27 @@ export default function Home() {
               </div>
             )}
 
-            {/* Empty state */}
             {transactions !== null && feedItems.length === 0 && (
               <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-white/[0.07] bg-[#1a1a1c] py-12 text-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/[0.07] bg-white/[0.04]">
-                  <svg viewBox="0 0 20 20" width="18" height="18" fill="none"
-                    stroke="rgba(255,255,255,0.2)" strokeWidth="1.75" strokeLinecap="round">
-                    <circle cx="10" cy="10" r="7" /><path d="M10 6v4l2.5 2.5" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-[14px] font-medium text-white/35">No transactions yet</p>
-                  <p className="mt-0.5 text-[12px] text-white/20">Send or receive to get started</p>
-                </div>
-                <button
-                  onClick={() => navigate("/send")}
-                  className="mt-1 rounded-xl bg-emerald-500 px-5 py-2 text-[13px] font-semibold text-white transition hover:bg-emerald-400"
-                >
+                <p className="text-[14px] font-medium text-white/35">No transactions yet</p>
+                <p className="text-[12px] text-white/20">Send or receive to get started</p>
+                <button onClick={() => navigate("/send")}
+                  className="mt-1 rounded-xl bg-emerald-500 px-5 py-2 text-[13px] font-semibold text-white transition hover:bg-emerald-400">
                   Send money
                 </button>
               </div>
             )}
 
-            {/* Grouped feed */}
             <div className="space-y-5">
               {groups.map(group => (
                 <div key={group.label}>
-                  <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-white/20">
-                    {group.label}
-                  </p>
+                  <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-white/20">{group.label}</p>
                   <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#1a1a1c]">
                     {group.items.map((item, i) =>
                       item.kind === "xpay"
                         ? <TxRow key={item.tx.id} tx={item.tx} last={i === group.items.length - 1}
                             avatarSrc={item.tx.recipientUsername ? feedAvatars.get(item.tx.recipientUsername) : undefined} />
-                        : <OnChainTxRow key={item.tx.hash + item.tx.type} tx={item.tx}
-                            last={i === group.items.length - 1} />
+                        : <OnChainTxRow key={item.tx.hash + item.tx.type} tx={item.tx} last={i === group.items.length - 1} />
                     )}
                   </div>
                 </div>
@@ -633,17 +747,12 @@ export default function Home() {
         </main>
       </div>
 
-      {/* ── Bottom tab bar — mobile only ── */}
+      {/* Bottom tab bar — mobile only */}
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/[0.07] bg-[#111113]/95 backdrop-blur-xl lg:hidden">
         <div className="mx-auto flex max-w-[480px] items-stretch">
           {navDef.map(({ label, route, icon }) => (
-            <BottomTab
-              key={route}
-              label={label}
-              active={route === "/home"}
-              icon={icon(route === "/home")}
-              onClick={() => navigate(route)}
-            />
+            <BottomTab key={route} label={label} active={route === "/home"}
+              icon={icon(route === "/home")} onClick={() => navigate(route)} />
           ))}
         </div>
       </nav>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePrivy, useWallets, useCreateWallet } from "@privy-io/react-auth";
-import { isUsernameTaken, createProfile, createEnrollment, createEnrollmentPayment, createAdminNotification } from "@/lib/supabase";
+import { isUsernameTaken, createProfile } from "@/lib/supabase";
 import { useSession } from "@/lib/session";
 import { Spinner } from "@/components/icons";
 import { PhoneInput } from "@/components/PhoneInput";
@@ -9,28 +9,20 @@ import xpayLogo from "@/assets/xpay_logo.png";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Step = "auth" | "profile" | "pin" | "enroll" | "done";
+type Step = "auth" | "profile" | "pin" | "done";
 
 type Draft = {
   phone: string;
   phoneValid: boolean;
   displayName: string;
   username: string;
-  // enrollment
-  courseName: string;
-  programType: string;
-  paymentAmount: string;
-  paymentMethod: string;
-  paymentReference: string;
 };
 
 const EMPTY: Draft = {
   phone: "", phoneValid: false, displayName: "", username: "",
-  courseName: "", programType: "standard", paymentAmount: "",
-  paymentMethod: "", paymentReference: "",
 };
 const USERNAME_RE = /^[a-z][a-z0-9_]{2,15}$/;
-const VISIBLE_STEPS: Step[] = ["auth", "profile", "pin", "enroll"];
+const VISIBLE_STEPS: Step[] = ["auth", "profile", "pin"];
 
 // ─── Step progress bar ────────────────────────────────────────────────────────
 
@@ -38,7 +30,6 @@ const STEP_LABELS: Record<Step, string> = {
   auth:    "Account",
   profile: "Profile",
   pin:     "Security",
-  enroll:  "Enroll",
   done:    "Done",
 };
 
@@ -362,8 +353,9 @@ export default function Onboarding() {
       });
 
       setProfile(created as never);
-      // Go to enrollment step — profile is now created
-      setStep("enroll");
+      // Profile created — go straight to done, then home
+      setStep("done");
+      setTimeout(() => navigate("/home", { replace: true }), 2200);
     } catch (e: unknown) {
       setBusy(false);
       setConfirmPin(""); setFirstPin(""); setPinStage("choose");
@@ -382,56 +374,7 @@ export default function Onboarding() {
     }
   }
 
-  // ── Enrollment submission ──────────────────────────────────────────────────
-  async function handleEnrollSubmit() {
-    if (!draft.courseName.trim()) { setError("Please select or enter a course name."); return; }
-    setBusy(true); setError(null);
-    try {
-      const userId = privyUser?.id;
-      if (!userId) throw new Error("Not authenticated.");
-
-      // Create enrollment record
-      const enrollment = await createEnrollment({
-        user_id:      userId,
-        course_name:  draft.courseName.trim(),
-        program_type: draft.programType,
-      });
-
-      // Create payment record if amount was provided
-      if (draft.paymentAmount && Number(draft.paymentAmount) > 0) {
-        await createEnrollmentPayment({
-          enrollment_id:     enrollment.id,
-          user_id:           userId,
-          amount:            Number(draft.paymentAmount),
-          currency:          "NGN",
-          payment_method:    draft.paymentMethod || undefined,
-          payment_reference: draft.paymentReference || undefined,
-        });
-      }
-
-      // Notify admin
-      await createAdminNotification({
-        type:          "new_enrollment",
-        title:         "New Enrollment",
-        message:       `${draft.displayName} enrolled in ${draft.courseName}${draft.paymentAmount ? ` — ₦${Number(draft.paymentAmount).toLocaleString()} payment submitted` : ""}`,
-        user_id:       userId,
-        enrollment_id: enrollment.id,
-      });
-
-      setStep("done");
-      setTimeout(() => navigate("/dashboard", { replace: true }), 2200);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Enrollment failed. Please try again.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  // ── Skip enrollment ────────────────────────────────────────────────────────
-  function handleSkipEnroll() {
-    setStep("done");
-    setTimeout(() => navigate("/home", { replace: true }), 2200);
-  }
+  // (enrollment removed — users go straight to home after PIN)
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -697,125 +640,6 @@ export default function Onboarding() {
               <p className="mt-6 text-center text-xs text-white/40">
                 Never share your PIN. Not even with XPay support.
               </p>
-            </div>
-          )}
-
-          {/* ── STEP: enroll ───────────────────────────────────────────── */}
-          {step === "enroll" && (
-            <div className="animate-[fadeSlideUp_0.3s_ease-out]">
-              <h1 className="text-2xl font-bold tracking-tight text-white/90">
-                Course Enrollment
-              </h1>
-              <p className="mt-2 text-sm text-white/50">
-                Select your course and submit payment details for review.
-              </p>
-
-              <div className="mt-6 space-y-4">
-                {/* Course selection */}
-                <div>
-                  <label className="mb-1.5 block text-sm font-semibold text-white/70">Course / Program *</label>
-                  <select
-                    value={draft.courseName}
-                    onChange={e => { patch({ courseName: e.target.value }); setError(null); }}
-                    className="h-12 w-full rounded-xl border border-white/[0.08] bg-[#111113] px-4 text-sm text-white/90 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
-                  >
-                    <option value="">Select a course…</option>
-                    <option value="Web3 Fundamentals">Web3 Fundamentals</option>
-                    <option value="DeFi & Blockchain Development">DeFi &amp; Blockchain Development</option>
-                    <option value="Smart Contract Engineering">Smart Contract Engineering</option>
-                    <option value="Crypto Trading & Investment">Crypto Trading &amp; Investment</option>
-                    <option value="NFT Creation & Monetisation">NFT Creation &amp; Monetisation</option>
-                    <option value="other">Other (type below)</option>
-                  </select>
-                  {draft.courseName === "other" && (
-                    <input
-                      className="mt-2 h-12 w-full rounded-xl border border-white/[0.08] bg-[#111113] px-4 text-sm text-white/90 outline-none transition placeholder:text-white/40 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
-                      placeholder="Enter course name"
-                      onChange={e => patch({ courseName: e.target.value })}
-                    />
-                  )}
-                </div>
-
-                {/* Program type */}
-                <div>
-                  <label className="mb-1.5 block text-sm font-semibold text-white/70">Program Type</label>
-                  <div className="flex gap-2">
-                    {["standard", "premium", "scholarship"].map(t => (
-                      <button key={t} type="button"
-                        onClick={() => patch({ programType: t })}
-                        className={["flex-1 rounded-xl border py-2.5 text-xs font-semibold capitalize transition",
-                          draft.programType === t
-                            ? "border-emerald-500 bg-emerald-500/10 text-emerald-400"
-                            : "border-white/[0.08] bg-[#111113] text-white/60 hover:bg-[#1c1c1e]",
-                        ].join(" ")}>
-                        {t}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Payment */}
-                <div>
-                  <label className="mb-1.5 block text-sm font-semibold text-white/70">Payment Amount (₦)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={draft.paymentAmount}
-                    onChange={e => { patch({ paymentAmount: e.target.value }); setError(null); }}
-                    placeholder="e.g. 50000"
-                    className="h-12 w-full rounded-xl border border-white/[0.08] bg-[#111113] px-4 text-sm text-white/90 outline-none transition placeholder:text-white/40 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1.5 block text-sm font-semibold text-white/70">Payment Method</label>
-                  <select
-                    value={draft.paymentMethod}
-                    onChange={e => patch({ paymentMethod: e.target.value })}
-                    className="h-12 w-full rounded-xl border border-white/[0.08] bg-[#111113] px-4 text-sm text-white/90 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
-                  >
-                    <option value="">Select…</option>
-                    <option value="bank_transfer">Bank Transfer</option>
-                    <option value="card">Card Payment</option>
-                    <option value="crypto">Crypto (USDC)</option>
-                    <option value="cash">Cash</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="mb-1.5 block text-sm font-semibold text-white/70">Payment Reference / Teller No.</label>
-                  <input
-                    value={draft.paymentReference}
-                    onChange={e => patch({ paymentReference: e.target.value })}
-                    placeholder="Bank teller number or transaction ref"
-                    className="h-12 w-full rounded-xl border border-white/[0.08] bg-[#111113] px-4 text-sm text-white/90 outline-none transition placeholder:text-white/40 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
-                  />
-                </div>
-
-                <div className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3">
-                  <p className="text-xs text-amber-700">
-                    Your enrollment will be reviewed and activated by an admin once your payment is confirmed.
-                  </p>
-                </div>
-              </div>
-
-              {error && <ErrorBox message={error} />}
-
-              <button
-                onClick={handleEnrollSubmit}
-                disabled={busy || !draft.courseName || draft.courseName === "other"}
-                className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 text-sm font-semibold text-white shadow-sm shadow-emerald-900/30 transition hover:bg-emerald-400 active:scale-[.98] disabled:cursor-not-allowed disabled:bg-white/[0.07] disabled:text-white/40 disabled:shadow-none"
-              >
-                {busy && <Spinner className="h-4 w-4" />}
-                Submit Enrollment
-              </button>
-
-              <button
-                onClick={handleSkipEnroll}
-                className="mt-3 w-full text-center text-xs text-white/40 hover:text-white/60 hover:underline"
-              >
-                Skip for now — enroll later
-              </button>
             </div>
           )}
 

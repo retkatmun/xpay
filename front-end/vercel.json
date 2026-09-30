@@ -1,5 +1,9 @@
 {
   "rewrites": [
+    {
+      "source": "/bmoni/:path*",
+      "destination": "https://embedded-dev.bmoni.com/:path*"
+    },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

@@ -23,6 +23,18 @@ export type XPayProfile = {
   avatar_url?: string | null;
   created_at?: string;
   updated_at?: string;
+  // BMONI Embedded fields
+  bmoni_user_id?: string | null;
+  bmoni_wallet_id?: string | null;
+  bmoni_ngn_vba?: string | null;
+  bmoni_onboarding_status?: "pending" | "kyc_submitted" | "kyc_approved" | "wallet_created" | "rail_active" | string | null;
+  // Persistent onboarding stage — enforced on every login and every device
+  // profile      → XPay profile created, no BMONI setup started
+  // bmoni_user   → BMONI user created, wallet not yet provisioned
+  // bmoni_wallet → Smart wallet provisioned, KYC/Nigeria rail not started
+  // bmoni_kyc    → Nigeria rail started, VBA pending
+  // complete     → Fully onboarded
+  onboarding_stage?: "profile" | "bmoni_user" | "bmoni_wallet" | "bmoni_kyc" | "complete" | string | null;
 };
 
 type SessionValue = {
@@ -166,4 +178,9 @@ export function useSession(): SessionValue {
   const ctx = useContext(SessionContext);
   if (!ctx) throw new Error("useSession must be used inside SessionProvider");
   return ctx;
+}
+
+/** Safe version — returns null instead of throwing. Use in pages that might render before provider mounts (e.g. during HMR). */
+export function useSessionSafe(): SessionValue | null {
+  return useContext(SessionContext);
 }

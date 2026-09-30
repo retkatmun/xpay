@@ -125,7 +125,7 @@ export async function createProfile(profile: {
 
   const { data, error } = await supabaseAdmin
     .from("profiles")
-    .insert({ ...profile, role: "user", account_number })
+    .insert({ ...profile, role: "user", account_number, onboarding_stage: "profile" })
     .select()
     .single();
 
