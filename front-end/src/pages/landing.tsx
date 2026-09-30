@@ -85,8 +85,6 @@ function ProductVisual() {
 
 // ── Main Landing Page ─────────────────────────────────────────────────────────
 export default function Landing() {
-  const navigate = useNavigate();
-  const { authUser, profile, loading } = useSession();
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("");
   const menuRef = useRef<HTMLDivElement>(null);
