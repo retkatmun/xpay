@@ -921,7 +921,7 @@ export default function Send() {
   // ══════════════════════════════════════════════════════════════════════════
   if (step === "review") {
     return (
-      <Screen back onBack={() => setStep("amount")}>
+      <Screen back onBack={() => setStep("amount")} title="Review transfer">
         <div className="flex flex-1 flex-col pt-4 pb-10">
           <Title>Review transfer</Title>
 
@@ -1594,7 +1594,7 @@ export default function Send() {
   // RECIPIENT MODE (entry point)
   // ══════════════════════════════════════════════════════════════════════════
   return (
-    <Screen back onBack={() => navigate(-1)}>
+    <Screen back onBack={() => navigate(-1)} title="Send">
       <div className="flex flex-1 flex-col pt-4 pb-10">
         <Title sub="Choose how you want to send.">Send money</Title>
 

@@ -221,7 +221,7 @@ export default function KycSetup() {
   // ── Done ───────────────────────────────────────────────────────────────────
   if (step === "done") {
     return (
-      <Screen back onBack={() => navigate("/home")}>
+      <Screen back onBack={() => navigate("/home")} title="KYC Setup">
         <div className="flex flex-1 flex-col items-center justify-center text-center px-5 py-16">
           <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/20 ring-8 ring-emerald-500/10">
             <svg viewBox="0 0 48 48" width="40" height="40" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -254,7 +254,7 @@ export default function KycSetup() {
   }
 
   return (
-    <Screen back onBack={() => { if (step === "confirm") { setStep("bvn"); setError(null) } else navigate(-1) }}>
+    <Screen back onBack={() => { if (step === "confirm") { setStep("bvn"); setError(null) } else navigate(-1) }} title="Activate NGN Wallet">
       <div className="flex flex-1 flex-col pt-4 pb-10 px-1">
 
         {/* Progress */}

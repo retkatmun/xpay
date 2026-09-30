@@ -637,7 +637,7 @@ export default function Swap() {
 
   // ── Main UI ──────────────────────────────────────────────────────────────────
   return (
-    <Screen back onBack={() => navigate(-1)} action={<NetworkSwitcher />}>
+    <Screen back onBack={() => navigate(-1)} title="Swap" action={<NetworkSwitcher />}>
       <div className="flex flex-1 flex-col pt-4 pb-12 gap-4">
         <Title sub={`Swap tokens on ${activeChain.name} via Uniswap`}>Swap</Title>
 

@@ -630,7 +630,7 @@ export default function Convert() {
   // ══════════════════════════════════════════════════════════════════════════
   if (step === "bank_confirm" && verifiedAccount) {
     return (
-      <Screen back onBack={() => { setStep("bank_account"); setVerifiedAccount(null) }}>
+      <Screen back onBack={() => { setStep("bank_account"); setVerifiedAccount(null) }} title="Confirm account">
         <div className="flex flex-1 flex-col pt-4 pb-10">
           <Title sub="Make sure this is your account.">Confirm account</Title>
           <div className="mt-6 overflow-hidden rounded-2xl border border-white/[0.06] bg-black shadow-sm">
@@ -667,7 +667,7 @@ export default function Convert() {
   if (step === "bank_account") {
     const canVerify = !!selectedBank && accountNumber.length === 10 && !verifying
     return (
-      <Screen back onBack={() => { setStep("amount"); setSelectedBank(null); setBankSearch(""); setAccountNumber(""); setVerifyError(null) }}>
+      <Screen back onBack={() => { setStep("amount"); setSelectedBank(null); setBankSearch(""); setAccountNumber(""); setVerifyError(null) }} title="Your bank account">
         <div className="flex flex-1 flex-col pt-4 pb-10">
           <Title sub="Enter the bank account where you want to receive naira.">Your bank account</Title>
           <div className="mt-6 space-y-4">
@@ -765,12 +765,12 @@ export default function Convert() {
   const canContinue = hasInput && !!quote && !quoteLoading && !overBalance
 
   return (
-    <Screen back onBack={() => navigate(-1)}>
+    <Screen back onBack={() => navigate(-1)} title="Send to Bank">
       <div className="flex flex-1 flex-col px-5 pt-4 pb-10">
 
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-2xl font-medium tracking-tight text-white/90">Convert to Naira</h1>
+          <h1 className="text-2xl font-medium tracking-tight text-white/90">Send to Nigerian bank</h1>
           <p className="mt-1 text-[13px] text-white/40">Sell USDC and receive Naira to your bank account.</p>
         </div>
 

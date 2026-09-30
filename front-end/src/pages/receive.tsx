@@ -49,7 +49,7 @@ export default function Receive() {
   const hasNgnSetup = !!profile.bmoni_user_id
 
   return (
-    <Screen back onBack={() => navigate(-1)}>
+    <Screen back onBack={() => navigate(-1)} title="Receive">
       <div className="flex flex-1 flex-col pt-4 pb-10">
         <Title sub="Choose how you want to receive money.">
           Receive money

@@ -217,7 +217,7 @@ export default function Activity() {
 
   return (
     <>
-    <Screen back onBack={() => navigate('/home')} action={<NetworkSwitcher />}>
+    <Screen back onBack={() => navigate('/home')} title="Transactions" action={<NetworkSwitcher />}>
       <div className="flex-1 pt-4 pb-24">
         <Title>Transactions</Title>
 

@@ -95,7 +95,7 @@ export default function Wallet() {
   };
 
   return (
-    <Screen back onBack={() => navigate("/home")}>
+    <Screen back onBack={() => navigate("/home")} title="Profile">
       <div className="flex flex-1 flex-col pb-12">
 
         {/* ── Avatar section ─────────────────────────────────────────── */}
