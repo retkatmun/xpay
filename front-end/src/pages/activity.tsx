@@ -1,8 +1,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSession } from '@/lib/session'
-import { Screen } from '@/components/Screen'
-import { Title } from '@/components/Screen'
+import { AppShell } from '@/components/AppShell'
 import { getTransactions } from '@/lib/api'
 import { dayLabel } from '@/lib/time'
 import { statusLabel, statusColor } from '@/lib/txStatus'
@@ -14,44 +13,6 @@ import { NetworkSwitcher } from '@/components/NetworkSwitcher'
 import { useAllChainsOnChainTxs, type OnChainTx } from '@/lib/useOnChainTxs'
 import { useProfileAvatars } from '@/lib/useProfileAvatars'
 import type { Transaction } from '@/lib/types'
-
-// ─── Bottom tab icons (shared visual language with home.tsx) ──────────────────
-
-function HomeIcon() {
-  return (
-    <svg viewBox="0 0 20 20" width="18" height="18" fill="none"
-      stroke="rgba(255,255,255,0.4)" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 9.5L10 3l7 6.5V17a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" />
-      <path d="M7 18v-6h6v6" />
-    </svg>
-  )
-}
-function PortfolioIcon() {
-  return (
-    <svg viewBox="0 0 20 20" width="18" height="18" fill="none"
-      stroke="rgba(255,255,255,0.4)" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="5" width="16" height="12" rx="1.5" />
-      <path d="M6 5V4a2 2 0 014 0v1" /><path d="M2 10h16" />
-    </svg>
-  )
-}
-function ActivityIconActive() {
-  return (
-    <svg viewBox="0 0 20 20" width="18" height="18" fill="none"
-      stroke="#10b981" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="10" cy="10" r="7" /><path d="M10 6v4l2.5 2.5" />
-    </svg>
-  )
-}
-function SettingsIcon() {
-  return (
-    <svg viewBox="0 0 20 20" width="18" height="18" fill="none"
-      stroke="rgba(255,255,255,0.4)" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="10" cy="10" r="2.5" />
-      <path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.22 4.22l1.42 1.42M14.36 14.36l1.42 1.42M4.22 15.78l1.42-1.42M14.36 5.64l1.42-1.42" />
-    </svg>
-  )
-}
 
 // ─── XPay internal tx row ─────────────────────────────────────────────────────
 
@@ -216,13 +177,14 @@ export default function Activity() {
   const isLoading = transactions === null && onChainLoading
 
   return (
-    <>
-    <Screen back onBack={() => navigate('/home')} title="Transactions" action={<NetworkSwitcher />}>
-      <div className="flex-1 pt-4 pb-24">
-        <Title>Transactions</Title>
+    <AppShell>
+      <div className="px-5 pt-6 pb-6 lg:px-6">
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-xl font-bold text-white/90">Transactions</h1>
+          <NetworkSwitcher />
+        </div>
 
-        {/* Network context pill */}
-        <p className="mt-1 text-xs text-white/40">
+        <p className="text-xs text-white/40 mb-6">
           XPay transfers + on-chain activity across{' '}
           <span className="font-semibold text-white/60">Base Sepolia</span>
           {' '}&amp;{' '}
@@ -231,7 +193,7 @@ export default function Activity() {
 
         {/* Loading skeleton */}
         {isLoading && (
-          <div className="mt-8 space-y-3">
+          <div className="space-y-3">
             {[1, 2, 3, 4].map(i => (
               <div key={i} className="flex items-center gap-3 py-3">
                 <div className="h-10 w-10 shrink-0 rounded-full bg-white/[0.07] animate-pulse" />
@@ -247,7 +209,7 @@ export default function Activity() {
 
         {/* On-chain fetch error */}
         {onChainError && (
-          <div className="mt-6 flex items-start gap-3 rounded-xl border border-red-900/30 bg-red-950/30 px-4 py-3.5">
+          <div className="mb-4 flex items-start gap-3 rounded-xl border border-red-900/30 bg-red-950/30 px-4 py-3.5">
             <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="#f87171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 shrink-0">
               <circle cx="8" cy="8" r="6" /><path d="M8 5v3M8 10.5v.5" />
             </svg>
@@ -285,7 +247,7 @@ export default function Activity() {
 
         {/* Transaction groups */}
         {!isLoading && groups.map(group => (
-          <section key={group.label} className="mt-8">
+          <section key={group.label} className="mt-6">
             <p className="mb-3 text-[0.7rem] font-semibold uppercase tracking-widest text-white/40">
               {group.label}
             </p>
@@ -301,31 +263,6 @@ export default function Activity() {
           </section>
         ))}
       </div>
-    </Screen>
-
-    {/* ── Bottom tab bar — Activity highlighted, mirrors home.tsx ── */}
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/[0.07] bg-[#111113]/95 backdrop-blur-xl lg:hidden">
-      <div className="mx-auto flex max-w-[480px] items-stretch">
-        {[
-          { label: 'Home',      route: '/home',      icon: <HomeIcon /> },
-          { label: 'Portfolio', route: '/dashboard',  icon: <PortfolioIcon /> },
-          { label: 'Activity',  route: '/activity',   icon: <ActivityIconActive />, active: true },
-          { label: 'Settings',  route: '/settings',   icon: <SettingsIcon /> },
-        ].map(({ label, route, icon, active }) => (
-          <button
-            key={route}
-            onClick={() => navigate(route)}
-            className={[
-              'flex flex-1 flex-col items-center gap-1 py-2 transition active:scale-95',
-              active ? 'text-emerald-400' : 'text-white/35 hover:text-white/60',
-            ].join(' ')}
-          >
-            {icon}
-            <span className="text-[10px] font-medium">{label}</span>
-          </button>
-        ))}
-      </div>
-    </nav>
-    </>
+    </AppShell>
   )
 }

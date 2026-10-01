@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSession } from "@/lib/session";
-import { Screen } from "@/components/Screen";
+import { AppShell } from "@/components/AppShell";
 import { Avatar } from "@/components/Avatar";
 import { useNetwork } from "@/lib/NetworkContext";
 
@@ -30,8 +30,9 @@ export default function Settings() {
   }
 
   return (
-    <Screen back onBack={() => navigate("/home")} title="Settings">
-      <div className="flex flex-1 flex-col pb-12 pt-4">
+    <AppShell>
+      <div className="px-5 pt-6 pb-12 lg:px-6">
+        <h1 className="mb-6 text-xl font-bold text-white/90">Settings</h1>
 
         {/* ── Profile preview ── */}
         <button
@@ -175,7 +176,7 @@ export default function Settings() {
           Secured by Privy · {activeChain.name}
         </p>
       </div>
-    </Screen>
+    </AppShell>
   );
 }
 

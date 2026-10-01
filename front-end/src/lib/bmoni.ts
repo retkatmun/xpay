@@ -27,10 +27,11 @@
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 
-// Dev: call BMONI directly from the browser (avoids Vite proxy ETIMEDOUT issues)
-// Prod: Vercel rewrites /bmoni/:path* → https://embedded-dev.bmoni.com/:path*
+// Always use the Vite proxy path (/bmoni) so requests go through the dev server
+// which proxies to https://embedded-dev.bmoni.com and adds CORS headers.
+// In production, Vercel rewrites /bmoni/:path* → https://embedded-dev.bmoni.com/:path*
 const BMONI_BASE_URL = import.meta.env.DEV
-  ? (import.meta.env.VITE_BMONI_BASE_URL as string || "https://embedded-dev.bmoni.com")
+  ? "/bmoni"
   : "/bmoni"
 
 const BMONI_API_KEY =
@@ -365,8 +366,9 @@ export async function patchKycProfile(
     accountPurpose?: string
     actingAsIntermediary?: boolean
     identificationNumbers?: Array<{
-      type: string    // "bvn" | "nin"
-      value: string
+      type: string              // "bvn" | "nin"
+      number: string            // the actual ID number
+      issuingCountryCode: string // "NGA" for Nigeria
     }>
   },
 ): Promise<void> {
@@ -456,27 +458,47 @@ export async function getNgnDepositAccount(userId: string): Promise<BmoniVba> {
 // ─── 8. Nigerian Banks (for withdrawals) ──────────────────────────────────────
 
 export async function getNigerianBanks(userId: string): Promise<BmoniBank[]> {
-  const data = await get<{ banks: BmoniBank[] }>(
+  const data = await get<{ banks: { bankName: string; bankCode: string }[] }>(
     `/v1/users/${userId}/bank-accounts/nigerian-banks`,
   )
-  return data.banks ?? []
+  // Normalise to { name, code } shape
+  return (data.banks ?? []).map(b => ({ name: b.bankName ?? (b as unknown as BmoniBank).name, code: b.bankCode ?? (b as unknown as BmoniBank).code }))
 }
 
 // ─── 9. Verify Nigerian Bank Account ──────────────────────────────────────────
 
+/**
+ * Verify a Nigerian bank account and return the account holder name.
+ *
+ * SANDBOX NOTE: BMONI sandbox only accepts a small set of test account numbers.
+ * Known working sandbox accounts:
+ *   accountNumber: "0000000001"  bankCode: "000023"  → Ebuka Abubakar (Providus)
+ *   accountNumber: "0001234567"  bankCode: "000013"  → Chinara Ohakwu (GTBank)
+ *
+ * For real accounts, verification will return E101. In sandbox this is expected —
+ * the app shows a clear error message with the test account hint.
+ */
 export async function verifyNigerianAccount(
   userId: string,
   accountNumber: string,
   bankCode: string,
 ): Promise<BmoniVerifyAccountResult> {
   try {
-    const data = await post<{ accountHolderName: string }>(
+    const data = await post<{ accountHolderName?: string; accountName?: string }>(
       `/v1/users/${userId}/bank-accounts/verify-nigerian-account`,
       { accountNumber, bankCode },
     )
-    return { success: true, accountHolderName: data.accountHolderName, accountNumber, bankCode }
+    const name = data?.accountHolderName ?? data?.accountName ?? null
+    if (name) {
+      return { success: true, accountHolderName: name, accountNumber, bankCode }
+    }
+    return { success: false, reason: "invalid_account" }
   } catch (err) {
-    return { success: false, reason: err instanceof BmoniError ? err.code : "network_error" }
+    if (err instanceof BmoniError) {
+      // E101 = cannot verify — bad account number / bank code combination
+      return { success: false, reason: err.code }
+    }
+    return { success: false, reason: "network_error" }
   }
 }
 

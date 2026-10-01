@@ -3,18 +3,13 @@
  *
  * Steps (XPay user):
  *   recipient_mode → xpay_lookup → amount → review → pin → sending → done
- *   Token: USDC (via backend quote) OR native ETH/token (direct on-chain to wallet address)
  *
- * Steps (bank):
+ * Steps (Nigerian bank — via BMONI offramp):
  *   recipient_mode → bank_account → bank_confirm_recipient → amount → review → pin → sending → done
- *   Token: USDC only (must be converted to NGN for bank payout)
+ *   Uses BMONI: verifyNigerianAccount → createNgnOfframp → sign proposal → poll
  *
  * Steps (crypto wallet):
  *   recipient_mode → wallet_address → amount → review → pin → sending → done
- *   Token: USDC or native
- *
- * XPay user + native send works exactly like a wallet address send:
- *   the recipient's stored wallet_address is fetched from Supabase and used directly.
  */
 
 import { useEffect, useState, useCallback, useRef } from "react"
@@ -29,8 +24,10 @@ import { Screen, Title } from "@/components/Screen"
 import { Spinner } from "@/components/icons"
 import {
   ApiError,
-  formatHandle, getQuote, getTransaction,
-  getRecentRecipients, getBanks, resolveBankAccount,
+  formatHandle,
+  getQuote,
+  getTransaction,
+  getRecentRecipients,
   resolveRecipient,
 } from "@/lib/api"
 import { searchProfiles, supabaseAdmin } from "@/lib/supabase"
@@ -40,13 +37,27 @@ import { useNetwork, CHAINS } from "@/lib/NetworkContext"
 import type { ChainConfig } from "@/lib/NetworkContext"
 import { useWalletBalances } from "@/lib/useUsdcBalance"
 import { isTerminal, statusLabel } from "@/lib/txStatus"
-import type { Bank, BankResolveResult, PublicUser, Quote, Transaction } from "@/lib/types"
+import type { PublicUser, Quote, Transaction } from "@/lib/types"
+import {
+  getNigerianBanks,
+  verifyNigerianAccount,
+  registerWithdrawalAccount,
+  createNgnOfframp,
+  getProposalSignPayload,
+  submitProposalSignature,
+  pollProposal,
+  getBmoniBalances,
+  signWithPrivy,
+  BmoniError,
+  type BmoniBank,
+} from "@/lib/bmoni"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Step =
   | "recipient_mode"
   | "xpay_lookup"
+  | "xpay_rail"         // choose between crypto/NGN for an XPay recipient
   | "bank_account"
   | "bank_confirm_recipient"
   | "wallet_address"
@@ -58,6 +69,14 @@ type Step =
 
 /** Which token the user has chosen to send */
 type SelectedToken = "usdc" | "native"
+
+// Verified bank account from BMONI
+type VerifiedBankAccount = {
+  accountNumber: string
+  bankCode: string
+  bankName: string
+  accountHolderName: string
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -228,15 +247,14 @@ export default function Send() {
   const searchTimeoutRef                  = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // ── bank / account ──
-  const [banks, setBanks]                 = useState<Bank[]>([])
+  const [banks, setBanks]                 = useState<BmoniBank[]>([])
   const [bankSearch, setBankSearch]       = useState("")
   const [bankOpen, setBankOpen]           = useState(false)
-  const [selectedBank, setSelectedBank]   = useState<Bank | null>(null)
+  const [selectedBank, setSelectedBank]   = useState<BmoniBank | null>(null)
   const [accountNumber, setAccountNumber] = useState("")
   const [verifying, setVerifying]         = useState(false)
   const [verifyError, setVerifyError]     = useState<string | null>(null)
-  const [verifiedAccount, setVerifiedAccount] =
-    useState<(BankResolveResult & { success: true }) | null>(null)
+  const [verifiedAccount, setVerifiedAccount] = useState<VerifiedBankAccount | null>(null)
   const bankDropdownRef = useRef<HTMLDivElement>(null)
 
   // ── crypto wallet address ──
@@ -278,15 +296,48 @@ export default function Send() {
   useEffect(() => {
     if (!authUser) return
     void getRecentRecipients().then(setRecents).catch(() => {})
-    void getBanks().then(raw => {
-      const seen = new Set<string>()
-      setBanks(raw.filter(b => {
-        if (seen.has(b.code)) return false
-        seen.add(b.code)
-        return true
-      }))
-    }).catch(() => {})
-  }, [authUser])
+
+    // Load Nigerian banks — BMONI has the authoritative list with correct bank codes
+    // (their codes differ from Paystack's 3-digit CBN codes).
+    // Try BMONI first (requires bmoni_user_id), fall back to Paystack for display only.
+    const loadBanks = async () => {
+      // 1. BMONI (preferred — gives the exact codes needed for verify + offramp)
+      const bmoniUserId = profile?.bmoni_user_id
+      if (bmoniUserId) {
+        try {
+          const raw = await getNigerianBanks(bmoniUserId)
+          if (raw.length > 0) {
+            const seen = new Set<string>()
+            setBanks(raw.filter(b => {
+              if (seen.has(b.code)) return false
+              seen.add(b.code)
+              return true
+            }))
+            return
+          }
+        } catch { /* fall through */ }
+      }
+
+      // 2. Paystack fallback — for display when BMONI user not set up yet
+      try {
+        const res = await fetch(
+          "https://api.paystack.co/bank?country=nigeria&perPage=200&use_cursor=false"
+        )
+        if (res.ok) {
+          const data = await res.json() as { status: boolean; data: { name: string; code: string }[] }
+          if (data.status && Array.isArray(data.data) && data.data.length > 0) {
+            const seen = new Set<string>()
+            setBanks(
+              data.data
+                .filter(b => { if (seen.has(b.code)) return false; seen.add(b.code); return true })
+                .map(b => ({ name: b.name, code: b.code }))
+            )
+          }
+        }
+      } catch { /* ignore */ }
+    }
+    void loadBanks()
+  }, [authUser, profile?.bmoni_user_id])
 
   // ─── Sync chain when global switcher changes ─────────────────────────────
   useEffect(() => { setSelectedChain(activeChain) }, [activeChain])
@@ -366,8 +417,9 @@ export default function Send() {
 
   // ─── Derived ─────────────────────────────────────────────────────────────
 
-  const isUsdcSend   = selectedToken === "usdc"
-  const isNativeSend = selectedToken === "native"
+  const isUsdcSend   = selectedToken === "usdc" && !verifiedAccount
+  const isNativeSend = selectedToken === "native" && !verifiedAccount
+  const isBankSend   = !!verifiedAccount  // NGN → Nigerian bank via BMONI
 
   // Parsed amount in base units of the selected token
   const parsedUsdcAmount: bigint | null = (() => {
@@ -381,6 +433,13 @@ export default function Send() {
     return parseNativeAmount(rawAmount) // 18-decimal wei
   })()
 
+  // NGN amount for bank sends (plain decimal string, e.g. "5000.00")
+  const parsedNgnAmount: number | null = (() => {
+    if (!isBankSend) return null
+    const n = parseFloat(rawAmount)
+    return !isNaN(n) && n >= 100 ? n : null  // minimum ₦100
+  })()
+
   // Confirmed USDC amount from quote
   const usdcAmount: bigint | null = quote ? BigInt(quote.amount) : null
 
@@ -391,9 +450,10 @@ export default function Send() {
   })()
 
   // Balance for the currently selected token
-  const relevantBalance: bigint | null = isUsdcSend ? usdcBalance : nativeBalance
+  const relevantBalance: bigint | null = isUsdcSend ? usdcBalance : isNativeSend ? nativeBalance : null
 
   const overBalance = (() => {
+    if (isBankSend) return false  // BMONI checks balance server-side
     if (relevantBalance === null) return false
     if (isUsdcSend  && parsedUsdcAmount   !== null) return parsedUsdcAmount   > relevantBalance
     if (isNativeSend && parsedNativeAmount !== null) return parsedNativeAmount > relevantBalance
@@ -406,7 +466,7 @@ export default function Send() {
 
   // Recipient display strings
   const recipientLabel: string =
-    xpayRecipient?.displayName ?? verifiedAccount?.accountName ?? walletRecipient?.label ?? ""
+    xpayRecipient?.displayName ?? verifiedAccount?.accountHolderName ?? walletRecipient?.label ?? ""
 
   const recipientSub: string =
     xpayRecipient
@@ -415,15 +475,17 @@ export default function Send() {
       ? `${verifiedAccount.bankName} · ****${verifiedAccount.accountNumber.slice(-4)}`
       : walletRecipient?.address ?? ""
 
-  // Bank sends MUST use USDC (backend converts to NGN for payout).
+  // Bank sends MUST use NGN directly (BMONI offramp debits from NGN wallet).
   // XPay and wallet address sends can use USDC or native.
-  const mustBeUsdc = !!verifiedAccount
+  const mustBeUsdc = false  // no longer needed — bank sends use NGN directly
 
   // Amount display helpers
-  const tokenSymbol   = isUsdcSend ? "USDC" : selectedChain.nativeSymbol
-  const tokenPrefix   = isUsdcSend ? "$" : ""
-  const tokenSuffix   = isUsdcSend ? "" : ` ${selectedChain.nativeSymbol}`
-  const amountIsValid = isUsdcSend ? parsedUsdcAmount !== null : parsedNativeAmount !== null
+  const tokenSymbol   = isBankSend ? "NGN" : isUsdcSend ? "USDC" : selectedChain.nativeSymbol
+  const tokenPrefix   = isBankSend ? "₦" : isUsdcSend ? "$" : ""
+  const tokenSuffix   = isBankSend ? "" : isUsdcSend ? "" : ` ${selectedChain.nativeSymbol}`
+  const amountIsValid = isBankSend
+    ? parsedNgnAmount !== null
+    : isUsdcSend ? parsedUsdcAmount !== null : parsedNativeAmount !== null
 
   // ─── Amount input handler ────────────────────────────────────────────────
   function handleAmountInput(e: React.ChangeEvent<HTMLInputElement>) {
@@ -477,6 +539,8 @@ export default function Send() {
   // ─── Amount → Review ─────────────────────────────────────────────────────
   async function handleContinueFromAmount() {
     if (!amountIsValid || overBalance || quoteLoading) return
+    // Bank sends go straight to review — no USDC quote needed
+    if (isBankSend) { setStep("review"); return }
     if (isUsdcSend && parsedUsdcAmount) {
       const q = await fetchQuote(parsedUsdcAmount)
       if (!q) return
@@ -484,17 +548,40 @@ export default function Send() {
     setStep("review")
   }
 
-  // ─── Bank verification ───────────────────────────────────────────────────
+  // ─── Bank verification (BMONI) ───────────────────────────────────────────
   async function verifyBankAccount() {
     if (!selectedBank || accountNumber.length !== 10 || verifying) return
+    const bmoniUserId = profile?.bmoni_user_id
+    if (!bmoniUserId) {
+      setVerifyError("NGN account not set up. Please complete wallet setup first.")
+      return
+    }
     setVerifying(true); setVerifyError(null)
     try {
-      const result = await resolveBankAccount(selectedBank.code, accountNumber)
-      if (!result.success) { setVerifyError(friendlyError(result.reason)); return }
-      setVerifiedAccount(result)
+      const result = await verifyNigerianAccount(bmoniUserId, accountNumber, selectedBank.code)
+      if (!result.success) {
+        const isSandbox = import.meta.env.DEV || (import.meta.env.VITE_BMONI_BASE_URL as string)?.includes("-dev")
+        const sandboxHint = isSandbox
+          ? "\n\nSandbox: use account 0000000001 with Providus Bank, or 0001234567 with GTBank."
+          : ""
+        setVerifyError(
+          result.reason === "E101" || result.reason === "invalid_account"
+            ? `Could not verify this account. Check the account number and bank are correct.${sandboxHint}`
+            : result.reason === "network_error"
+            ? "Network error — check your connection and try again."
+            : `Verification failed (${result.reason}).${sandboxHint}`
+        )
+        return
+      }
+      setVerifiedAccount({
+        accountNumber,
+        bankCode: selectedBank.code,
+        bankName: selectedBank.name,
+        accountHolderName: result.accountHolderName,
+      })
       setStep("bank_confirm_recipient")
     } catch {
-      setVerifyError("Could not reach the verification service. Check your connection.")
+      setVerifyError("Could not verify account. Check your connection and try again.")
     } finally { setVerifying(false) }
   }
 
@@ -507,22 +594,125 @@ export default function Send() {
 
   // ─── Submit transfer ────────────────────────────────────────────────────
   async function submitTransfer(pinValue: string) {
-    if (isUsdcSend && !parsedUsdcAmount) {
+    if (isBankSend && !parsedNgnAmount) {
+      setPinError("Enter an NGN amount to continue."); return
+    }
+    if (!isBankSend && isUsdcSend && !parsedUsdcAmount) {
       setPinError("Enter an amount to continue."); return
     }
     if (submitting) return
     setSubmitting(true); setStep("sending")
 
     try {
-      // ── Native token send: verify PIN locally, execute on-chain directly ──
-      if (!isUsdcSend) {
-        // 1. Verify PIN against stored hash (plain comparison — hash is stored as plain text)
+      // ── BMONI NGN bank offramp ────────────────────────────────────────────
+      if (isBankSend && verifiedAccount) {
+        const bmoniUserId   = profile?.bmoni_user_id
+        const bmoniWalletId = profile?.bmoni_wallet_id
+
+        if (!bmoniUserId || !bmoniWalletId) {
+          setPinError("NGN wallet not set up. Please complete wallet setup first.")
+          setPin(""); setStep("pin"); setSubmitting(false); return
+        }
         if (!profile?.pin_hash || pinValue !== profile.pin_hash) {
           setPinError("Incorrect PIN. Try again."); setPin(""); setStep("pin")
           setSubmitting(false); return
         }
 
-        // 2. Resolve recipient address
+        // Check NGN balance
+        let ngnBalanceNum = 0
+        try {
+          const bals = await getBmoniBalances(bmoniUserId)
+          const ngnBal = bals.find(b => b.currency === "CNGN")
+          ngnBalanceNum = parseFloat(ngnBal?.balance ?? "0")
+        } catch { /* proceed — BMONI will reject if insufficient */ }
+
+        const ngnSendNum = parsedNgnAmount!
+        if (ngnSendNum > ngnBalanceNum && ngnBalanceNum > 0) {
+          setPinError(`Insufficient NGN balance. You have ₦${ngnBalanceNum.toLocaleString("en-NG", { minimumFractionDigits: 2 })} available.`)
+          setPin(""); setStep("pin"); setSubmitting(false); return
+        }
+
+        try {
+          const withdrawalAccount = await registerWithdrawalAccount(bmoniUserId, {
+            accountNumber:     verifiedAccount.accountNumber,
+            bankCode:          verifiedAccount.bankCode,
+            bankName:          verifiedAccount.bankName,
+            accountHolderName: verifiedAccount.accountHolderName,
+          })
+
+          const ngnAmountStr = ngnSendNum.toFixed(2)
+          const proposal = await createNgnOfframp(bmoniUserId, bmoniWalletId, withdrawalAccount.id, ngnAmountStr)
+
+          const signPayload = await getProposalSignPayload(bmoniUserId, proposal.proposalId)
+          if (!embeddedWallet) throw new Error("Embedded wallet not ready")
+          const provider = await embeddedWallet.getEthereumProvider()
+          const signature = await signWithPrivy(provider, embeddedWallet.address, signPayload.payload)
+
+          await submitProposalSignature(bmoniUserId, proposal.proposalId, signature)
+          const settled = await pollProposal(bmoniUserId, proposal.proposalId, 60_000, 3_000)
+
+          const now = new Date().toISOString()
+          const ngnKobo = Math.round(ngnSendNum * 100).toString()
+          await supabaseAdmin.from("transactions").insert({
+            user_id:                        authUser!.id,
+            direction:                      "out",
+            recipient_type:                 "bank_account",
+            recipient_display_name:         verifiedAccount.accountHolderName,
+            recipient_username:             null,
+            recipient_bank_name:            verifiedAccount.bankName,
+            recipient_account_number_last4: verifiedAccount.accountNumber.slice(-4),
+            asset:                          "NGN",
+            amount:                         ngnKobo,
+            chain_id:                       null,
+            tx_hash:                        null,
+            status:                         settled.status === "COMPLETED" ? "completed" : settled.status === "FAILED" ? "failed" : "pending",
+            fee_ngn:                        "0",
+            fx_rate:                        0,
+            ngn_amount:                     ngnKobo,
+            memo:                           memo || null,
+            created_at:                     now,
+            updated_at:                     now,
+          })
+
+          const txReceipt: Transaction = {
+            id:                          proposal.proposalId,
+            status:                      (settled.status === "COMPLETED" ? "completed" : settled.status === "FAILED" ? "failed" : "pending") as Transaction["status"],
+            amount:                      ngnKobo,
+            ngnAmount:                   ngnKobo,
+            feeNgn:                      "0",
+            fxRate:                      0,
+            asset:                       "NGN",
+            direction:                   "out",
+            recipientType:               "bank_account",
+            recipientDisplayName:        verifiedAccount.accountHolderName,
+            recipientUsername:           null,
+            recipientBankName:           verifiedAccount.bankName,
+            recipientAccountNumberLast4: verifiedAccount.accountNumber.slice(-4),
+            memo:                        memo || null,
+            txHash:                      null,
+            chainId:                     null,
+            createdAt:                   now,
+            updatedAt:                   now,
+          }
+          setReceipt(txReceipt); setStep("done")
+          return
+        } catch (err) {
+          const msg = err instanceof BmoniError
+            ? `Transfer failed (${err.code}): ${err.message}`
+            : err instanceof Error ? err.message
+            : "Transfer failed. Please try again."
+          setPinError(msg); setPin(""); setStep("pin")
+          setSubmitting(false); return
+        }
+      }
+
+      // ── Native token send ─────────────────────────────────────────────────
+      if (isNativeSend) {
+        if (!profile?.pin_hash || pinValue !== profile.pin_hash) {
+          setPinError("Incorrect PIN. Try again."); setPin(""); setStep("pin")
+          setSubmitting(false); return
+        }
+
         let toAddress: string | null = null
         let recipientLabel = ""
         if (xpayRecipient) {
@@ -540,87 +730,41 @@ export default function Send() {
           setPin(""); setStep("pin"); setSubmitting(false); return
         }
 
-        // 3. Execute on-chain via Privy embedded wallet
         if (!embeddedWallet) {
           setPinError("Wallet not ready. Please try again.")
           setPin(""); setStep("pin"); setSubmitting(false); return
         }
         const provider = await embeddedWallet.getEthereumProvider()
-
-        // Switch to correct chain
         try {
-          await provider.request({
-            method: "wallet_switchEthereumChain",
-            params: [{ chainId: `0x${selectedChain.id.toString(16)}` }],
-          })
+          await provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: `0x${selectedChain.id.toString(16)}` }] })
         } catch { /* already on correct chain */ }
 
         const weiHex = `0x${parsedNativeAmount!.toString(16)}`
         const txHash = await provider.request({
           method: "eth_sendTransaction",
-          params: [{
-            from:  embeddedWallet.address,
-            to:    toAddress,
-            value: weiHex,
-            data:  "0x",
-          }],
+          params: [{ from: embeddedWallet.address, to: toAddress, value: weiHex, data: "0x" }],
         }) as string
 
-        // 4. Record in Supabase
         const now = new Date().toISOString()
         await supabaseAdmin.from("transactions").insert({
-          user_id:                         authUser!.id,
-          direction:                       "out",
-          recipient_type:                  "xpay_user",
-          recipient_display_name:          recipientLabel,
-          recipient_username:              xpayRecipient?.username ?? null,
-          recipient_bank_name:             null,
-          recipient_account_number_last4:  null,
-          asset:                           selectedChain.nativeSymbol,
-          amount:                          parsedNativeAmount!.toString(),
-          chain_id:                        selectedChain.id,
-          tx_hash:                         txHash,
-          status:                          "completed",
-          fee_ngn:                         "0",
-          fx_rate:                         0,
-          ngn_amount:                      "0",
-          memo:                            memo || null,
-          created_at:                      now,
-          updated_at:                      now,
+          user_id: authUser!.id, direction: "out", recipient_type: "xpay_user",
+          recipient_display_name: recipientLabel, recipient_username: xpayRecipient?.username ?? null,
+          recipient_bank_name: null, recipient_account_number_last4: null,
+          asset: selectedChain.nativeSymbol, amount: parsedNativeAmount!.toString(),
+          chain_id: selectedChain.id, tx_hash: txHash, status: "completed",
+          fee_ngn: "0", fx_rate: 0, ngn_amount: "0", memo: memo || null, created_at: now, updated_at: now,
         })
 
-        // 5. Build a minimal receipt to show the done screen
-        const fakeReceipt: Transaction = {
-          id:                          txHash,
-          status:                      "completed",
-          amount:                      parsedNativeAmount!.toString(),
-          ngnAmount:                   "0",
-          feeNgn:                      "0",
-          fxRate:                      0,
-          asset:                       selectedChain.nativeSymbol,
-          direction:                   "out",
-          recipientType:               "xpay_user",
-          recipientDisplayName:        recipientLabel,
-          recipientUsername:           xpayRecipient?.username ?? null,
-          recipientBankName:           null,
-          recipientAccountNumberLast4: null,
-          memo:                        memo || null,
-          txHash,
-          chainId:                     selectedChain.id,
-          createdAt:                   now,
-          updatedAt:                   now,
-        }
-        setReceipt(fakeReceipt); setStep("done")
-        return
+        setReceipt({ id: txHash, status: "completed", amount: parsedNativeAmount!.toString(), ngnAmount: "0", feeNgn: "0", fxRate: 0, asset: selectedChain.nativeSymbol, direction: "out", recipientType: "xpay_user", recipientDisplayName: recipientLabel, recipientUsername: xpayRecipient?.username ?? null, recipientBankName: null, recipientAccountNumberLast4: null, memo: memo || null, txHash, chainId: selectedChain.id, createdAt: now, updatedAt: now })
+        setStep("done"); return
       }
 
-      // ── USDC send: verify PIN locally, execute ERC-20 transfer on-chain ──
+      // ── USDC send (ERC-20 on-chain) ───────────────────────────────────────
       if (!profile?.pin_hash || pinValue !== profile.pin_hash) {
         setPinError("Incorrect PIN. Try again."); setPin(""); setStep("pin")
         setSubmitting(false); return
       }
 
-      // Resolve recipient wallet address
       let toAddress: string | null = null
       let recipientLabel = ""
       if (xpayRecipient) {
@@ -633,10 +777,6 @@ export default function Send() {
       } else if (walletRecipient) {
         toAddress = walletRecipient.address
         recipientLabel = walletRecipient.label || walletRecipient.address
-      } else if (verifiedAccount) {
-        // Bank sends still need the backend — re-throw as friendly error
-        setPinError("Bank payouts are not available right now. Please try again later.")
-        setPin(""); setStep("pin"); setSubmitting(false); return
       } else {
         setPinError("Recipient missing. Please start again.")
         setPin(""); setStep("pin"); setSubmitting(false); return
@@ -653,74 +793,33 @@ export default function Send() {
         setPin(""); setStep("pin"); setSubmitting(false); return
       }
 
-      // Build ERC-20 transfer(address,uint256) calldata
-      // selector: a9059cbb
       const paddedTo     = toAddress.slice(2).toLowerCase().padStart(64, "0")
       const paddedAmount = parsedUsdcAmount!.toString(16).padStart(64, "0")
       const transferData = `0xa9059cbb${paddedTo}${paddedAmount}`
 
       const provider = await embeddedWallet.getEthereumProvider()
       try {
-        await provider.request({
-          method: "wallet_switchEthereumChain",
-          params: [{ chainId: `0x${selectedChain.id.toString(16)}` }],
-        })
+        await provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: `0x${selectedChain.id.toString(16)}` }] })
       } catch { /* already on correct chain */ }
 
       const txHash = await provider.request({
         method: "eth_sendTransaction",
-        params: [{
-          from:  embeddedWallet.address,
-          to:    usdcAddress,
-          data:  transferData,
-          value: "0x0",
-        }],
+        params: [{ from: embeddedWallet.address, to: usdcAddress, data: transferData, value: "0x0" }],
       }) as string
 
-      // Record in Supabase
       const now = new Date().toISOString()
       await supabaseAdmin.from("transactions").insert({
-        user_id:                         authUser!.id,
-        direction:                       "out",
-        recipient_type:                  "xpay_user",
-        recipient_display_name:          recipientLabel,
-        recipient_username:              xpayRecipient?.username ?? null,
-        recipient_bank_name:             null,
-        recipient_account_number_last4:  null,
-        asset:                           "USDC",
-        amount:                          parsedUsdcAmount!.toString(),
-        chain_id:                        selectedChain.id,
-        tx_hash:                         txHash,
-        status:                          "completed",
-        fee_ngn:                         quote?.feeNgn ?? "0",
-        fx_rate:                         quote?.fxRate ?? 0,
-        ngn_amount:                      quote?.ngnAmount ?? "0",
-        memo:                            memo || null,
-        created_at:                      now,
-        updated_at:                      now,
+        user_id: authUser!.id, direction: "out", recipient_type: "xpay_user",
+        recipient_display_name: recipientLabel, recipient_username: xpayRecipient?.username ?? null,
+        recipient_bank_name: null, recipient_account_number_last4: null,
+        asset: "USDC", amount: parsedUsdcAmount!.toString(), chain_id: selectedChain.id,
+        tx_hash: txHash, status: "completed", fee_ngn: quote?.feeNgn ?? "0",
+        fx_rate: quote?.fxRate ?? 0, ngn_amount: quote?.ngnAmount ?? "0",
+        memo: memo || null, created_at: now, updated_at: now,
       })
 
-      const receipt: Transaction = {
-        id:                          txHash,
-        status:                      "completed",
-        amount:                      parsedUsdcAmount!.toString(),
-        ngnAmount:                   quote?.ngnAmount ?? "0",
-        feeNgn:                      quote?.feeNgn ?? "0",
-        fxRate:                      quote?.fxRate ?? 0,
-        asset:                       "USDC",
-        direction:                   "out",
-        recipientType:               "xpay_user",
-        recipientDisplayName:        recipientLabel,
-        recipientUsername:           xpayRecipient?.username ?? null,
-        recipientBankName:           null,
-        recipientAccountNumberLast4: null,
-        memo:                        memo || null,
-        txHash,
-        chainId:                     selectedChain.id,
-        createdAt:                   now,
-        updatedAt:                   now,
-      }
-      setReceipt(receipt); setStep("done")
+      setReceipt({ id: txHash, status: "completed", amount: parsedUsdcAmount!.toString(), ngnAmount: quote?.ngnAmount ?? "0", feeNgn: quote?.feeNgn ?? "0", fxRate: quote?.fxRate ?? 0, asset: "USDC", direction: "out", recipientType: "xpay_user", recipientDisplayName: recipientLabel, recipientUsername: xpayRecipient?.username ?? null, recipientBankName: null, recipientAccountNumberLast4: null, memo: memo || null, txHash, chainId: selectedChain.id, createdAt: now, updatedAt: now })
+      setStep("done")
     } catch (err) {
       console.error("[XPay] submitTransfer:", err)
       const msg = err instanceof Error ? err.message : ""
@@ -836,7 +935,9 @@ export default function Send() {
   // PIN
   // ══════════════════════════════════════════════════════════════════════════
   if (step === "pin") {
-    const sendAmount = isUsdcSend && usdcAmount !== null
+    const sendAmount = isBankSend && parsedNgnAmount !== null
+      ? `₦${parsedNgnAmount.toLocaleString("en-NG", { minimumFractionDigits: 2 })}`
+      : isUsdcSend && usdcAmount !== null
       ? formatUSD(usdcAmount)
       : isNativeSend && parsedNativeAmount !== null
       ? formatNative(parsedNativeAmount, selectedChain.nativeSymbol)
@@ -961,7 +1062,27 @@ export default function Send() {
 
             {/* Amounts */}
             <div className="border-t border-white/[0.06]">
-              {isUsdcSend ? (
+              {isBankSend ? (
+                /* NGN bank send via BMONI */
+                <>
+                  <div className="flex justify-between px-4 py-3">
+                    <span className="text-sm text-white/50">You send</span>
+                    <span className="text-sm font-medium tabular-nums text-white/90">
+                      ₦{parsedNgnAmount !== null ? parsedNgnAmount.toLocaleString("en-NG", { minimumFractionDigits: 2 }) : "—"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between border-t border-white/[0.06] px-4 py-3">
+                    <span className="text-sm text-white/50">Bank</span>
+                    <span className="text-sm font-medium text-white/90">{verifiedAccount?.bankName}</span>
+                  </div>
+                  <div className="flex items-center justify-between border-t border-white/[0.06] bg-emerald-500/10 px-4 py-4 rounded-b-2xl">
+                    <span className="text-sm font-semibold text-white/90">Recipient gets</span>
+                    <span className="text-base font-bold tabular-nums text-emerald-400">
+                      ₦{parsedNgnAmount !== null ? parsedNgnAmount.toLocaleString("en-NG", { minimumFractionDigits: 2 }) : "—"}
+                    </span>
+                  </div>
+                </>
+              ) : isUsdcSend ? (
                 quoteLoading ? (
                   <div className="flex items-center justify-center gap-2 px-4 py-6 text-sm text-white/40">
                     <Spinner className="h-4 w-4 text-blue-500" /> Getting your rate…
@@ -1051,7 +1172,7 @@ export default function Send() {
       <Screen
         back
         onBack={() => {
-          if (xpayRecipient) { setStep("xpay_lookup"); setXpayRecipient(null) }
+          if (xpayRecipient) { setStep("xpay_rail") }
           else if (walletRecipient) { setStep("wallet_address"); setWalletRecipient(null) }
           else { setStep("bank_confirm_recipient") }
         }}
@@ -1201,7 +1322,7 @@ export default function Send() {
               </div>
               <div className="flex justify-between bg-[#161618] px-5 py-4">
                 <span className="text-sm text-white/50">Account name</span>
-                <span className="text-sm font-bold uppercase tracking-wide text-white/90">{verifiedAccount.accountName}</span>
+                <span className="text-sm font-bold uppercase tracking-wide text-white/90">{verifiedAccount.accountHolderName}</span>
               </div>
             </div>
           </div>
@@ -1410,6 +1531,78 @@ export default function Send() {
   // ══════════════════════════════════════════════════════════════════════════
   // XPAY LOOKUP  (USDC only — network picker, no token toggle)
   // ══════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
+  // XPAY RAIL — choose how to pay this XPay user
+  // ══════════════════════════════════════════════════════════════════════════
+  if (step === "xpay_rail" && xpayRecipient) {
+    const hasNgnSetup = !!profile?.bmoni_user_id && !!profile?.bmoni_wallet_id
+    return (
+      <Screen back onBack={() => { setStep("xpay_lookup") }}>
+        <div className="flex flex-1 flex-col pt-4 pb-10">
+          {/* Recipient header */}
+          <div className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-[#161618] px-4 py-3 mb-7">
+            <Avatar name={xpayRecipient.displayName} size={40} src={xpayRecipient.avatarUrl} />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-white/90">{xpayRecipient.displayName}</p>
+              <p className="text-xs text-white/40">{formatHandle(xpayRecipient.username)}</p>
+            </div>
+          </div>
+
+          <h2 className="text-[15px] font-semibold text-white/60 mb-3">How do you want to pay?</h2>
+
+          <div className="space-y-3">
+            {/* USDC / ETH — on-chain */}
+            <button
+              type="button"
+              onClick={() => setStep("amount")}
+              className="flex w-full items-center gap-4 rounded-2xl border border-white/[0.06] bg-[#161618] p-5 text-left transition hover:border-emerald-500/40 hover:bg-emerald-950/20 active:scale-[.99]"
+            >
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#2775CA]/10">
+                <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="#2775CA" strokeWidth="1.75" strokeLinecap="round">
+                  <circle cx="10" cy="10" r="8"/><path d="M10 6v8M7 8.5h4.5a1.5 1.5 0 010 3H8.5a1.5 1.5 0 000 3H13"/>
+                </svg>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-white/90">USDC or ETH</p>
+                <p className="mt-0.5 text-sm text-white/50">On-chain to their wallet address</p>
+              </div>
+              <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="2" strokeLinecap="round"><path d="M6 4l4 4-4 4"/></svg>
+            </button>
+
+            {/* NGN — send to their Nigerian bank account */}
+            <button
+              type="button"
+              onClick={() => {
+                if (!hasNgnSetup) { navigate("/bmoni-setup"); return }
+                // Clear xpay recipient — bank send is independent
+                setXpayRecipient(null)
+                // Pre-populate account number if their phone is their bank account
+                setStep("bank_account")
+              }}
+              className="flex w-full items-center gap-4 rounded-2xl border border-white/[0.06] bg-[#161618] p-5 text-left transition hover:border-emerald-500/40 hover:bg-emerald-950/20 active:scale-[.99]"
+            >
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10">
+                <span className="text-[20px] font-bold text-emerald-400">₦</span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-white/90">Send NGN</p>
+                <p className="mt-0.5 text-sm text-white/50">
+                  {hasNgnSetup
+                    ? "Send NGN to their Nigerian bank account"
+                    : "Set up your NGN wallet first"}
+                </p>
+              </div>
+              {!hasNgnSetup
+                ? <span className="shrink-0 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-400">Setup required</span>
+                : <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="2" strokeLinecap="round"><path d="M6 4l4 4-4 4"/></svg>
+              }
+            </button>
+          </div>
+        </div>
+      </Screen>
+    )
+  }
+
   if (step === "xpay_lookup") {
     const seen = new Set<string>()
     const combined: PublicUser[] = []
@@ -1562,7 +1755,7 @@ export default function Send() {
                       key={p.username}
                       type="button"
                       disabled={noWallet}
-                      onClick={() => { setXpayRecipient(p); setSuggestions([]); setStep("amount") }}
+                      onClick={() => { setXpayRecipient(p); setSuggestions([]); setStep("xpay_rail") }}
                       className={[
                         "flex w-full items-center gap-3 py-3.5 text-left transition",
                         noWallet
@@ -1619,19 +1812,41 @@ export default function Send() {
             <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 4l6 6-6 6"/></svg>
           </button>
 
-          {/* Send to Nigerian bank — USDC converted to NGN for bank payout */}
-          <button type="button" onClick={() => navigate("/convert")}
-            className="flex w-full items-center gap-4 rounded-2xl border border-white/[0.06] bg-black p-5 text-left shadow-sm transition hover:border-orange-200 hover:bg-orange-50/60 active:scale-[.99]">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-50">
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#ea580c" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+          {/* Send to Nigerian bank — direct NGN offramp via BMONI */}
+          <button type="button" onClick={() => {
+            if (!profile?.bmoni_user_id) { navigate("/bmoni-setup"); return }
+            if (!profile?.bmoni_wallet_id) { navigate("/kyc"); return }
+            setStep("bank_account")
+          }}
+            className="flex w-full items-center gap-4 rounded-2xl border border-white/[0.06] bg-black p-5 text-left shadow-sm transition hover:border-emerald-500/40 hover:bg-emerald-950/30 active:scale-[.99]">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#10b981" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4"/>
               </svg>
             </div>
             <div className="min-w-0 flex-1">
               <p className="font-semibold text-white/90">Nigerian bank account</p>
               <p className="mt-0.5 text-sm text-white/50">
-                Any Nigerian bank ·{" "}
-                <span className="font-medium text-orange-500">USDC → NGN</span>
+                Send NGN to any Nigerian bank ·{" "}
+                <span className="font-medium text-emerald-400">NGN wallet</span>
+              </p>
+            </div>
+            <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 4l6 6-6 6"/></svg>
+          </button>
+
+          {/* Convert USDC → NGN */}
+          <button type="button" onClick={() => navigate("/convert")}
+            className="flex w-full items-center gap-4 rounded-2xl border border-white/[0.06] bg-black p-5 text-left shadow-sm transition hover:border-orange-500/40 hover:bg-orange-950/30 active:scale-[.99]">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-500/10">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#f97316" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/>
+              </svg>
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-white/90">Convert to Naira</p>
+              <p className="mt-0.5 text-sm text-white/50">
+                Swap USDC → NGN ·{" "}
+                <span className="font-medium text-orange-400">USDC → NGN</span>
               </p>
             </div>
             <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 4l6 6-6 6"/></svg>

@@ -13,16 +13,21 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      // Proxy BMONI API calls to avoid CORS in development.
-      // In production this must be handled by your edge/serverless function
-      // or Vercel rewrites — see vercel.json.
+      // Proxy BMONI API calls through Vite dev server to avoid CORS.
+      // The browser calls /bmoni/v1/... → Vite rewrites to
+      // https://embedded-dev.bmoni.com/v1/... with the correct Origin.
       '/bmoni': {
         target: 'https://embedded-dev.bmoni.com',
         changeOrigin: true,
-        secure: false,
+        secure: true,
         rewrite: (p) => p.replace(/^\/bmoni/, ''),
-        timeout: 20000,
-        proxyTimeout: 20000,
+        timeout: 30000,
+        proxyTimeout: 30000,
+        configure: (proxy) => {
+          proxy.on('error', (err) => {
+            console.warn('[bmoni proxy] error:', err.message)
+          })
+        },
       },
     },
   },

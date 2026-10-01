@@ -6,6 +6,7 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { useSession } from "@/lib/session"
+import { AppShell } from "@/components/AppShell"
 import { fetchEnrollmentsByUser, type Enrollment } from "@/lib/supabase"
 import { Spinner } from "@/components/icons"
 
@@ -191,9 +192,8 @@ export default function Dashboard() {
   const pendingEnrollments = enrollments.filter(e => e.status === "pending")
 
   return (
-    <div className="min-h-dvh bg-[#161618]">
-
-      <div className="mx-auto max-w-lg space-y-5 px-4 py-6">
+    <AppShell>
+      <div className="px-4 py-6 lg:px-6 space-y-5">
 
         {/* Greeting */}
         <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-700 p-5 text-white shadow-lg shadow-emerald-900/30">
@@ -291,6 +291,6 @@ export default function Dashboard() {
           Log out
         </button>
       </div>
-    </div>
+    </AppShell>
   )
 }

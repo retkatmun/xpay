@@ -24,12 +24,18 @@ import BmoniWalletSetup from '@/pages/bmoni-setup'
  * Enforces the persistent onboarding gate.
  *
  * onboarding_stage values and their required screens:
- *   profile      → /bmoni-setup   (BMONI user not yet created)
- *   bmoni_user   → /bmoni-setup   (BMONI user created, wallet not yet provisioned)
- *   bmoni_wallet → /kyc           (wallet ready, need BVN + start-nigeria)
- *   bmoni_kyc    → /kyc           (start-nigeria called but VBA still pending)
+ *   profile      → /home  (XPay profile done; NGN setup is optional, user-initiated)
+ *   bmoni_user   → /bmoni-setup  (NGN setup started but wallet not provisioned yet)
+ *   bmoni_wallet → /kyc          (wallet ready, need BVN + start-nigeria)
+ *   bmoni_kyc    → /kyc          (start-nigeria called but VBA still pending)
  *   complete     → free to navigate
  *   null/missing → treat as 'profile' (legacy or new profile)
+ *
+ * Key difference from the old gate:
+ *   - 'profile' stage → user CAN access /home and all protected routes.
+ *     The NGN setup is a voluntary action triggered from the home banner.
+ *   - 'bmoni_user' / 'bmoni_wallet' / 'bmoni_kyc' → user started NGN setup and
+ *     must finish it; they are redirected back to the appropriate setup screen.
  *
  * Unauthenticated users are sent to /login.
  * Loading state shows nothing (avoids flash of wrong route).
@@ -54,22 +60,25 @@ function OnboardingGate({ children }: { children: React.ReactNode }) {
   if (authUser && profile) {
     const stage = profile.onboarding_stage ?? 'profile'
 
-    // If they're on a public page but already have a complete profile, send home
-    if (publicPaths.includes(location.pathname) && stage === 'complete') {
+    // If they're on a public/onboarding page but already have any profile, send home
+    if (publicPaths.includes(location.pathname)) {
       return <Navigate to="/home" replace />
     }
 
-    // Enforce incomplete stages — no matter what page they try to access
-    const allowedDuringSetup = ['/bmoni-setup', '/kyc', '/login', '/', '/onboarding']
+    // If NGN setup is actively in progress (user already started it), enforce completion.
+    // 'profile' stage = NGN not started yet → user is free to navigate normally.
+    const allowedDuringNgnSetup = ['/bmoni-setup', '/kyc', '/home']
 
-    if (stage === 'profile' || stage === 'bmoni_user') {
-      if (!allowedDuringSetup.includes(location.pathname)) {
+    if (stage === 'bmoni_user') {
+      // Wallet provisioning in progress — must finish bmoni-setup
+      if (!allowedDuringNgnSetup.includes(location.pathname)) {
         return <Navigate to="/bmoni-setup" replace />
       }
     }
 
     if (stage === 'bmoni_wallet' || stage === 'bmoni_kyc') {
-      if (!allowedDuringSetup.includes(location.pathname)) {
+      // KYC in progress — must finish kyc screen
+      if (!allowedDuringNgnSetup.includes(location.pathname)) {
         return <Navigate to="/kyc" replace />
       }
     }

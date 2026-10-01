@@ -1,8 +1,8 @@
 /**
- * BmoniWalletSetup — forced screen for onboarding_stage = 'profile' | 'bmoni_user'
+ * BmoniWalletSetup — screen for setting up the NGN account.
  *
- * Users land here automatically after XPay profile creation and cannot
- * access the rest of the app until this completes.
+ * Reached voluntarily from the home page banner (or automatically if
+ * onboarding_stage is 'bmoni_user', meaning setup was started but interrupted).
  *
  * What it does:
  *   Stage 1: POST /v1/users           → bmoni_user_id  (stage: profile → bmoni_user)
@@ -11,7 +11,7 @@
  * On completion it navigates to /kyc for BVN + Nigeria rail.
  */
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { useSessionSafe } from "@/lib/session"
 import { useBmoniSetup } from "@/lib/useBmoniSetup"
@@ -57,11 +57,22 @@ export default function BmoniWalletSetup() {
   )
 
   const stage = profile?.onboarding_stage ?? "profile"
-
-  // Don't render or auto-start until session is loaded
   const sessionLoading = !session || session.loading
 
-  // Auto-advance when wallet provisioned — go straight to KYC
+  // Track whether setup has been started this session
+  const [started, setStarted] = useState(false)
+
+  // If stage is already bmoni_user (setup was started but wallet not yet
+  // provisioned — e.g. user closed the app mid-way), auto-resume.
+  useEffect(() => {
+    if (sessionLoading) return
+    if (stage === "bmoni_user" && status === "idle" && !started) {
+      setStarted(true)
+      void setupWallet()
+    }
+  }, [sessionLoading, stage, status, started, setupWallet])
+
+  // Auto-advance once wallet is provisioned → go to KYC
   useEffect(() => {
     if (sessionLoading) return
     if (stage === "bmoni_wallet" || stage === "bmoni_kyc" || stage === "complete") {
@@ -69,19 +80,13 @@ export default function BmoniWalletSetup() {
     }
   }, [stage, navigate, sessionLoading])
 
-  // Auto-start on mount — but only once session is ready
-  useEffect(() => {
-    if (sessionLoading) return
-    if (status === "idle" && (stage === "profile" || stage === "bmoni_user")) {
-      void setupWallet()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionLoading]) // re-run when session becomes available
-
   const creatingUser = status === "creating_user"
   const provWallet   = status === "provisioning_wallet"
   const userDone     = ["bmoni_user", "bmoni_wallet", "bmoni_kyc", "complete"].includes(stage)
   const walletDone   = ["bmoni_wallet", "bmoni_kyc", "complete"].includes(stage)
+
+  // ── Intro screen (not yet started) ─────────────────────────────────────────
+  const showIntro = !started && stage === "profile" && status === "idle"
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center bg-[#111113] px-6 text-white">
@@ -96,14 +101,65 @@ export default function BmoniWalletSetup() {
             <Spinner className="h-6 w-6 text-white/30" />
             <p className="text-sm text-white/40">Loading your session…</p>
           </div>
+
+        ) : showIntro ? (
+          /* ── Intro: explain what's about to happen, let user confirm ── */
+          <>
+            <div className="flex justify-center mb-6">
+              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/15 ring-8 ring-emerald-500/10">
+                <span className="text-[32px] font-bold text-emerald-400">₦</span>
+              </div>
+            </div>
+
+            <h1 className="text-center text-2xl font-bold tracking-tight text-white/90">
+              Set up your NGN account
+            </h1>
+            <p className="mt-3 text-center text-sm leading-relaxed text-white/50">
+              Activate your Nigerian Naira account to receive deposits directly from any
+              Nigerian bank and withdraw to any bank account.
+            </p>
+
+            <div className="mt-8 space-y-3.5">
+              {[
+                { icon: "🔐", title: "Create your BMONI wallet", desc: "A secure smart wallet is provisioned in seconds." },
+                { icon: "🪪", title: "Verify your identity (BVN)", desc: "Your 11-digit BVN activates the NGN rail." },
+                { icon: "🏦", title: "Get your virtual bank account", desc: "Receive NGN from any Nigerian bank instantly." },
+              ].map(item => (
+                <div key={item.title} className="flex items-start gap-3.5 rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-3.5">
+                  <span className="text-xl">{item.icon}</span>
+                  <div>
+                    <p className="text-sm font-semibold text-white/80">{item.title}</p>
+                    <p className="mt-0.5 text-xs text-white/40">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={() => { setStarted(true); void setupWallet() }}
+              className="mt-8 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 text-sm font-semibold text-white shadow-sm shadow-emerald-900/30 transition hover:bg-emerald-400 active:scale-[.98]"
+            >
+              Set up NGN account
+              <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><path d="M6 4l4 4-4 4" /></svg>
+            </button>
+
+            <button
+              onClick={() => navigate("/home")}
+              className="mt-3 w-full rounded-xl py-3 text-sm text-white/35 transition hover:text-white/60"
+            >
+              Maybe later
+            </button>
+          </>
+
         ) : (
+          /* ── Setup in progress / error ── */
           <>
             <h1 className="text-2xl font-bold tracking-tight text-white/90">
               Setting up your wallet
             </h1>
             <p className="mt-2 text-sm leading-relaxed text-white/50">
-              We're creating your secure NGN wallet. This only happens once — your progress is
-              saved so you can pick up where you left off on any device.
+              We're creating your secure NGN wallet. This only happens once — your
+              progress is saved so you can pick up where you left off.
             </p>
 
             <div className="mt-10 space-y-4">
@@ -138,6 +194,7 @@ export default function BmoniWalletSetup() {
             </p>
           </>
         )}
+
       </div>
     </div>
   )

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Screen } from "@/components/Screen";
+import { AppShell } from "@/components/AppShell";
 import { CopyButton } from "@/components/CopyButton";
 import { Avatar } from "@/components/Avatar";
 import { Spinner } from "@/components/icons";
@@ -95,8 +95,8 @@ export default function Wallet() {
   };
 
   return (
-    <Screen back onBack={() => navigate("/home")} title="Profile">
-      <div className="flex flex-1 flex-col pb-12">
+    <AppShell>
+      <div className="flex flex-col pb-12 px-5 lg:px-6">
 
         {/* ── Avatar section ─────────────────────────────────────────── */}
         <div className="flex flex-col items-center pt-6 pb-8 text-center">
@@ -288,7 +288,7 @@ export default function Wallet() {
           Secured by Privy · {activeChain.name}
         </p>
       </div>
-    </Screen>
+    </AppShell>
   );
 }
 

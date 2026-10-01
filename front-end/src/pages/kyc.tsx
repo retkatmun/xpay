@@ -4,12 +4,14 @@
  * Flow (matches https://bkey.mintlify.app/api-reference/kyc-nga-requirements):
  *   1. Collect BVN → look up persona details (GET /kyc/bvn-lookup/:bvn)
  *   2. Confirm details + address
- *   3. POST /onboarding/start-nigeria  (BVN does identity verification — no /kyc/activate needed)
- *   4. GET  /bank-accounts/deposit-accounts/NGN → persist VBA
+ *   3. PATCH /kyc  — persist personalInfo + address + BVN identification number
+ *   4. POST /onboarding/start-nigeria  (BVN verifies identity — no /kyc/activate needed for NGN)
+ *   5. GET  /bank-accounts/deposit-accounts/NGN → persist VBA
  *
- * Sandbox BVNs:
- *   95888168924 → Bunch Dillon  (user must have been created with this name)
- *   22222222222 → Samson Jabo   (user must have been created with this name)
+ * Sandbox BVN (from https://bkey.mintlify.app/api-reference/sandbox-test-data):
+ *   ONLY 95888168924 works — this is Bunch Dillon's BVN.
+ *   The BMONI user MUST be created with firstName:"Bunch" lastName:"Dillon"
+ *   phone:"+2348000000000" for verification to pass (name+phone are matched).
  */
 
 import { useState } from "react"
@@ -19,6 +21,7 @@ import { Button } from "@/components/Button"
 import { Spinner } from "@/components/icons"
 import {
   lookupBvn,
+  patchKycProfile,
   startNigeriaOnboarding,
   getNgnDepositAccount,
   BmoniError,
@@ -58,8 +61,8 @@ function InfoBox({ message }: { message: string }) {
 export default function KycSetup() {
   const navigate = useNavigate()
   const session = useSessionSafe()
-  const authUser = session?.authUser ?? null
-  const profile  = session?.profile  ?? null
+  const authUser   = session?.authUser   ?? null
+  const profile    = session?.profile    ?? null
   const setProfile = session?.setProfile ?? (() => {})
 
   const [step, setStep]       = useState<Step>("bvn")
@@ -80,16 +83,13 @@ export default function KycSetup() {
   const [stateName, setStateName]     = useState("")
   const [postalCode, setPostalCode]   = useState("")
 
-  const bmoniUserId      = profile?.bmoni_user_id  ?? null
-  const smartWalletAddr  = profile?.wallet_address ?? null
+  const bmoniUserId     = profile?.bmoni_user_id  ?? null
+  const smartWalletAddr = profile?.wallet_address ?? null
 
-  // If resuming at bmoni_kyc stage, still start at BVN — user re-enters it,
-  // but we skip the BVN lookup and go straight to address step.
+  // If resuming at bmoni_kyc stage, skip BVN lookup and go straight to address.
   const isResuming = profile?.onboarding_stage === "bmoni_kyc"
 
-  // Show loading screen until session is ready
   if (!session || session.loading) return <div className="min-h-dvh bg-[#111113]" />
-
   if (!authUser || !profile) return <div className="min-h-dvh bg-[#111113]" />
 
   if (!bmoniUserId) {
@@ -97,9 +97,9 @@ export default function KycSetup() {
       <Screen back onBack={() => navigate(-1)}>
         <div className="flex flex-1 flex-col items-center justify-center gap-4 px-5">
           <p className="text-center text-sm text-white/50">
-            Wallet setup not yet complete. Please go back and tap "Set up wallet" first.
+            Wallet setup not yet complete. Please go back and tap "Set up NGN account" first.
           </p>
-          <Button onClick={() => navigate("/home")}>Go to home</Button>
+          <Button onClick={() => navigate("/bmoni-setup")}>Set up wallet</Button>
         </div>
       </Screen>
     )
@@ -112,9 +112,9 @@ export default function KycSetup() {
     if (!bmoniUserId) return
     setError(null)
 
-    // If resuming (already at bmoni_kyc), skip the lookup API call — just go to address
+    // If resuming (stage = bmoni_kyc), skip the lookup API call — go to address
     if (isResuming) {
-      setPersonaName("") // won't be shown
+      setPersonaName("")
       setStep("confirm")
       return
     }
@@ -124,7 +124,7 @@ export default function KycSetup() {
       const result = await lookupBvn(bmoniUserId, clean)
       setPersonaName(`${result.firstName} ${result.lastName}`.trim())
       setPersonaDob(result.dateOfBirth || "")
-      // Mark stage so returning users land back on confirm step
+      // Mark stage so returning users resume at confirm
       if (profile?.onboarding_stage === "bmoni_wallet") {
         await updateProfile(profile.id, { onboarding_stage: "bmoni_kyc" })
         setProfile({ ...profile, onboarding_stage: "bmoni_kyc" })
@@ -133,7 +133,7 @@ export default function KycSetup() {
     } catch (err) {
       if (err instanceof BmoniError && err.status === 404) {
         setError(
-          "BVN not found in sandbox. Use 95888168924 (Bunch Dillon) or 22222222222 (Samson Jabo)."
+          "BVN not found in sandbox. Use 95888168924 (Bunch Dillon) — that's the only working sandbox BVN."
         )
       } else {
         setError(err instanceof Error ? err.message : "BVN lookup failed.")
@@ -143,7 +143,7 @@ export default function KycSetup() {
     }
   }
 
-  // ── Submit (start-nigeria) ─────────────────────────────────────────────────
+  // ── Submit ─────────────────────────────────────────────────────────────────
   async function handleSubmit() {
     if (!streetLine1.trim() || !city.trim() || !stateName.trim()) {
       setError("Please fill in street, city, and state."); return
@@ -152,8 +152,7 @@ export default function KycSetup() {
       setError("Postal code must be exactly 6 digits."); return
     }
 
-    // wallet_address is the smart wallet on-chain address written by bmoni-setup Stage 2.
-    // If the session profile is stale (e.g. HMR), refetch from DB before giving up.
+    // Ensure we have the smart wallet address — refetch from DB if stale
     let walletAddr = smartWalletAddr
     if (!walletAddr && profile) {
       try {
@@ -161,23 +160,58 @@ export default function KycSetup() {
         const fresh = await fetchProfileById(profile.id) as XPayProfile | null
         walletAddr = fresh?.wallet_address ?? null
         if (fresh) setProfile(fresh)
-      } catch { /* ignore, will fail below */ }
+      } catch { /* ignore */ }
     }
 
     if (!walletAddr) {
-      setError("Smart wallet address missing. Please go back and set up your wallet again."); return
+      setError("Smart wallet address missing. Please go back and set up your wallet again.")
+      return
     }
 
     setError(null)
     setBusy(true)
     setStep("submitting")
 
-    const uid      = bmoniUserId as string   // non-null: guarded above
+    const uid      = bmoniUserId as string
     const cleanBvn = bvn.replace(/\D/g, "")
 
     try {
-      // POST /onboarding/start-nigeria — BVN verifies identity + issues VBA
-      // ngnWalletAddress = smart wallet on-chain address (from createManagedWallet)
+      // ── Step 3a: PATCH /kyc — save personalInfo + address + BVN ──────────
+      // Docs require: firstName, lastName, phoneNumber, dateOfBirth, address,
+      // and identificationNumbers with BVN for NGN Stage 1.
+      // We get firstName/lastName/dateOfBirth from the BVN lookup result.
+      // identificationNumbers schema: { type, number, issuingCountryCode }
+      try {
+        await patchKycProfile(uid, {
+          // personalInfo from BVN lookup — required for verification match
+          ...(personaName || personaDob ? {
+            personalInfo: {
+              firstName:   personaName.split(" ")[0] || undefined,
+              lastName:    personaName.split(" ").slice(1).join(" ") || undefined,
+              dateOfBirth: personaDob || undefined,
+            },
+          } : {}),
+          address: {
+            streetLine1: streetLine1.trim(),
+            city: city.trim(),
+            state: stateName.trim(),
+            postalCode: postalCode.replace(/\D/g, ""),
+            countryCode: "NGA",
+          },
+          identificationNumbers: [
+            { type: "bvn", number: cleanBvn, issuingCountryCode: "NGA" },
+          ],
+        })
+      } catch (err) {
+        // A 409 here means the profile was already patched — non-fatal, continue.
+        // Do NOT swallow 400s — those mean our payload is wrong.
+        if (!(err instanceof BmoniError && err.status === 409)) {
+          throw err
+        }
+      }
+
+      // ── Step 3b: POST /onboarding/start-nigeria ──────────────────────────
+      // BVN verification happens here — no separate /kyc/activate needed for NGN.
       try {
         await startNigeriaOnboarding(uid, cleanBvn, walletAddr as string, 0)
       } catch (err) {
@@ -187,10 +221,13 @@ export default function KycSetup() {
         }
       }
 
-      // Persist rail_active
-      await updateProfile(profile!.id, { bmoni_onboarding_status: "rail_active", onboarding_stage: "complete" })
+      // Persist rail_active + complete stage
+      await updateProfile(profile!.id, {
+        bmoni_onboarding_status: "rail_active",
+        onboarding_stage: "complete",
+      })
 
-      // Fetch VBA — retry up to 3 times (async provisioning)
+      // ── Step 4: Fetch VBA — retry up to 3× (async provisioning) ──────────
       let vbaNumber: string | null = null
       for (let i = 0; i < 3; i++) {
         try {
@@ -221,22 +258,50 @@ export default function KycSetup() {
   // ── Done ───────────────────────────────────────────────────────────────────
   if (step === "done") {
     return (
-      <Screen back onBack={() => navigate("/home")} title="KYC Setup">
-        <div className="flex flex-1 flex-col items-center justify-center text-center px-5 py-16">
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/20 ring-8 ring-emerald-500/10">
-            <svg viewBox="0 0 48 48" width="40" height="40" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M10 24l10 10 18-20" />
-            </svg>
+      <div className="flex min-h-dvh flex-col items-center justify-center bg-[#111113] px-6 text-white">
+        <div className="w-full max-w-sm text-center">
+
+          {/* Success icon */}
+          <div className="relative mx-auto flex h-24 w-24 items-center justify-center">
+            <div className="absolute inset-0 rounded-full bg-emerald-500/20 animate-[ping_0.9s_ease-out_1]" />
+            <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-emerald-500/15 ring-8 ring-emerald-500/10">
+              <svg viewBox="0 0 48 48" width="40" height="40" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10 24l10 10 18-20" />
+              </svg>
+            </div>
           </div>
-          <h1 className="mt-6 text-2xl font-bold text-white/90">NGN Wallet Active!</h1>
-          <p className="mt-2 text-sm text-white/50">
-            You can now receive NGN deposits and withdraw to any Nigerian bank.
+
+          <h1 className="mt-6 text-2xl font-bold tracking-tight text-white/90">
+            NGN Account Active!
+          </h1>
+          <p className="mt-2 text-sm leading-relaxed text-white/50">
+            Your Nigerian Naira wallet is ready. You can now receive NGN deposits from
+            any Nigerian bank and withdraw to any bank account.
           </p>
-          <div className="mt-8 w-full">
-            <Button full size="lg" onClick={() => navigate("/home")}>Go to home</Button>
+
+          {/* What you can do now */}
+          <div className="mt-8 space-y-2.5">
+            {[
+              { icon: "📥", text: "Receive NGN from any Nigerian bank" },
+              { icon: "📤", text: "Withdraw to any bank account" },
+              { icon: "🔄", text: "Convert NGN ↔ USDC instantly" },
+            ].map(item => (
+              <div key={item.text} className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-3">
+                <span className="text-lg">{item.icon}</span>
+                <span className="text-sm text-white/70">{item.text}</span>
+              </div>
+            ))}
           </div>
+
+          <button
+            onClick={() => navigate("/home", { replace: true })}
+            className="mt-8 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 text-sm font-semibold text-white shadow-sm shadow-emerald-900/30 transition hover:bg-emerald-400 active:scale-[.98]"
+          >
+            Go to home
+            <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><path d="M6 4l4 4-4 4" /></svg>
+          </button>
         </div>
-      </Screen>
+      </div>
     )
   }
 
@@ -254,7 +319,14 @@ export default function KycSetup() {
   }
 
   return (
-    <Screen back onBack={() => { if (step === "confirm") { setStep("bvn"); setError(null) } else navigate(-1) }} title="Activate NGN Wallet">
+    <Screen
+      back
+      onBack={() => {
+        if (step === "confirm") { setStep("bvn"); setError(null) }
+        else navigate("/home")
+      }}
+      title="Activate NGN Wallet"
+    >
       <div className="flex flex-1 flex-col pt-4 pb-10 px-1">
 
         {/* Progress */}
@@ -276,7 +348,7 @@ export default function KycSetup() {
               <p className="text-xs text-amber-300">
                 Your 11-digit BVN is issued by the Central Bank of Nigeria.
                 <strong className="block mt-1 text-amber-200">
-                  Sandbox: 95888168924 (Bunch Dillon) or 22222222222 (Samson Jabo)
+                  Sandbox: use BVN 95888168924 (the only working test BVN)
                 </strong>
               </p>
             </div>
@@ -315,14 +387,14 @@ export default function KycSetup() {
         {/* ── Confirm + address step ─────────────────────────────────── */}
         {step === "confirm" && (
           <div>
-            <Title sub="Add your Nigerian residential address to activate the NGN rail.">
+            <Title sub="Add your Nigerian residential address to complete KYC.">
               Address details
             </Title>
 
-            <InfoBox message="Details were pre-filled from your BVN. Fill in your address to continue." />
+            <InfoBox message="Fill in your Nigerian address to activate the NGN rail." />
 
             <div className="mt-6 space-y-4">
-              {/* Read-only persona summary — only shown when we did the BVN lookup this session */}
+              {/* Read-only persona summary — shown when BVN lookup was done this session */}
               {personaName && (
                 <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-3 space-y-1">
                   <p className="text-[11px] font-semibold uppercase tracking-widest text-white/30 mb-2">From BVN {bvn}</p>

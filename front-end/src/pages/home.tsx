@@ -12,10 +12,10 @@ import { getTransactions } from "@/lib/api";
 import { useWalletBalances } from "@/lib/useUsdcBalance";
 import { useAllChainsOnChainTxs, type OnChainTx } from "@/lib/useOnChainTxs";
 import { useNetwork } from "@/lib/NetworkContext";
-import { NetworkSwitcher } from "@/components/NetworkSwitcher";
+import { NetworkSwitcher as _NS } from "@/components/NetworkSwitcher";
 import { useProfileAvatars } from "@/lib/useProfileAvatars";
 import { getBmoniBalance, getNgnDepositAccount, type BmoniVba } from "@/lib/bmoni";
-import xpayLogo from "@/assets/xpay_logo.png";
+import { AppShell } from "@/components/AppShell";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -32,50 +32,6 @@ function formatEth(wei: bigint): string {
   if (e === 0) return "0 ETH";
   if (e < 0.0001) return "< 0.0001 ETH";
   return `${e.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 6 })} ETH`;
-}
-
-// ─── Nav icons ────────────────────────────────────────────────────────────────
-
-function HomeIcon({ active }: { active: boolean }) {
-  return (
-    <svg viewBox="0 0 20 20" width="18" height="18" fill="none"
-      stroke={active ? "#10b981" : "rgba(255,255,255,0.4)"}
-      strokeWidth={active ? 2.25 : 1.75} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 9.5L10 3l7 6.5V17a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" />
-      <path d="M7 18v-6h6v6" />
-    </svg>
-  );
-}
-function PortfolioIcon({ active }: { active: boolean }) {
-  return (
-    <svg viewBox="0 0 20 20" width="18" height="18" fill="none"
-      stroke={active ? "#10b981" : "rgba(255,255,255,0.4)"}
-      strokeWidth={active ? 2.25 : 1.75} strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="5" width="16" height="12" rx="1.5" />
-      <path d="M6 5V4a2 2 0 014 0v1" />
-      <path d="M2 10h16" />
-    </svg>
-  );
-}
-function ActivityIcon({ active }: { active: boolean }) {
-  return (
-    <svg viewBox="0 0 20 20" width="18" height="18" fill="none"
-      stroke={active ? "#10b981" : "rgba(255,255,255,0.4)"}
-      strokeWidth={active ? 2.25 : 1.75} strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="10" cy="10" r="7" />
-      <path d="M10 6v4l2.5 2.5" />
-    </svg>
-  );
-}
-function SettingsIcon({ active }: { active: boolean }) {
-  return (
-    <svg viewBox="0 0 20 20" width="18" height="18" fill="none"
-      stroke={active ? "#10b981" : "rgba(255,255,255,0.4)"}
-      strokeWidth={active ? 2.25 : 1.75} strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="10" cy="10" r="2.5" />
-      <path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.22 4.22l1.42 1.42M14.36 14.36l1.42 1.42M4.22 15.78l1.42-1.42M14.36 5.64l1.42-1.42" />
-    </svg>
-  );
 }
 
 // ─── Receive Modal ────────────────────────────────────────────────────────────
@@ -324,48 +280,6 @@ function OnChainTxRow({ tx, last }: { tx: OnChainTx; last: boolean }) {
   );
 }
 
-// ─── Sidebar link ─────────────────────────────────────────────────────────────
-
-function SidebarLink({ label, route, active, icon, navigate }: {
-  label: string; route: string; active: boolean;
-  icon: React.ReactNode; navigate: (r: string) => void;
-}) {
-  return (
-    <button
-      onClick={() => navigate(route)}
-      className={[
-        "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition",
-        active
-          ? "bg-emerald-500/[0.12] text-emerald-400"
-          : "text-white/40 hover:bg-white/[0.04] hover:text-white/70",
-      ].join(" ")}
-    >
-      <span className="shrink-0">{icon}</span>
-      <span className="text-[13px] font-medium">{label}</span>
-      {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-emerald-400" />}
-    </button>
-  );
-}
-
-// ─── Bottom tab ───────────────────────────────────────────────────────────────
-
-function BottomTab({ label, active, icon, onClick }: {
-  label: string; active: boolean; icon: React.ReactNode; onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={[
-        "flex flex-1 flex-col items-center gap-1 py-2 transition active:scale-95",
-        active ? "text-emerald-400" : "text-white/35 hover:text-white/60",
-      ].join(" ")}
-    >
-      {icon}
-      <span className="text-[10px] font-medium">{label}</span>
-    </button>
-  );
-}
-
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function Home() {
@@ -455,8 +369,21 @@ export default function Home() {
 
   if (loading || !authUser || !profile) return <div className="min-h-dvh bg-[#111113]" />;
 
-  const displayName = profile.display_name || profile.username;
   const isEthChain  = activeChain.nativeSymbol === "ETH";
+  // Show the NGN setup banner when:
+  //   - stage is 'profile'  → not yet started (user-initiated)
+  //   - stage is 'bmoni_*'  → setup was started but interrupted (resume prompt)
+  // Hide once stage is 'complete' (VBA issued successfully).
+  const ngnStage = profile.onboarding_stage ?? "profile"
+  const ngnNotSetup = ngnStage !== "complete"
+
+  // Where to send the user when they tap the banner
+  const ngnSetupPath =
+    ngnStage === "bmoni_wallet" || ngnStage === "bmoni_kyc"
+      ? "/kyc"
+      : ngnStage === "bmoni_user"
+      ? "/bmoni-setup"
+      : "/bmoni-setup" // 'profile' → fresh start
 
   type FI = { kind: "xpay"; tx: Transaction; ts: number } | { kind: "onchain"; tx: OnChainTx; ts: number };
   const feedItems: FI[] = [
@@ -473,16 +400,8 @@ export default function Home() {
   }
   for (const [label, items] of gmap) groups.push({ label, items });
 
-  const navDef = [
-    { label: "Home",      route: "/home",      icon: (a: boolean) => <HomeIcon active={a} /> },
-    { label: "Portfolio", route: "/dashboard",  icon: (a: boolean) => <PortfolioIcon active={a} /> },
-    { label: "Activity",  route: "/activity",   icon: (a: boolean) => <ActivityIcon active={a} /> },
-    { label: "Settings",  route: "/settings",   icon: (a: boolean) => <SettingsIcon active={a} /> },
-  ];
-
   return (
-    <div className="min-h-dvh bg-[#111113] text-white selection:bg-emerald-500/30">
-
+    <AppShell>
       {/* Receive modal */}
       {receiveModal && (
         <ReceiveModal
@@ -494,269 +413,232 @@ export default function Home() {
         />
       )}
 
-      {/* ── Top navbar ── */}
-      <nav className="sticky top-0 z-40 border-b border-white/[0.06] bg-[#111113]/95 backdrop-blur-xl">
-        <div className="mx-auto flex h-14 max-w-[900px] items-center justify-between px-5">
-          <Link to="/" className="shrink-0">
-            <img src={xpayLogo} alt="XPay" className="h-6 w-auto object-contain brightness-0 invert opacity-90" />
-          </Link>
-          <div className="flex items-center gap-2.5">
-            <NetworkSwitcher />
-            <Link
-              to="/wallet"
-              className="flex items-center gap-2 rounded-full border border-white/[0.1] bg-white/[0.04] py-1 pl-3 pr-1.5 transition hover:border-white/20"
-            >
-              <span className="text-[13px] font-medium text-white/55">{displayName}</span>
-              <Avatar name={displayName} size={24} src={profile.avatar_url} />
-            </Link>
-          </div>
+      {/* ── NGN setup banner ── */}
+      {ngnNotSetup && (
+        <div className="px-5 pt-6 lg:px-6">
+          <button
+            type="button"
+            onClick={() => navigate(ngnSetupPath)}
+            className="flex w-full items-center gap-4 rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-950/60 to-[#111113] px-4 py-4 text-left transition hover:border-emerald-500/50 active:scale-[0.99]"
+          >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-[18px] font-bold text-emerald-400">
+              ₦
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-semibold text-emerald-400">
+                {ngnStage === "bmoni_user"
+                  ? "Continue wallet setup"
+                  : ngnStage === "bmoni_wallet" || ngnStage === "bmoni_kyc"
+                  ? "Continue KYC — almost done!"
+                  : "Set up your NGN account"}
+              </p>
+              <p className="text-[11px] text-white/40 mt-0.5">
+                {ngnStage === "bmoni_user"
+                  ? "Your wallet provisioning was interrupted — tap to resume"
+                  : ngnStage === "bmoni_wallet" || ngnStage === "bmoni_kyc"
+                  ? "Enter your BVN to activate your Nigerian bank account"
+                  : "Activate NGN deposits and withdrawals to any Nigerian bank"}
+              </p>
+            </div>
+            <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="rgba(16,185,129,0.6)" strokeWidth="2" strokeLinecap="round"><path d="M6 4l4 4-4 4" /></svg>
+          </button>
         </div>
-      </nav>
+      )}
 
-      {/* ── Body ── */}
-      <div className="mx-auto flex max-w-[900px]">
-
-        {/* Sidebar — desktop */}
-        <aside className="hidden lg:flex lg:w-56 lg:shrink-0 lg:flex-col lg:border-r lg:border-white/[0.06]">
-          <div className="sticky top-14 flex flex-col gap-1 px-3 pt-6 pb-8">
-            <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-widest text-white/20">Menu</p>
-            {navDef.map(({ label, route, icon }) => (
-              <SidebarLink key={route} label={label} route={route}
-                active={route === "/home"} icon={icon(route === "/home")} navigate={navigate} />
-            ))}
-            <div className="my-3 border-t border-white/[0.06]" />
-            <Link to="/wallet"
-              className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 transition hover:bg-white/[0.04]">
-              <Avatar name={displayName} size={28} src={profile.avatar_url} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[12px] font-medium text-white/70">{displayName}</p>
-                <p className="truncate font-mono text-[10px] text-white/30">{profile.username}.xpay</p>
-              </div>
-            </Link>
-            {isAdmin && (
-              <button onClick={() => navigate("/admin")}
-                className="mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-white/[0.04]">
-                <svg viewBox="0 0 20 20" width="18" height="18" fill="none"
-                  stroke="rgba(167,139,250,0.6)" strokeWidth="1.75" strokeLinecap="round">
-                  <path d="M10 2a2 2 0 012 2v1h3a1 1 0 011 1v11a1 1 0 01-1 1H5a1 1 0 01-1-1V6a1 1 0 011-1h3V4a2 2 0 012-2z" />
-                  <path d="M7 10h6M7 13h4" />
+      {/* ── Balance section ── */}
+      <div className="px-5 pt-6 pb-5 lg:px-6">
+        <div className="rounded-2xl border border-white/[0.07] bg-[#1a1a1c] px-5 py-5">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-white/25">Balances</p>
+            <div className="flex items-center gap-2.5">
+              <button onClick={toggle} className="text-white/25 transition hover:text-white/55">
+                {balanceVisible
+                  ? <svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"><path d="M1 10s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z" /><circle cx="10" cy="10" r="2.5" /></svg>
+                  : <svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"><path d="M13.875 13.875A8.963 8.963 0 0110 15c-5.5 0-9-5-9-5a16.47 16.47 0 014.125-4.125M8.25 4.135A8.963 8.963 0 0110 4c5.5 0 9 5 9 5a16.47 16.47 0 01-2.1 2.773M3 3l14 14" /></svg>
+                }
+              </button>
+              <button onClick={handleRefresh} disabled={refreshing || balanceLoading}
+                className="text-white/25 transition hover:text-white/55 disabled:opacity-30">
+                <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor"
+                  strokeWidth="2" strokeLinecap="round"
+                  className={refreshing || balanceLoading ? "animate-spin" : ""}>
+                  <path d="M4 4a8 8 0 0112 0M16 16a8 8 0 01-12 0M2.5 9.5V5h4.5M17.5 10.5V15h-4.5" />
                 </svg>
-                <span className="text-[13px] font-medium text-violet-300">Admin</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 2-column asset grid */}
+          <div className="grid grid-cols-2 gap-3">
+            {/* NGN */}
+            <button
+              onClick={() => setReceiveModal("NGN")}
+              className="flex flex-col gap-3 rounded-xl border border-emerald-500/30 bg-gradient-to-br from-emerald-950/60 to-[#111113] p-3.5 text-left transition active:scale-[0.97] hover:brightness-110"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/15 text-[14px] font-bold text-emerald-400">₦</div>
+                <svg viewBox="0 0 16 16" width="9" height="9" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 4l4 4-4 4" /></svg>
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-white/30 mb-0.5">NGN</p>
+                {ngnBalance === null
+                  ? <div className="h-5 w-16 animate-pulse rounded bg-white/[0.08]" />
+                  : <p className="text-[15px] font-bold text-white tabular-nums">{balanceVisible ? ngnBalance : "••••"}</p>
+                }
+                <p className="text-[10px] text-white/25 mt-1">Tap to deposit</p>
+              </div>
+            </button>
+
+            {/* USDC */}
+            <button
+              onClick={() => setReceiveModal("USDC")}
+              className="flex flex-col gap-3 rounded-xl border border-[#2775CA]/40 bg-gradient-to-br from-[#091828] to-[#111113] p-3.5 text-left transition active:scale-[0.97] hover:brightness-110"
+            >
+              <div className="flex items-center justify-between">
+                <img src={getTokenLogo("USDC")} alt="USDC" className="h-8 w-8 rounded-full" />
+                <svg viewBox="0 0 16 16" width="9" height="9" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 4l4 4-4 4" /></svg>
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-white/30 mb-0.5">USDC</p>
+                {balanceLoading || refreshing
+                  ? <div className="h-5 w-16 animate-pulse rounded bg-white/[0.08]" />
+                  : <p className="text-[15px] font-bold text-white tabular-nums">{balanceVisible ? (usdcBalance !== null ? formatUSD(usdcBalance) : "$0.00") : "••••"}</p>
+                }
+                <p className="text-[10px] text-white/25 mt-1">Tap to receive</p>
+              </div>
+            </button>
+
+            {/* ETH */}
+            {isEthChain && (
+              <button
+                onClick={() => setReceiveModal("ETH")}
+                className="col-span-2 flex items-center gap-3 rounded-xl border border-[#627EEA]/35 bg-gradient-to-r from-[#0f1120] to-[#111113] px-4 py-3 text-left transition active:scale-[0.98] hover:brightness-110"
+              >
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#627EEA]/15">
+                  <svg viewBox="0 0 24 24" width="16" height="16">
+                    <path d="M12 2L4 12l8 5 8-5L12 2z" fill="#627EEA" opacity="0.9" />
+                    <path d="M4 12l8 10 8-10" fill="#627EEA" opacity="0.5" />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-white/30">{activeChain.nativeSymbol}</p>
+                  {balanceLoading || refreshing
+                    ? <div className="mt-0.5 h-4 w-20 animate-pulse rounded bg-white/[0.08]" />
+                    : <p className="text-[14px] font-bold text-white tabular-nums">{balanceVisible ? (ethBalance !== null ? formatEth(ethBalance) : `0 ${activeChain.nativeSymbol}`) : "••••"}</p>
+                  }
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="text-[10px] text-white/25">Tap to receive</p>
+                  <svg viewBox="0 0 16 16" width="9" height="9" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="ml-auto mt-1"><path d="M6 4l4 4-4 4" /></svg>
+                </div>
               </button>
             )}
           </div>
-        </aside>
 
-        {/* Main content */}
-        <main className="min-w-0 flex-1 pb-24 lg:pb-10">
-
-          {/* ── Balance section ── */}
-          <div className="px-5 pt-8 pb-5 lg:px-6">
-            <div className="rounded-2xl border border-white/[0.07] bg-[#1a1a1c] px-5 py-5">
-              <div className="flex items-center justify-between mb-4">
-                <p className="text-[11px] font-bold uppercase tracking-widest text-white/25">Balances</p>
-                <div className="flex items-center gap-2.5">
-                  <button onClick={toggle} className="text-white/25 transition hover:text-white/55">
-                    {balanceVisible
-                      ? <svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"><path d="M1 10s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z" /><circle cx="10" cy="10" r="2.5" /></svg>
-                      : <svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"><path d="M13.875 13.875A8.963 8.963 0 0110 15c-5.5 0-9-5-9-5a16.47 16.47 0 014.125-4.125M8.25 4.135A8.963 8.963 0 0110 4c5.5 0 9 5 9 5a16.47 16.47 0 01-2.1 2.773M3 3l14 14" /></svg>
-                    }
-                  </button>
-                  <button onClick={handleRefresh} disabled={refreshing || balanceLoading}
-                    className="text-white/25 transition hover:text-white/55 disabled:opacity-30">
-                    <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor"
-                      strokeWidth="2" strokeLinecap="round"
-                      className={refreshing || balanceLoading ? "animate-spin" : ""}>
-                      <path d="M4 4a8 8 0 0112 0M16 16a8 8 0 01-12 0M2.5 9.5V5h4.5M17.5 10.5V15h-4.5" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-
-              {/* 2-column asset grid — tap each to open receive modal */}
-              <div className="grid grid-cols-2 gap-3">
-                {/* NGN */}
-                <button
-                  onClick={() => setReceiveModal("NGN")}
-                  className="flex flex-col gap-3 rounded-xl border border-emerald-500/30 bg-gradient-to-br from-emerald-950/60 to-[#111113] p-3.5 text-left transition active:scale-[0.97] hover:brightness-110"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/15 text-[14px] font-bold text-emerald-400">₦</div>
-                    <svg viewBox="0 0 16 16" width="9" height="9" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 4l4 4-4 4" /></svg>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-white/30 mb-0.5">NGN</p>
-                    {ngnBalance === null
-                      ? <div className="h-5 w-16 animate-pulse rounded bg-white/[0.08]" />
-                      : <p className="text-[15px] font-bold text-white tabular-nums">{balanceVisible ? ngnBalance : "••••"}</p>
-                    }
-                    <p className="text-[10px] text-white/25 mt-1">Tap to deposit</p>
-                  </div>
-                </button>
-
-                {/* USDC */}
-                <button
-                  onClick={() => setReceiveModal("USDC")}
-                  className="flex flex-col gap-3 rounded-xl border border-[#2775CA]/40 bg-gradient-to-br from-[#091828] to-[#111113] p-3.5 text-left transition active:scale-[0.97] hover:brightness-110"
-                >
-                  <div className="flex items-center justify-between">
-                    <img src={getTokenLogo("USDC")} alt="USDC" className="h-8 w-8 rounded-full" />
-                    <svg viewBox="0 0 16 16" width="9" height="9" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 4l4 4-4 4" /></svg>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-white/30 mb-0.5">USDC</p>
-                    {balanceLoading || refreshing
-                      ? <div className="h-5 w-16 animate-pulse rounded bg-white/[0.08]" />
-                      : <p className="text-[15px] font-bold text-white tabular-nums">{balanceVisible ? (usdcBalance !== null ? formatUSD(usdcBalance) : "$0.00") : "••••"}</p>
-                    }
-                    <p className="text-[10px] text-white/25 mt-1">Tap to receive</p>
-                  </div>
-                </button>
-
-                {/* ETH — spans full width on ETH chains */}
-                {isEthChain && (
-                  <button
-                    onClick={() => setReceiveModal("ETH")}
-                    className="col-span-2 flex items-center gap-3 rounded-xl border border-[#627EEA]/35 bg-gradient-to-r from-[#0f1120] to-[#111113] px-4 py-3 text-left transition active:scale-[0.98] hover:brightness-110"
-                  >
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#627EEA]/15">
-                      <svg viewBox="0 0 24 24" width="16" height="16">
-                        <path d="M12 2L4 12l8 5 8-5L12 2z" fill="#627EEA" opacity="0.9" />
-                        <path d="M4 12l8 10 8-10" fill="#627EEA" opacity="0.5" />
-                      </svg>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[10px] font-semibold uppercase tracking-widest text-white/30">{activeChain.nativeSymbol}</p>
-                      {balanceLoading || refreshing
-                        ? <div className="mt-0.5 h-4 w-20 animate-pulse rounded bg-white/[0.08]" />
-                        : <p className="text-[14px] font-bold text-white tabular-nums">{balanceVisible ? (ethBalance !== null ? formatEth(ethBalance) : `0 ${activeChain.nativeSymbol}`) : "••••"}</p>
-                      }
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <p className="text-[10px] text-white/25">Tap to receive</p>
-                      <svg viewBox="0 0 16 16" width="9" height="9" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="ml-auto mt-1"><path d="M6 4l4 4-4 4" /></svg>
-                    </div>
-                  </button>
-                )}
-              </div>
-
-              {(refreshing || txLoading) && (
-                <p className="mt-3 flex items-center gap-1.5 text-[11px] text-white/25">
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-                  Updating…
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Quick actions */}
-          <div className="px-5 pb-5 lg:px-6">
-            <div className="flex items-start justify-between gap-3">
-              <Action onClick={() => navigate("/send")} label="Send"
-                icon={<svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="rgba(255,255,255,0.65)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 16L16 4M16 4H8M16 4v8" /></svg>}
-              />
-              <Action onClick={() => navigate("/receive")} label="Receive"
-                icon={<svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="rgba(255,255,255,0.65)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 4L4 16M4 16h8M4 16V8" /></svg>}
-              />
-              <Action onClick={() => navigate("/swap")} label="Swap"
-                icon={<svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="rgba(255,255,255,0.65)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6h12M4 6l3-3M4 6l3 3M16 14H4M16 14l-3-3M16 14l-3 3" /></svg>}
-              />
-              <Action onClick={() => navigate("/activity")} label="History"
-                icon={<svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="rgba(255,255,255,0.65)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="10" cy="10" r="7" /><path d="M10 6v4l2.5 2.5" /></svg>}
-              />
-            </div>
-          </div>
-
-          {/* Handle + profile */}
-          <div className="px-5 pb-5 lg:px-6">
-            <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#1a1a1c]">
-              <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3.5">
-                <span className="font-mono text-[12px] text-white/30">{profile.username}.xpay</span>
-                <CopyButton value={`${profile.username}.xpay`} label="Copy" />
-              </div>
-              <button onClick={() => navigate("/dashboard")}
-                className="flex w-full items-center justify-between px-4 py-3.5 text-left transition hover:bg-white/[0.025] active:bg-white/[0.04]">
-                <div>
-                  <p className="text-[13px] font-medium text-white/75">Profile &amp; Enrollments</p>
-                  <p className="text-[11px] text-white/30">View your courses &amp; progress</p>
-                </div>
-                <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="2" strokeLinecap="round"><path d="M6 4l4 4-4 4" /></svg>
-              </button>
-              {isAdmin && (
-                <button onClick={() => navigate("/admin")}
-                  className="flex w-full items-center justify-between border-t border-white/[0.06] px-4 py-3.5 text-left transition hover:bg-white/[0.025] active:bg-white/[0.04] lg:hidden">
-                  <p className="text-[13px] font-medium text-violet-300">Admin Panel</p>
-                  <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round"><path d="M6 4l4 4-4 4" /></svg>
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Recent transactions */}
-          <div className="px-5 pt-1 lg:px-6">
-            <div className="mb-3 flex items-center justify-between">
-              <p className="text-[11px] font-bold uppercase tracking-widest text-white/25">Recent</p>
-              {feedItems.length > 0 && (
-                <Link to="/activity" className="text-[12px] font-medium text-white/35 transition hover:text-white/60">See all</Link>
-              )}
-            </div>
-
-            {transactions === null && feedItems.length === 0 && (
-              <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#1a1a1c]">
-                {[1, 2, 3].map(i => (
-                  <div key={i} className={`flex items-center gap-3.5 px-4 py-4 ${i < 3 ? "border-b border-white/[0.06]" : ""}`}>
-                    <div className="h-10 w-10 shrink-0 animate-pulse rounded-full bg-white/[0.07]" />
-                    <div className="flex-1 space-y-2">
-                      <div className="h-3 w-2/5 animate-pulse rounded bg-white/[0.07]" />
-                      <div className="h-2.5 w-1/4 animate-pulse rounded bg-white/[0.05]" />
-                    </div>
-                    <div className="h-3 w-12 animate-pulse rounded bg-white/[0.07]" />
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {transactions !== null && feedItems.length === 0 && (
-              <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-white/[0.07] bg-[#1a1a1c] py-12 text-center">
-                <p className="text-[14px] font-medium text-white/35">No transactions yet</p>
-                <p className="text-[12px] text-white/20">Send or receive to get started</p>
-                <button onClick={() => navigate("/send")}
-                  className="mt-1 rounded-xl bg-emerald-500 px-5 py-2 text-[13px] font-semibold text-white transition hover:bg-emerald-400">
-                  Send money
-                </button>
-              </div>
-            )}
-
-            <div className="space-y-5">
-              {groups.map(group => (
-                <div key={group.label}>
-                  <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-white/20">{group.label}</p>
-                  <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#1a1a1c]">
-                    {group.items.map((item, i) =>
-                      item.kind === "xpay"
-                        ? <TxRow key={item.tx.id} tx={item.tx} last={i === group.items.length - 1}
-                            avatarSrc={item.tx.recipientUsername ? feedAvatars.get(item.tx.recipientUsername) : undefined} />
-                        : <OnChainTxRow key={item.tx.hash + item.tx.type} tx={item.tx} last={i === group.items.length - 1} />
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-        </main>
+          {(refreshing || txLoading) && (
+            <p className="mt-3 flex items-center gap-1.5 text-[11px] text-white/25">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+              Updating…
+            </p>
+          )}
+        </div>
       </div>
 
-      {/* Bottom tab bar — mobile only */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/[0.07] bg-[#111113]/95 backdrop-blur-xl lg:hidden">
-        <div className="mx-auto flex max-w-[480px] items-stretch">
-          {navDef.map(({ label, route, icon }) => (
-            <BottomTab key={route} label={label} active={route === "/home"}
-              icon={icon(route === "/home")} onClick={() => navigate(route)} />
+      {/* Quick actions */}
+      <div className="px-5 pb-5 lg:px-6">
+        <div className="flex items-start justify-between gap-3">
+          <Action onClick={() => navigate("/send")} label="Send"
+            icon={<svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="rgba(255,255,255,0.65)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 16L16 4M16 4H8M16 4v8" /></svg>}
+          />
+          <Action onClick={() => navigate("/receive")} label="Receive"
+            icon={<svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="rgba(255,255,255,0.65)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 4L4 16M4 16h8M4 16V8" /></svg>}
+          />
+          <Action onClick={() => navigate("/swap")} label="Swap"
+            icon={<svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="rgba(255,255,255,0.65)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6h12M4 6l3-3M4 6l3 3M16 14H4M16 14l-3-3M16 14l-3 3" /></svg>}
+          />
+          <Action onClick={() => navigate("/activity")} label="History"
+            icon={<svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="rgba(255,255,255,0.65)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="10" cy="10" r="7" /><path d="M10 6v4l2.5 2.5" /></svg>}
+          />
+        </div>
+      </div>
+
+      {/* Handle + profile */}
+      <div className="px-5 pb-5 lg:px-6">
+        <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#1a1a1c]">
+          <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3.5">
+            <span className="font-mono text-[12px] text-white/30">{profile.username}.xpay</span>
+            <CopyButton value={`${profile.username}.xpay`} label="Copy" />
+          </div>
+          <button onClick={() => navigate("/dashboard")}
+            className="flex w-full items-center justify-between px-4 py-3.5 text-left transition hover:bg-white/[0.025] active:bg-white/[0.04]">
+            <div>
+              <p className="text-[13px] font-medium text-white/75">Profile &amp; Enrollments</p>
+              <p className="text-[11px] text-white/30">View your courses &amp; progress</p>
+            </div>
+            <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="2" strokeLinecap="round"><path d="M6 4l4 4-4 4" /></svg>
+          </button>
+          {isAdmin && (
+            <button onClick={() => navigate("/admin")}
+              className="flex w-full items-center justify-between border-t border-white/[0.06] px-4 py-3.5 text-left transition hover:bg-white/[0.025] active:bg-white/[0.04] lg:hidden">
+              <p className="text-[13px] font-medium text-violet-300">Admin Panel</p>
+              <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round"><path d="M6 4l4 4-4 4" /></svg>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Recent transactions */}
+      <div className="px-5 pt-1 pb-6 lg:px-6">
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-white/25">Recent</p>
+          {feedItems.length > 0 && (
+            <Link to="/activity" className="text-[12px] font-medium text-white/35 transition hover:text-white/60">See all</Link>
+          )}
+        </div>
+
+        {transactions === null && feedItems.length === 0 && (
+          <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#1a1a1c]">
+            {[1, 2, 3].map(i => (
+              <div key={i} className={`flex items-center gap-3.5 px-4 py-4 ${i < 3 ? "border-b border-white/[0.06]" : ""}`}>
+                <div className="h-10 w-10 shrink-0 animate-pulse rounded-full bg-white/[0.07]" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3 w-2/5 animate-pulse rounded bg-white/[0.07]" />
+                  <div className="h-2.5 w-1/4 animate-pulse rounded bg-white/[0.05]" />
+                </div>
+                <div className="h-3 w-12 animate-pulse rounded bg-white/[0.07]" />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {transactions !== null && feedItems.length === 0 && (
+          <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-white/[0.07] bg-[#1a1a1c] py-12 text-center">
+            <p className="text-[14px] font-medium text-white/35">No transactions yet</p>
+            <p className="text-[12px] text-white/20">Send or receive to get started</p>
+            <button onClick={() => navigate("/send")}
+              className="mt-1 rounded-xl bg-emerald-500 px-5 py-2 text-[13px] font-semibold text-white transition hover:bg-emerald-400">
+              Send money
+            </button>
+          </div>
+        )}
+
+        <div className="space-y-5">
+          {groups.map(group => (
+            <div key={group.label}>
+              <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-white/20">{group.label}</p>
+              <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#1a1a1c]">
+                {group.items.map((item, i) =>
+                  item.kind === "xpay"
+                    ? <TxRow key={item.tx.id} tx={item.tx} last={i === group.items.length - 1}
+                        avatarSrc={item.tx.recipientUsername ? feedAvatars.get(item.tx.recipientUsername) : undefined} />
+                    : <OnChainTxRow key={item.tx.hash + item.tx.type} tx={item.tx} last={i === group.items.length - 1} />
+                )}
+              </div>
+            </div>
           ))}
         </div>
-      </nav>
+      </div>
 
-    </div>
+    </AppShell>
   );
 }
