@@ -2,6 +2,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { defineConfig } from 'vite'
 import path from 'path'
+import https from 'node:https'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -19,11 +20,19 @@ export default defineConfig({
       '/bmoni': {
         target: 'https://embedded-dev.bmoni.com',
         changeOrigin: true,
-        secure: true,
+        // Disable SSL cert verification for dev proxy — avoids 502s caused by
+        // http-proxy's SSL handshake failures on repeated HTTPS connections.
+        secure: false,
         rewrite: (p) => p.replace(/^\/bmoni/, ''),
         timeout: 30000,
         proxyTimeout: 30000,
         configure: (proxy) => {
+          // Use a persistent HTTPS agent to avoid per-request TCP+TLS overhead
+          const agent = new https.Agent({ keepAlive: true, rejectUnauthorized: false })
+          proxy.on('proxyReq', (proxyReq) => {
+            // @ts-ignore — http-proxy typings don't expose agent
+            proxyReq.agent = agent
+          })
           proxy.on('error', (err) => {
             console.warn('[bmoni proxy] error:', err.message)
           })

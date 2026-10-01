@@ -57,7 +57,7 @@ async function bmoniRequest<T>(
   method: string,
   path: string,
   body?: unknown,
-  timeoutMs = 15_000,
+  timeoutMs = 30_000,
 ): Promise<T> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
@@ -83,14 +83,27 @@ async function bmoniRequest<T>(
   clearTimeout(timer)
 
   if (!res.ok) {
+    // 502/503/504 = proxy or upstream gateway issue, not a BMONI API error
+    if (res.status === 502 || res.status === 503 || res.status === 504) {
+      throw new BmoniError(
+        res.status,
+        "gateway_error",
+        "The server is temporarily unavailable. Please try again in a moment.",
+      )
+    }
+
     let code = "server_error"
     let message: string | undefined
     try {
-      const j = (await res.json()) as {
-        error?: string; code?: string; message?: string | string[]
+      const text = await res.text()
+      // Only try JSON parse if it looks like JSON
+      if (text.trimStart().startsWith("{")) {
+        const j = JSON.parse(text) as {
+          error?: string; code?: string; message?: string | string[]
+        }
+        code = j.error ?? j.code ?? code
+        message = Array.isArray(j.message) ? j.message[0] : j.message
       }
-      code = j.error ?? j.code ?? code
-      message = Array.isArray(j.message) ? j.message[0] : j.message
     } catch { /* ignore */ }
     throw new BmoniError(res.status, code, message)
   }
@@ -738,12 +751,53 @@ export async function signProposalHash(
 }
 
 /**
+ * List all smart wallets for a BMONI user.
+ * Used to recover the existing wallet when create-managed returns E502 / 409.
+ * NOTE: The API returns a plain array (not { wallets: [] }).
+ *       The wallet object uses `walletAddress` (not `address`) and
+ *       `currency: "NGN"` for what we request as `"CNGN"`.
+ */
+export async function getSmartWallets(userId: string): Promise<SmartWallet[]> {
+  // API returns SmartWallet[] directly, not wrapped in an object
+  const raw = await get<Array<{
+    id: string
+    currency: string
+    walletAddress?: string
+    address?: string
+    isActive?: boolean
+    [k: string]: unknown
+  }>>(`/v1/users/${userId}/smart-wallets/account/wallets`)
+
+  const arr = Array.isArray(raw) ? raw : []
+  // Normalise to SmartWallet shape — API uses `walletAddress`, type uses `address`
+  return arr.map(w => ({
+    id: w.id,
+    address: w.address ?? w.walletAddress ?? "",
+    currency: w.currency,
+    chain: (w.chain as string) ?? "",
+    status: (w.status as string) ?? (w.isActive ? "active" : "inactive"),
+  }))
+}
+
+// Map stablecoin code → fiat code as returned by the API
+// e.g. we request "CNGN" but the API stores/returns "NGN"
+const STABLECOIN_TO_FIAT: Record<string, string> = {
+  CNGN: "NGN",
+  USDB: "USD",
+  CADC: "CAD",
+  EURe: "EUR",
+  MEXe: "MXN",
+}
+
+/**
  * Full smart-wallet provisioning handshake (steps 2–3 of integration flow):
  *   1. Request owner-proof challenge
  *   2. Sign with Privy embedded wallet
  *   3. Create managed wallet
  * Returns the SmartWallet — persist wallet.id as bmoni_wallet_id
  * and wallet.address as the ngnWalletAddress for start-nigeria.
+ *
+ * If the wallet already exists (E502 or 409 Conflict), fetches and returns it.
  */
 export async function provisionSmartWallet(
   userId: string,
@@ -752,12 +806,30 @@ export async function provisionSmartWallet(
   ownerAddress: string,
   currency = "CNGN",
 ): Promise<SmartWallet> {
-  const challenge = await requestOwnerProofChallenge(userId, ownerAddress, currency)
-  const signature = await signWithPrivy(privyProvider, ownerAddress, challenge.message)
-  return createManagedWallet(userId, {
-    currency,
-    userOwnerAddress: ownerAddress,
-    ownerProofChallengeId: challenge.challengeId,
-    ownerProofSignature: signature,
-  })
+  try {
+    const challenge = await requestOwnerProofChallenge(userId, ownerAddress, currency)
+    const signature = await signWithPrivy(privyProvider, ownerAddress, challenge.message)
+    return await createManagedWallet(userId, {
+      currency,
+      userOwnerAddress: ownerAddress,
+      ownerProofChallengeId: challenge.challengeId,
+      ownerProofSignature: signature,
+    })
+  } catch (err) {
+    // E502 or 409 = wallet already exists — fetch and return the existing one
+    const isAlreadyExists =
+      err instanceof BmoniError &&
+      (err.code === "E502" || err.status === 409)
+
+    if (isAlreadyExists) {
+      const wallets = await getSmartWallets(userId)
+      // API returns fiat code ("NGN") for what we pass as stablecoin ("CNGN")
+      const fiatCode = STABLECOIN_TO_FIAT[currency] ?? currency
+      const existing = wallets.find(
+        w => w.currency === currency || w.currency === fiatCode,
+      )
+      if (existing) return existing
+    }
+    throw err
+  }
 }
