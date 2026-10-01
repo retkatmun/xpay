@@ -340,6 +340,11 @@ export default function KycSetup() {
         {/* ── BVN step ──────────────────────────────────────────────── */}
         {step === "bvn" && (
           <div>
+            <div className="mb-4">
+              <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-emerald-400">
+                Step 3 of 4
+              </span>
+            </div>
             <Title sub="Your BVN is required to activate your Nigerian bank rail.">
               Bank Verification Number
             </Title>
@@ -387,6 +392,11 @@ export default function KycSetup() {
         {/* ── Confirm + address step ─────────────────────────────────── */}
         {step === "confirm" && (
           <div>
+            <div className="mb-4">
+              <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-emerald-400">
+                Step 4 of 4
+              </span>
+            </div>
             <Title sub="Add your Nigerian residential address to complete KYC.">
               Address details
             </Title>

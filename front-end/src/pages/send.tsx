@@ -645,19 +645,18 @@ export default function Send() {
           const proposal = await createNgnOfframp(bmoniUserId, bmoniWalletId, withdrawalAccount.id, ngnAmountStr)
 
           // Step 1: approve — moves PENDING_APPROVALS → PENDING_SIGNATURES
-          await approveProposal(bmoniUserId, proposal.proposalId)
+          await approveProposal(bmoniUserId, proposal.id)
 
-          // Step 2: get the raw hash to sign (NOT a message — no EIP-191 prefix)
-          const signPayload = await getProposalSignPayload(bmoniUserId, proposal.proposalId)
+          // Step 2: fetch the sign-payload (EIP-712 typedData from real API)
+          const signPayload = await getProposalSignPayload(bmoniUserId, proposal.id)
           if (!embeddedWallet) throw new Error("Embedded wallet not ready")
           const provider = await embeddedWallet.getEthereumProvider()
 
-          // Step 3: sign the raw digest — must use eth_sign (raw hash), NOT personal_sign
-          // personal_sign adds EIP-191 prefix → wrong address recovered → silent rejection
-          const signature = await signProposalHash(provider, embeddedWallet.address, signPayload.payload)
+          // Step 3: sign using EIP-712 signTypedData (real API returns typedData, not raw hash)
+          const signature = await signProposalHash(provider, embeddedWallet.address, signPayload)
 
-          await submitProposalSignature(bmoniUserId, proposal.proposalId, signature)
-          const settled = await pollProposal(bmoniUserId, proposal.proposalId, 60_000, 3_000)
+          await submitProposalSignature(bmoniUserId, proposal.id, signature)
+          const settled = await pollProposal(bmoniUserId, proposal.id, 60_000, 3_000)
 
           const now = new Date().toISOString()
           const ngnKobo = Math.round(ngnSendNum * 100).toString()

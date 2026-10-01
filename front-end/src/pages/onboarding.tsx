@@ -353,9 +353,10 @@ export default function Onboarding() {
       });
 
       setProfile(created as never);
-      // Profile created — go straight to done, then home
+      // XPay profile done (Stage 1: User created in BMONI happens in bmoni-setup).
+      // Redirect to wallet setup — every user must complete all 6 stages.
       setStep("done");
-      setTimeout(() => navigate("/home", { replace: true }), 2200);
+      setTimeout(() => navigate("/bmoni-setup", { replace: true }), 2200);
     } catch (e: unknown) {
       setBusy(false);
       setConfirmPin(""); setFirstPin(""); setPinStage("choose");
@@ -659,7 +660,7 @@ export default function Onboarding() {
               <p className="mt-2 text-sm leading-relaxed text-white/50">
                 Welcome to XPay,{" "}
                 <span className="font-semibold text-white/90">{draft.displayName}</span>.
-                Your wallet is ready.
+                Now let's set up your NGN wallet.
               </p>
 
               <div className="mt-5 flex items-center gap-2 rounded-full border border-white/[0.08] bg-[#161618] px-4 py-2">
@@ -670,7 +671,7 @@ export default function Onboarding() {
               <div className="mt-8 h-1.5 w-48 overflow-hidden rounded-full bg-white/[0.07]">
                 <div className="h-full w-full origin-left animate-[grow_2.2s_ease-in-out_forwards] rounded-full bg-emerald-500" />
               </div>
-              <p className="mt-3 text-xs text-white/40">Opening your wallet…</p>
+              <p className="mt-3 text-xs text-white/40">Setting up your wallet…</p>
             </div>
           )}
 

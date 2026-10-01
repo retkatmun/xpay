@@ -370,20 +370,6 @@ export default function Home() {
   if (loading || !authUser || !profile) return <div className="min-h-dvh bg-[#111113]" />;
 
   const isEthChain  = activeChain.nativeSymbol === "ETH";
-  // Show the NGN setup banner when:
-  //   - stage is 'profile'  → not yet started (user-initiated)
-  //   - stage is 'bmoni_*'  → setup was started but interrupted (resume prompt)
-  // Hide once stage is 'complete' (VBA issued successfully).
-  const ngnStage = profile.onboarding_stage ?? "profile"
-  const ngnNotSetup = ngnStage !== "complete"
-
-  // Where to send the user when they tap the banner
-  const ngnSetupPath =
-    ngnStage === "bmoni_wallet" || ngnStage === "bmoni_kyc"
-      ? "/kyc"
-      : ngnStage === "bmoni_user"
-      ? "/bmoni-setup"
-      : "/bmoni-setup" // 'profile' → fresh start
 
   type FI = { kind: "xpay"; tx: Transaction; ts: number } | { kind: "onchain"; tx: OnChainTx; ts: number };
   const feedItems: FI[] = [
@@ -411,38 +397,6 @@ export default function Home() {
           username={profile.username}
           onClose={() => setReceiveModal(null)}
         />
-      )}
-
-      {/* ── NGN setup banner ── */}
-      {ngnNotSetup && (
-        <div className="px-5 pt-6 lg:px-6">
-          <button
-            type="button"
-            onClick={() => navigate(ngnSetupPath)}
-            className="flex w-full items-center gap-4 rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-950/60 to-[#111113] px-4 py-4 text-left transition hover:border-emerald-500/50 active:scale-[0.99]"
-          >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-[18px] font-bold text-emerald-400">
-              ₦
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-semibold text-emerald-400">
-                {ngnStage === "bmoni_user"
-                  ? "Continue wallet setup"
-                  : ngnStage === "bmoni_wallet" || ngnStage === "bmoni_kyc"
-                  ? "Continue KYC — almost done!"
-                  : "Set up your NGN account"}
-              </p>
-              <p className="text-[11px] text-white/40 mt-0.5">
-                {ngnStage === "bmoni_user"
-                  ? "Your wallet provisioning was interrupted — tap to resume"
-                  : ngnStage === "bmoni_wallet" || ngnStage === "bmoni_kyc"
-                  ? "Enter your BVN to activate your Nigerian bank account"
-                  : "Activate NGN deposits and withdrawals to any Nigerian bank"}
-              </p>
-            </div>
-            <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="rgba(16,185,129,0.6)" strokeWidth="2" strokeLinecap="round"><path d="M6 4l4 4-4 4" /></svg>
-          </button>
-        </div>
       )}
 
       {/* ── Balance section ── */}

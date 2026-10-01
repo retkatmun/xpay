@@ -164,14 +164,29 @@ export type BmoniWithdrawalAccount = {
 }
 
 export type BmoniProposal = {
-  proposalId: string
+  // The real API returns proposal inside { proposal: {...} } or { data: { proposal: {...} } }
+  // We normalise to this flat shape after parsing
+  id: string           // proposal UUID (field name is 'id' in real API, 'proposalId' in some endpoints)
+  proposalId: string   // same value, kept for backwards compat
   status: "PENDING_APPROVALS" | "PENDING_SIGNATURES" | "COMPLETED" | "FAILED" | "CANCELLED" | string
+  nextAction?: string
   quote?: { fromAmount?: string; toAmount?: string; currency?: string }
 }
 
 export type BmoniSignPayload = {
-  payload: string  // EIP-712 hex string
-  type: string     // "EIP-712" | "EIP-191"
+  // Real API response from GET .../sign-payload:
+  signingPayloadHash: string   // the 32-byte digest — sign this
+  typedData: {                 // full EIP-712 typed data for signTypedData
+    domain: Record<string, unknown>
+    types: Record<string, unknown>
+    primaryType: string
+    message: Record<string, unknown>
+  } | null
+  signatureExpiresAt: string   // ISO timestamp
+  proposalStatus: string
+  // Legacy fields (some endpoints still return these):
+  payload?: string
+  hashToSign?: string
 }
 
 export type BmoniVba = {
@@ -528,11 +543,16 @@ export async function createNgnOfframp(
   bankAccountId: string,
   fromAmount: string,
 ): Promise<BmoniProposal> {
-  const data = await post<{ data: BmoniProposal }>(
+  const data = await post<{ data?: { proposalId?: string; status?: string }; proposal?: { id?: string; status?: string } }>(
     `/v1/users/${userId}/smart-wallets/${smartWalletId}/offramp/nigeria`,
     { bankAccountId, fromAmount },
   )
-  return data.data
+  // Normalise: some responses wrap under data.proposalId, others under proposal.id
+  const raw = data?.data ?? data?.proposal ?? data as Record<string, unknown>
+  const id = (raw as Record<string,unknown>)?.proposalId as string
+    ?? (raw as Record<string,unknown>)?.id as string ?? ""
+  const status = (raw as Record<string,unknown>)?.status as string ?? "PENDING_APPROVALS"
+  return { id, proposalId: id, status }
 }
 
 // ─── 12. Proposal signing ─────────────────────────────────────────────────────
@@ -576,9 +596,13 @@ export async function getProposal(
   userId: string,
   proposalId: string,
 ): Promise<BmoniProposal> {
-  return get<BmoniProposal>(
+  const data = await get<{ proposal?: Record<string,unknown> }>(
     `/v1/users/${userId}/smart-wallets/proposals/${proposalId}`,
   )
+  const raw = data?.proposal ?? (data as Record<string,unknown>)
+  const id = (raw?.id ?? raw?.proposalId ?? proposalId) as string
+  const status = (raw?.status ?? "PENDING_APPROVALS") as string
+  return { id, proposalId: id, status }
 }
 
 // ─── 13. User-to-user Transfer ────────────────────────────────────────────────
@@ -593,7 +617,7 @@ export async function createTransferProposal(
     memo?: string
   },
 ): Promise<BmoniProposal> {
-  const data = await post<{ data: BmoniProposal }>(
+  const data = await post<{ proposal?: { id?: string; status?: string; nextAction?: string } }>(
     `/v1/users/${userId}/smart-wallets/${smartWalletId}/proposals`,
     {
       proposal: {
@@ -605,7 +629,10 @@ export async function createTransferProposal(
       },
     },
   )
-  return data.data
+  const raw = data?.proposal ?? (data as Record<string, unknown>)
+  const id = (raw as Record<string,unknown>)?.id as string ?? ""
+  const status = (raw as Record<string,unknown>)?.status as string ?? "PENDING_APPROVALS"
+  return { id, proposalId: id, status }
 }
 
 // ─── 14. Poll proposal until terminal ─────────────────────────────────────────
@@ -677,31 +704,36 @@ export async function signWithPrivy(
 }
 
 /**
- * Sign a raw 32-byte digest for BMONI proposal signing.
+ * Sign a BMONI proposal using the sign-payload response.
  *
- * CRITICAL: Proposals require signing the raw hash WITHOUT the EIP-191 prefix.
- * Using personal_sign (which adds the prefix) produces a structurally valid
- * signature that recovers to the wrong address and is silently rejected.
+ * The real API returns EIP-712 typedData, NOT a raw hash.
+ * We must use eth_signTypedData_v4 which signs the EIP-712 structured data.
+ *
+ * Real sign-payload response shape:
+ *   { signingPayloadHash, typedData: { domain, types, primaryType, message }, signatureExpiresAt }
  *
  * Docs: https://bkey.mintlify.app/api-reference/signing
- *   "Use the method that signs a raw hash, not the one that signs a message."
- *   ethers → wallet.signingKey.sign(hash).serialized
- *   viem   → sign({ hash, privateKey, to: 'hex' })
- *
- * We use eth_sign which signs the raw bytes without the EIP-191 prefix.
  * `provider` = result of `embeddedWallet.getEthereumProvider()`.
  */
 export async function signProposalHash(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   provider: any,
   address: string,
-  hashToSign: string,  // 32-byte hex digest from sign-payload endpoint
+  signPayload: BmoniSignPayload,
 ): Promise<string> {
-  // eth_sign signs the raw hash without EIP-191 prefix — correct for proposals.
-  // Note: some providers warn about eth_sign; Privy's embedded wallet supports it.
+  if (signPayload.typedData) {
+    // Use eth_signTypedData_v4 for EIP-712 structured data
+    return provider.request({
+      method: "eth_signTypedData_v4",
+      params: [address, JSON.stringify(signPayload.typedData)],
+    }) as Promise<string>
+  }
+  // Fallback: sign raw hash if typedData is null (older proposal types)
+  const hash = signPayload.signingPayloadHash ?? signPayload.payload ?? signPayload.hashToSign
+  if (!hash) throw new Error("sign-payload returned no signable hash")
   return provider.request({
     method: "eth_sign",
-    params: [address, hashToSign],
+    params: [address, hash],
   }) as Promise<string>
 }
 
