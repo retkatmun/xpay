@@ -473,13 +473,18 @@ export async function getBmoniBalance(
 
 /**
  * Read the NGN VBA that was issued during start-nigeria.
- * Returns first account in the accounts array.
+ * Filters for targetCurrency "NGN" — the response also contains pooled accounts
+ * for other currencies (e.g. EUR) which we must not show to the user.
  */
 export async function getNgnDepositAccount(userId: string): Promise<BmoniVba> {
   const data = await get<{ accounts: BmoniVba[] }>(
     `/v1/users/${userId}/bank-accounts/deposit-accounts/NGN`,
   )
-  const account = (data.accounts ?? [])[0]
+  // Prefer the account explicitly targeting NGN; fall back to first entry
+  const accounts = data.accounts ?? []
+  const account =
+    accounts.find(a => (a.targetCurrency ?? a.currency) === "NGN") ??
+    accounts[0]
   if (!account) throw new BmoniError(404, "no_ngn_account", "No NGN deposit account found yet")
   return account
 }

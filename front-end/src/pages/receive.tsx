@@ -21,25 +21,25 @@ export default function Receive() {
     if (!loading && authUser && !profile) navigate('/onboarding', { replace: true })
   }, [loading, authUser, profile, navigate])
 
-  // Load NGN virtual bank account
+  // Load NGN virtual bank account — always fetch from BMONI for the real account name
   useEffect(() => {
     const userId = profile?.bmoni_user_id
     if (!userId) return
-    // Use cached value from profile first
-    if (profile?.bmoni_ngn_vba) {
-      setVba({
-        id: '',
-        accountNumber: profile.bmoni_ngn_vba,
-        bankName: 'Providus Bank',
-        accountName: profile.display_name ?? profile.username,
-        currency: 'NGN',
-      })
-      return
-    }
     setVbaLoading(true)
     getNgnDepositAccount(userId)
       .then(v => setVba(v))
-      .catch(() => {})
+      .catch(() => {
+        // Fallback: use cached account number from profile if BMONI is unreachable
+        if (profile?.bmoni_ngn_vba) {
+          setVba({
+            id: '',
+            accountNumber: profile.bmoni_ngn_vba,
+            bankName: 'Providus Bank',
+            accountName: '',   // unknown — don't show a wrong name
+            currency: 'NGN',
+          })
+        }
+      })
       .finally(() => setVbaLoading(false))
   }, [profile?.bmoni_user_id]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -102,7 +102,7 @@ export default function Receive() {
                   <div className="flex items-center justify-between px-4 py-3">
                     <div>
                       <p className="text-[10px] font-semibold uppercase tracking-widest text-white/30 mb-0.5">Account name</p>
-                      <p className="text-[14px] font-semibold text-white/85">{vba.accountName}</p>
+                      <p className="text-[14px] font-semibold text-white/85">{vba.accountName || '—'}</p>
                     </div>
                   </div>
                   <div className="px-4 py-3 bg-emerald-950/40">
