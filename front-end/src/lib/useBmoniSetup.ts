@@ -14,13 +14,12 @@
  * submitted alongside it. Using your own name with a test BVN will fail.
  *
  * The user MUST be created with the persona's exact details:
- *   Persona 1 → firstName:"Bunch"   lastName:"Dillon"  phone:"+2348000000000"  BVN: 22222222222
+ *   Persona 1 → firstName:"Bunch"   lastName:"Dillon"  phone:"+2348000000000"  BVN: 95888168924
  *   Persona 2 → firstName:"Samson"  lastName:"Jabo"    phone:"+2348000000001"  BVN: 22222222222
  *
- * IMPORTANT: The official sandbox test BVN is 22222222222 (Samson Jabo).
- * BVN 95888168924 also works for Bunch Dillon but 22222222222 is the primary one.
- *
- * We always use Persona 1 (Bunch Dillon) in sandbox with their persona phone.
+ * IMPORTANT: We always use Persona 1 (Bunch Dillon / BVN 95888168924) in sandbox.
+ * BVN 22222222222 (Samson Jabo) exists but requires a separately created Samson Jabo user.
+ * Since we only create Bunch Dillon accounts, 95888168924 is the only correct BVN to use.
  * The real user's email is still used as the unique account identifier.
  *
  * In production (VITE_BMONI_BASE_URL points to embedded.bmoni.com) the user's
@@ -47,6 +46,8 @@ const IS_SANDBOX =
 // Sandbox persona 1 — Bunch Dillon (BVN 95888168924)
 // CRITICAL: phone must be the persona phone, not the real user's phone.
 // BMONI matches firstName + lastName + phoneNumber against the persona record.
+// Since we always create Bunch Dillon accounts, BVN 95888168924 is the only
+// correct sandbox BVN to use at the KYC step.
 const SANDBOX_FIRST_NAME = "Bunch"
 const SANDBOX_LAST_NAME  = "Dillon"
 const SANDBOX_PHONE      = "+2348000000000"  // Bunch Dillon's persona phone (E.164)

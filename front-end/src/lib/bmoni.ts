@@ -232,7 +232,8 @@ export async function findBmoniUser(params: { email: string; phoneNumber?: strin
  *   Persona 1 — Bunch Dillon,  BVN 95888168924, phone +2348000000000
  *   Persona 2 — Samson Jabo,   BVN 22222222222, phone +2348000000001
  *
- * Persist the returned `bmoniUserId` for every subsequent API call.
+ * IMPORTANT: always create sandbox users as Bunch Dillon with phone +2348000000000.
+ * Using Persona 1 means the only valid sandbox BVN to enter at KYC is 95888168924.
  */
 export async function createBmoniUser(params: {
   firstName: string
@@ -304,7 +305,7 @@ export async function getOnboardingStatus(userId: string): Promise<OnboardingSta
 
 /**
  * Look up BVN details (fetch only — does not save or verify against profile).
- * Use this to pre-fill the KYC form. Test BVNs: 95888168924 or 22222222222.
+ * Use this to pre-fill the KYC form. Sandbox: use BVN 95888168924 (Bunch Dillon).
  */
 export async function lookupBvn(userId: string, bvn: string): Promise<BvnLookupResult> {
   return get<BvnLookupResult>(`/v1/users/${userId}/kyc/bvn-lookup/${bvn}`)
@@ -408,7 +409,7 @@ export async function activateKyc(
  * IMPORTANT: The wallet address here must be the smart wallet's on-chain address
  * (from createManagedWallet), NOT the Privy EOA address.
  *
- * Sandbox BVNs:  95888168924 (Bunch Dillon)  or  22222222222 (Samson Jabo)
+ * Sandbox BVN: 95888168924 (Bunch Dillon) — the only valid BVN when using Persona 1.
  * User must have been created with the matching persona name.
  */
 export async function startNigeriaOnboarding(
