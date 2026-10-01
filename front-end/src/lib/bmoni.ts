@@ -791,13 +791,13 @@ const STABLECOIN_TO_FIAT: Record<string, string> = {
 
 /**
  * Full smart-wallet provisioning handshake (steps 2–3 of integration flow):
- *   1. Request owner-proof challenge
- *   2. Sign with Privy embedded wallet
- *   3. Create managed wallet
+ *   1. Check if wallet already exists (GET /smart-wallets/account/wallets)
+ *   2. If not: request owner-proof challenge → sign → create managed wallet
  * Returns the SmartWallet — persist wallet.id as bmoni_wallet_id
  * and wallet.address as the ngnWalletAddress for start-nigeria.
  *
- * If the wallet already exists (E502 or 409 Conflict), fetches and returns it.
+ * Checks for an existing wallet FIRST to avoid E502 / 409 from create-managed
+ * entirely. This is safe to call multiple times (idempotent).
  */
 export async function provisionSmartWallet(
   userId: string,
@@ -806,6 +806,18 @@ export async function provisionSmartWallet(
   ownerAddress: string,
   currency = "CNGN",
 ): Promise<SmartWallet> {
+  // API returns fiat code ("NGN") for what we pass as stablecoin ("CNGN")
+  const fiatCode = STABLECOIN_TO_FIAT[currency] ?? currency
+
+  // ── Step 1: Check if wallet already exists ────────────────────────────────
+  // Always check first — avoids E502 from create-managed entirely
+  const existing = await getSmartWallets(userId).then(wallets =>
+    wallets.find(w => w.currency === currency || w.currency === fiatCode) ?? null
+  ).catch(() => null) // if fetch fails, fall through to create
+
+  if (existing) return existing
+
+  // ── Step 2: Create the wallet ─────────────────────────────────────────────
   try {
     const challenge = await requestOwnerProofChallenge(userId, ownerAddress, currency)
     const signature = await signWithPrivy(privyProvider, ownerAddress, challenge.message)
@@ -816,19 +828,17 @@ export async function provisionSmartWallet(
       ownerProofSignature: signature,
     })
   } catch (err) {
-    // E502 or 409 = wallet already exists — fetch and return the existing one
+    // E502 or 409 = race condition — wallet was just created, fetch it now
     const isAlreadyExists =
       err instanceof BmoniError &&
       (err.code === "E502" || err.status === 409)
 
     if (isAlreadyExists) {
       const wallets = await getSmartWallets(userId)
-      // API returns fiat code ("NGN") for what we pass as stablecoin ("CNGN")
-      const fiatCode = STABLECOIN_TO_FIAT[currency] ?? currency
-      const existing = wallets.find(
+      const found = wallets.find(
         w => w.currency === currency || w.currency === fiatCode,
       )
-      if (existing) return existing
+      if (found) return found
     }
     throw err
   }
