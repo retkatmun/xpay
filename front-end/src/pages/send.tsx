@@ -44,10 +44,11 @@ import {
   registerWithdrawalAccount,
   createNgnOfframp,
   getProposalSignPayload,
+  approveProposal,
   submitProposalSignature,
   pollProposal,
   getBmoniBalances,
-  signWithPrivy,
+  signProposalHash,
   BmoniError,
   type BmoniBank,
 } from "@/lib/bmoni"
@@ -643,10 +644,17 @@ export default function Send() {
           const ngnAmountStr = ngnSendNum.toFixed(2)
           const proposal = await createNgnOfframp(bmoniUserId, bmoniWalletId, withdrawalAccount.id, ngnAmountStr)
 
+          // Step 1: approve — moves PENDING_APPROVALS → PENDING_SIGNATURES
+          await approveProposal(bmoniUserId, proposal.proposalId)
+
+          // Step 2: get the raw hash to sign (NOT a message — no EIP-191 prefix)
           const signPayload = await getProposalSignPayload(bmoniUserId, proposal.proposalId)
           if (!embeddedWallet) throw new Error("Embedded wallet not ready")
           const provider = await embeddedWallet.getEthereumProvider()
-          const signature = await signWithPrivy(provider, embeddedWallet.address, signPayload.payload)
+
+          // Step 3: sign the raw digest — must use eth_sign (raw hash), NOT personal_sign
+          // personal_sign adds EIP-191 prefix → wrong address recovered → silent rejection
+          const signature = await signProposalHash(provider, embeddedWallet.address, signPayload.payload)
 
           await submitProposalSignature(bmoniUserId, proposal.proposalId, signature)
           const settled = await pollProposal(bmoniUserId, proposal.proposalId, 60_000, 3_000)

@@ -546,6 +546,21 @@ export async function getProposalSignPayload(
   )
 }
 
+/**
+ * Approve a proposal — moves it from PENDING_APPROVALS → PENDING_SIGNATURES.
+ * Must be called before fetching the sign payload.
+ * Docs: https://bkey.mintlify.app/api-reference/transfers#2-approve
+ */
+export async function approveProposal(
+  userId: string,
+  proposalId: string,
+): Promise<void> {
+  await post<void>(
+    `/v1/users/${userId}/smart-wallets/proposals/${proposalId}/approve`,
+    {},
+  )
+}
+
 export async function submitProposalSignature(
   userId: string,
   proposalId: string,
@@ -581,11 +596,13 @@ export async function createTransferProposal(
   const data = await post<{ data: BmoniProposal }>(
     `/v1/users/${userId}/smart-wallets/${smartWalletId}/proposals`,
     {
-      type: "TRANSFER",
-      toUserId: params.toUserId,
-      amount: params.amount,
-      currency: params.currency ?? "CNGN",
-      memo: params.memo,
+      proposal: {
+        type: "TRANSFER",
+        toUserId: params.toUserId,
+        amount: params.amount,
+        currency: params.currency ?? "CNGN",
+        description: params.memo,
+      },
     },
   )
   return data.data
@@ -637,7 +654,9 @@ export async function getBmoniSwapQuote(
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /**
- * Sign an EIP-191 message using a Privy embedded wallet provider.
+ * Sign an EIP-191 message — used ONLY for the owner-proof challenge at wallet creation.
+ * The owner-proof challenge is a plain text message that MUST be signed with the
+ * EIP-191 prefix (personal_sign). Do NOT use this for proposal signing.
  * `provider` = result of `embeddedWallet.getEthereumProvider()`.
  */
 export async function signWithPrivy(
@@ -654,6 +673,35 @@ export async function signWithPrivy(
   return provider.request({
     method: "personal_sign",
     params: [hexMessage, address],
+  }) as Promise<string>
+}
+
+/**
+ * Sign a raw 32-byte digest for BMONI proposal signing.
+ *
+ * CRITICAL: Proposals require signing the raw hash WITHOUT the EIP-191 prefix.
+ * Using personal_sign (which adds the prefix) produces a structurally valid
+ * signature that recovers to the wrong address and is silently rejected.
+ *
+ * Docs: https://bkey.mintlify.app/api-reference/signing
+ *   "Use the method that signs a raw hash, not the one that signs a message."
+ *   ethers → wallet.signingKey.sign(hash).serialized
+ *   viem   → sign({ hash, privateKey, to: 'hex' })
+ *
+ * We use eth_sign which signs the raw bytes without the EIP-191 prefix.
+ * `provider` = result of `embeddedWallet.getEthereumProvider()`.
+ */
+export async function signProposalHash(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  provider: any,
+  address: string,
+  hashToSign: string,  // 32-byte hex digest from sign-payload endpoint
+): Promise<string> {
+  // eth_sign signs the raw hash without EIP-191 prefix — correct for proposals.
+  // Note: some providers warn about eth_sign; Privy's embedded wallet supports it.
+  return provider.request({
+    method: "eth_sign",
+    params: [address, hashToSign],
   }) as Promise<string>
 }
 
